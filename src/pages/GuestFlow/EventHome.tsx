@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, Image as ImageIcon, Hash, Zap } from 'lucide-react'
+import { Camera, Image as ImageIcon, Hash, Zap, Clock } from 'lucide-react'
 import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useChallenges } from '../../hooks/useChallenges'
@@ -10,6 +10,7 @@ export default function EventHome() {
   const { token } = useParams()
   const navigate = useNavigate()
   const [selectedChallenge, setSelectedChallenge] = useState<string | null>(null)
+  const [timeRemaining, setTimeRemaining] = useState<string | null>(null)
 
   // Custom Hooks
   const { eventData, loading: eventLoading } = useEvent(token, true)
@@ -20,7 +21,35 @@ export default function EventHome() {
   })
   const { reactions, addReaction } = useReactions()
 
+  useEffect(() => {
+    if (!eventData?.reveal_time) {
+      setTimeRemaining(null)
+      return
+    }
+
+    const updateTimer = () => {
+      const now = new Date()
+      const revealDate = new Date(eventData.reveal_time)
+      const diff = revealDate.getTime() - now.getTime()
+
+      if (diff <= 0) {
+        setTimeRemaining(null)
+        return
+      }
+
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+      setTimeRemaining(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+    }
+
+    updateTimer()
+    const timerId = setInterval(updateTimer, 1000)
+    return () => clearInterval(timerId)
+  }, [eventData?.reveal_time])
+
   if (eventLoading || !eventData) return <div className="min-h-screen bg-[#08060d] text-white p-8 flex items-center justify-center font-black uppercase tracking-[0.3em]">Chargement...</div>
+
+  const isRevealModeActive = !!timeRemaining
 
   return (
     <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30">
@@ -70,24 +99,15 @@ export default function EventHome() {
             </div>
           )}
 
-          {/* Notifications Opt-in */}
-          {('Notification' in window) && Notification.permission === 'default' && (
-            <div className="glass border-primary/20 bg-primary/5 rounded-[2rem] p-6 flex items-center justify-between group shadow-xl">
-              <div className="flex items-center space-x-5">
-                <div className="bg-primary/20 p-3.5 rounded-2xl text-primary shadow-lg shadow-primary/20">
-                  <Zap size={22} className="fill-current" />
-                </div>
-                <div>
-                  <p className="text-xs font-black uppercase tracking-widest text-white">Suivre le direct</p>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter mt-0.5">Alertes instantanées</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => Notification.requestPermission()}
-                className="bg-white text-black px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-90 transition-all shadow-xl"
-              >
-                Activer
-              </button>
+          {/* Reveal Mode Active Banner */}
+          {isRevealModeActive && (
+            <div className="bg-primary/10 border border-primary/30 rounded-[2rem] p-8 text-center shadow-[0_0_50px_rgba(170,59,255,0.2)] animate-in fade-in zoom-in-95 duration-500">
+               <Clock className="mx-auto text-primary mb-4 animate-bounce" size={48} />
+               <h3 className="text-2xl font-black tracking-tighter text-white">Reveal Mode Activé</h3>
+               <p className="text-sm text-gray-400 uppercase tracking-widest font-bold mt-2 mb-6">Les photos sont cachées. Préparez-vous.</p>
+               <div className="text-6xl md:text-8xl font-black tracking-tighter text-gradient tabular-nums">
+                 {timeRemaining}
+               </div>
             </div>
           )}
 
@@ -107,7 +127,7 @@ export default function EventHome() {
             </div>
 
             {/* Challenges Filter */}
-            {challenges.length > 0 && (
+            {challenges.length > 0 && !isRevealModeActive && (
               <div className="flex space-x-3 overflow-x-auto pb-6 no-scrollbar -mx-4 px-4">
                 <button 
                   onClick={() => setSelectedChallenge(null)}
@@ -159,48 +179,56 @@ export default function EventHome() {
                   >
                     <img 
                       src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
-                      className="w-full aspect-[3/4] object-cover transition-transform duration-[1.5s] group-hover:scale-110"
+                      className={`w-full aspect-[3/4] object-cover transition-all duration-[1.5s] ${isRevealModeActive ? 'blur-2xl scale-125 opacity-40' : 'group-hover:scale-110'}`}
                       loading="lazy"
                     />
                     
-                    {/* Challenge Badge */}
-                    {photo.challenge_id && (
-                      <div className="absolute top-4 left-4 bg-primary/90 backdrop-blur-xl px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest text-white shadow-2xl z-10 border border-white/10">
-                        🏆 Défi
-                      </div>
-                    )}
-
-                    {/* AI Tags */}
-                    {eventData.ai_tagging_enabled && photo.ai_tags?.length > 0 && (
-                      <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5 z-10">
-                        {photo.ai_tags.slice(0, 2).map((tag: string) => (
-                          <div key={tag} className="glass-dark px-2.5 py-1 rounded-lg text-[7px] font-black uppercase tracking-[0.15em] text-white/90 border-white/10">
-                            # {tag}
+                    {isRevealModeActive ? (
+                       <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                          <Clock className="text-white/30 animate-pulse" size={32} />
+                       </div>
+                    ) : (
+                      <>
+                        {/* Challenge Badge */}
+                        {photo.challenge_id && (
+                          <div className="absolute top-4 left-4 bg-primary/90 backdrop-blur-xl px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest text-white shadow-2xl z-10 border border-white/10">
+                            🏆 Défi
                           </div>
-                        ))}
-                      </div>
+                        )}
+
+                        {/* AI Tags */}
+                        {eventData.ai_tagging_enabled && photo.ai_tags?.length > 0 && (
+                          <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5 z-10">
+                            {photo.ai_tags.slice(0, 2).map((tag: string) => (
+                              <div key={tag} className="glass-dark px-2.5 py-1 rounded-lg text-[7px] font-black uppercase tracking-[0.15em] text-white/90 border-white/10">
+                                # {tag}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Reactions Overlay */}
+                        <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/95 via-black/40 to-transparent pt-16 translate-y-2 group-hover:translate-y-0 transition-transform">
+                          <div className="flex flex-wrap gap-2 justify-center">
+                            {['❤️', '😂', '🔥', '👏'].map(emoji => (
+                              <button 
+                                key={emoji}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addReaction(photo.id, emoji);
+                                }}
+                                className={`glass-dark hover:bg-white/20 px-3 py-1.5 rounded-full text-[12px] flex items-center space-x-2 transition-all active:scale-75 ${reactions[photo.id]?.[emoji] ? 'border-primary/40 bg-primary/10' : ''}`}
+                              >
+                                <span>{emoji}</span>
+                                {reactions[photo.id]?.[emoji] && (
+                                  <span className="font-black text-white text-[10px] tabular-nums">{reactions[photo.id][emoji]}</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
                     )}
-                    
-                    {/* Reactions Overlay */}
-                    <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/95 via-black/40 to-transparent pt-16 translate-y-2 group-hover:translate-y-0 transition-transform">
-                      <div className="flex flex-wrap gap-2 justify-center">
-                        {['❤️', '😂', '🔥', '👏'].map(emoji => (
-                          <button 
-                            key={emoji}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              addReaction(photo.id, emoji);
-                            }}
-                            className={`glass-dark hover:bg-white/20 px-3 py-1.5 rounded-full text-[12px] flex items-center space-x-2 transition-all active:scale-75 ${reactions[photo.id]?.[emoji] ? 'border-primary/40 bg-primary/10' : ''}`}
-                          >
-                            <span>{emoji}</span>
-                            {reactions[photo.id]?.[emoji] && (
-                              <span className="font-black text-white text-[10px] tabular-nums">{reactions[photo.id][emoji]}</span>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                   </div>
                 ))}
               </div>

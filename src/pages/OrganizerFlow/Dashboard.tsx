@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Share2, Download, Image as ImageIcon, Copy, X, Zap, Hash, Check, Shield, Sparkles } from 'lucide-react'
+import { Share2, Download, Image as ImageIcon, Copy, X, Zap, Hash, Check, Shield, Sparkles, Clock } from 'lucide-react'
 import { useEvent } from '../../hooks/useEvent'
 import { useChallenges } from '../../hooks/useChallenges'
 import { usePhotos } from '../../hooks/usePhotos'
+import HighlightReel from '../../components/HighlightReel'
 
 export default function Dashboard() {
   const { eventId } = useParams()
@@ -17,6 +18,7 @@ export default function Dashboard() {
   
   const [showChallengeForm, setShowChallengeForm] = useState(false)
   const [newChallenge, setNewChallenge] = useState({ title: '', description: '' })
+  const [showHighlights, setShowHighlights] = useState(false)
 
   const handleSaveChallenge = async () => {
     if (!newChallenge.title) return
@@ -25,6 +27,12 @@ export default function Dashboard() {
       setShowChallengeForm(false)
       setNewChallenge({ title: '', description: '' })
     }
+  }
+
+  const toggleRevealMode = () => {
+    // Reveal in 5 minutes for demo
+    const revealTime = eventData.reveal_time ? null : new Date(Date.now() + 5 * 60000).toISOString()
+    updateEvent({ reveal_time: revealTime })
   }
 
   if (eventLoading || !eventData) return <div className="p-8 text-center text-white bg-[#08060d] min-h-screen flex items-center justify-center font-black uppercase tracking-[0.3em]">Chargement...</div>
@@ -40,6 +48,9 @@ export default function Dashboard() {
     const text = `Partagez vos photos de ${eventData.name} !\n\nCliquez ici : ${eventUrl}`
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
   }
+
+  // Get top photos for highlight reel (e.g., top 5 by reactions)
+  const highlightPhotos = [...photos].sort((a, b) => (b.reaction_count || 0) - (a.reaction_count || 0)).slice(0, 5)
 
   return (
     <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30">
@@ -155,7 +166,7 @@ export default function Dashboard() {
               </div>
 
               <button 
-                onClick={() => alert('Génération du Highlight Reel IA en cours...')}
+                onClick={() => photos.length > 0 ? setShowHighlights(true) : alert('Il faut des photos pour générer les highlights')}
                 className="w-full flex items-center justify-center space-x-3 bg-gradient-to-r from-primary to-accent text-white py-5 rounded-[1.5rem] font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all shadow-2xl shadow-primary/30 active:scale-95 group overflow-hidden relative"
               >
                 <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-12" />
@@ -217,6 +228,26 @@ export default function Dashboard() {
                   <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${eventData.ai_tagging_enabled ? 'left-8' : 'left-1'}`} />
                 </button>
               </div>
+
+              {eventData.plan === 'premium' && (
+                <div className="glass border border-primary/30 p-6 rounded-3xl flex items-center justify-between group hover:border-primary transition-all bg-primary/5">
+                  <div className="flex items-center space-x-5">
+                    <div className="bg-primary/20 p-3 rounded-2xl text-primary group-hover:scale-110 transition-transform">
+                      <Clock size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-sm tracking-tight">Reveal Mode</h3>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">Flouter jusqu'à minuit</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={toggleRevealMode}
+                    className={`w-14 h-7 rounded-full transition-all relative shadow-inner ${eventData.reveal_time ? 'bg-primary' : 'bg-white/10'}`}
+                  >
+                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${eventData.reveal_time ? 'left-8' : 'left-1'}`} />
+                  </button>
+                </div>
+              )}
             </div>
           </section>
 
@@ -358,6 +389,15 @@ export default function Dashboard() {
           )}
         </section>
       </main>
+
+      {/* Render Highlight Reel Modal */}
+      {showHighlights && (
+        <HighlightReel 
+          photos={highlightPhotos} 
+          onClose={() => setShowHighlights(false)} 
+        />
+      )}
     </div>
   )
 }
+

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import CreateEvent from './pages/OrganizerFlow/CreateEvent'
+import Portal from './pages/OrganizerFlow/Portal'
 import Dashboard from './pages/OrganizerFlow/Dashboard'
 import EventHome from './pages/GuestFlow/EventHome'
 import UploadPhoto from './pages/GuestFlow/UploadPhoto'
@@ -11,6 +12,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<CreateEvent />} />
+        <Route path="/portal" element={<Portal />} />
         <Route path="/dashboard/:eventId" element={<Dashboard />} />
         <Route path="/dashboard/:eventId/upgrade" element={<UpgradeEvent />} />
         <Route path="/e/:token" element={<EventHome />} />
