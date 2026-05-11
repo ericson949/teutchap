@@ -32,36 +32,39 @@ export default function EventHome() {
 
       <div className="flex-1 overflow-y-auto pb-32 relative z-10 no-scrollbar">
         {/* Header / Cover */}
-        <div className="relative h-80 overflow-hidden">
+        <div className="relative h-[45vh] md:h-80 overflow-hidden">
           {eventData.cover_url ? (
             <img src={eventData.cover_url} className="w-full h-full object-cover opacity-60 scale-105" />
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-secondary to-black flex items-center justify-center">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-secondary to-black flex items-center justify-center">
               <Hash className="text-white/5 animate-float" size={180} />
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#08060d] via-[#08060d]/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#08060d] via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-black/20" />
           
-          <div className="absolute inset-x-0 bottom-0 p-8 flex flex-col justify-end space-y-2">
-            <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full w-fit border border-white/10">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-200">Événement Live</span>
+          <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 flex flex-col justify-end space-y-4">
+            <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-xl px-4 py-1.5 rounded-full w-fit border border-white/10 shadow-2xl">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Direct Live</span>
             </div>
-            <h1 className="text-4xl font-black tracking-tight text-gradient leading-tight">{eventData.name}</h1>
-            <p className="text-gray-400 text-sm font-medium tracking-wide flex items-center">
-              {new Date(eventData.event_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
+            <div className="space-y-1">
+              <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-gradient leading-none">{eventData.name}</h1>
+              <p className="text-gray-400 text-xs font-bold uppercase tracking-widest flex items-center opacity-80">
+                {new Date(eventData.event_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="p-6 space-y-10">
+        <div className="p-4 md:p-10 space-y-10 md:space-y-16">
           {/* Welcome Message */}
           {eventData.welcome_message && (
-            <div className="glass rounded-[2rem] p-6 shadow-2xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Hash size={40} />
+            <div className="glass rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group border-white/5">
+              <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                <Hash size={64} />
               </div>
-              <p className="text-gray-200 leading-relaxed text-sm font-light italic relative z-10">
+              <p className="text-gray-300 leading-relaxed text-sm md:text-base font-medium italic relative z-10 text-center">
                 "{eventData.welcome_message}"
               </p>
             </div>
@@ -69,19 +72,19 @@ export default function EventHome() {
 
           {/* Notifications Opt-in */}
           {('Notification' in window) && Notification.permission === 'default' && (
-            <div className="glass border-primary/20 bg-primary/5 rounded-3xl p-5 flex items-center justify-between group">
-              <div className="flex items-center space-x-4">
-                <div className="bg-primary/20 p-2.5 rounded-xl text-primary animate-bounce">
-                  <Zap size={18} />
+            <div className="glass border-primary/20 bg-primary/5 rounded-[2rem] p-6 flex items-center justify-between group shadow-xl">
+              <div className="flex items-center space-x-5">
+                <div className="bg-primary/20 p-3.5 rounded-2xl text-primary shadow-lg shadow-primary/20">
+                  <Zap size={22} className="fill-current" />
                 </div>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-widest text-white">Suivre le direct ?</p>
-                  <p className="text-[10px] text-gray-500 font-medium">Recevez une alerte pour chaque nouvelle photo</p>
+                  <p className="text-xs font-black uppercase tracking-widest text-white">Suivre le direct</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter mt-0.5">Alertes instantanées</p>
                 </div>
               </div>
               <button 
                 onClick={() => Notification.requestPermission()}
-                className="bg-primary text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-90 transition-all"
+                className="bg-white text-black px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-90 transition-all shadow-xl"
               >
                 Activer
               </button>
@@ -89,38 +92,41 @@ export default function EventHome() {
           )}
 
           {/* Public Gallery */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold tracking-tight">Galerie</h2>
-              <div className="glass px-4 py-1.5 rounded-full flex items-center space-x-2">
-                <ImageIcon size={14} className="text-primary" />
-                <span className="text-[11px] font-bold text-gray-300">
-                  {photos.length} Souvenirs
+          <div className="space-y-8">
+            <div className="flex items-center justify-between px-2">
+              <div className="space-y-1">
+                <h2 className="text-3xl font-black tracking-tighter">Galerie</h2>
+                <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest opacity-60">Les plus beaux moments</p>
+              </div>
+              <div className="glass px-4 py-2 rounded-2xl flex items-center space-x-3 border-white/5 shadow-xl">
+                <ImageIcon size={16} className="text-primary" />
+                <span className="text-xs font-black text-white">
+                  {photos.length}
                 </span>
               </div>
             </div>
 
             {/* Challenges Filter */}
             {challenges.length > 0 && (
-              <div className="flex space-x-3 overflow-x-auto pb-4 no-scrollbar -mx-1 px-1">
+              <div className="flex space-x-3 overflow-x-auto pb-6 no-scrollbar -mx-4 px-4">
                 <button 
                   onClick={() => setSelectedChallenge(null)}
-                  className={`px-6 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 ${
+                  className={`px-8 py-3.5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all duration-500 ${
                     !selectedChallenge 
-                      ? 'bg-primary text-white shadow-lg shadow-primary/30 scale-105' 
-                      : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
+                      ? 'bg-primary text-white shadow-[0_10px_25px_rgba(170,59,255,0.4)] scale-105' 
+                      : 'glass border-white/5 text-gray-500 hover:text-white hover:border-white/20'
                   }`}
                 >
-                  Tous les moments
+                  Tous les souvenirs
                 </button>
                 {challenges.map(c => (
                   <button 
                     key={c.id}
                     onClick={() => setSelectedChallenge(c.id)}
-                    className={`px-6 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 flex items-center space-x-2 ${
+                    className={`px-8 py-3.5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all duration-500 flex items-center space-x-2 ${
                       selectedChallenge === c.id 
-                        ? 'bg-primary text-white shadow-lg shadow-primary/30 scale-105' 
-                        : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
+                        ? 'bg-primary text-white shadow-[0_10px_25px_rgba(170,59,255,0.4)] scale-105' 
+                        : 'glass border-white/5 text-gray-500 hover:text-white hover:border-white/20'
                     }`}
                   >
                     <span>{c.title}</span>
@@ -130,41 +136,45 @@ export default function EventHome() {
             )}
 
             {photosLoading ? (
-              <div className="text-center py-20 opacity-40 animate-pulse uppercase text-[10px] font-black tracking-widest">Mise à jour...</div>
+              <div className="grid grid-cols-2 gap-4 animate-pulse">
+                 {[1,2,3,4].map(i => (
+                    <div key={i} className="aspect-[3/4] bg-white/5 rounded-[2rem]" />
+                 ))}
+              </div>
             ) : photos.length === 0 ? (
-              <div className="text-center py-20 px-4 glass rounded-[2rem] border-dashed">
-                <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-primary/20">
-                  <Camera className="text-primary animate-pulse" size={32} />
+              <div className="text-center py-24 px-6 glass rounded-[3rem] border-dashed border-white/10 bg-white/[0.01]">
+                <div className="bg-primary/5 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 border border-primary/10 shadow-inner">
+                  <Camera className="text-primary opacity-40" size={40} />
                 </div>
-                <p className="text-gray-300 font-medium">L'album est encore vide</p>
-                <p className="text-gray-500 text-xs mt-2">Capturez le premier souvenir !</p>
+                <p className="text-gray-400 font-black text-xl tracking-tight">L'album est vide</p>
+                <p className="text-gray-600 text-[10px] mt-3 uppercase tracking-[0.2em] font-black">Soyez le premier à capturer l'instant !</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                 {photos.map((photo, idx) => (
                   <div 
                     key={photo.id} 
-                    className="group relative bg-white/5 rounded-[1.5rem] overflow-hidden border border-white/5 shadow-xl transition-all duration-500 hover:scale-[1.02] active:scale-95"
+                    className="group relative bg-white/5 rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl transition-all duration-700 hover:-translate-y-2"
                     style={{ animationDelay: `${idx * 100}ms` }}
                   >
                     <img 
                       src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
-                      className="w-full aspect-[3/4] object-cover transition-transform duration-700 group-hover:scale-110"
+                      className="w-full aspect-[3/4] object-cover transition-transform duration-[1.5s] group-hover:scale-110"
                       loading="lazy"
                     />
                     
                     {/* Challenge Badge */}
                     {photo.challenge_id && (
-                      <div className="absolute top-3 left-3 bg-primary/90 backdrop-blur-md px-2.5 py-1 rounded-xl text-[7px] font-black uppercase tracking-widest text-white shadow-2xl z-10">
+                      <div className="absolute top-4 left-4 bg-primary/90 backdrop-blur-xl px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest text-white shadow-2xl z-10 border border-white/10">
                         🏆 Défi
                       </div>
                     )}
 
                     {/* AI Tags */}
                     {eventData.ai_tagging_enabled && photo.ai_tags?.length > 0 && (
-                      <div className="absolute top-3 right-3 flex flex-col items-end gap-1 z-10">
+                      <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5 z-10">
                         {photo.ai_tags.slice(0, 2).map((tag: string) => (
-                          <div key={tag} className="glass-dark px-2 py-0.5 rounded-lg text-[6px] font-black uppercase tracking-widest text-gray-300">
+                          <div key={tag} className="glass-dark px-2.5 py-1 rounded-lg text-[7px] font-black uppercase tracking-[0.15em] text-white/90 border-white/10">
                             # {tag}
                           </div>
                         ))}
@@ -172,8 +182,8 @@ export default function EventHome() {
                     )}
                     
                     {/* Reactions Overlay */}
-                    <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-12">
-                      <div className="flex flex-wrap gap-2">
+                    <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/95 via-black/40 to-transparent pt-16 translate-y-2 group-hover:translate-y-0 transition-transform">
+                      <div className="flex flex-wrap gap-2 justify-center">
                         {['❤️', '😂', '🔥', '👏'].map(emoji => (
                           <button 
                             key={emoji}
@@ -181,11 +191,11 @@ export default function EventHome() {
                               e.stopPropagation();
                               addReaction(photo.id, emoji);
                             }}
-                            className="glass-dark hover:bg-white/20 backdrop-blur-xl px-2.5 py-1 rounded-full text-[11px] flex items-center space-x-1.5 transition-all active:scale-90"
+                            className={`glass-dark hover:bg-white/20 px-3 py-1.5 rounded-full text-[12px] flex items-center space-x-2 transition-all active:scale-75 ${reactions[photo.id]?.[emoji] ? 'border-primary/40 bg-primary/10' : ''}`}
                           >
                             <span>{emoji}</span>
                             {reactions[photo.id]?.[emoji] && (
-                              <span className="font-extrabold text-white">{reactions[photo.id][emoji]}</span>
+                              <span className="font-black text-white text-[10px] tabular-nums">{reactions[photo.id][emoji]}</span>
                             )}
                           </button>
                         ))}
