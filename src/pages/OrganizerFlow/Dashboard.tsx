@@ -1,29 +1,50 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Share2, Download, Image as ImageIcon, Copy } from 'lucide-react'
+import { Share2, Download, Image as ImageIcon, Copy, X, Zap } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 
 export default function Dashboard() {
   const { eventId } = useParams()
+  const navigate = useNavigate()
   const [eventData, setEventData] = useState<any>(null)
+  const [challenges, setChallenges] = useState<any[]>([])
+  const [showChallengeForm, setShowChallengeForm] = useState(false)
+  const [newChallenge, setNewChallenge] = useState({ title: '', description: '' })
   
-  // Mock data for development if no backend is provided
+  // Fetch everything
   useEffect(() => {
-    // In a real app, fetch from Supabase:
-    // const { data } = await supabase.from('events').select('*').eq('id', eventId).single()
-    // setEventData(data)
-    
-    const isMock = String(eventId).startsWith('mock-id-')
-    const token = isMock ? String(eventId).replace('mock-id-', '') : 'demo-token'
-
-    setEventData({
-      id: eventId,
-      name: 'Mon Super Événement',
-      date: '2026-05-15',
-      token: token,
-      photos_count: 0
-    })
+    const fetchData = async () => {
+      // 1. Fetch event
+      const isMock = String(eventId).startsWith('mock-id-')
+      const { data: event } = isMock 
+        ? { data: { id: eventId, name: 'Événement Démo', token: eventId?.replace('mock-id-', ''), photos_count: 0 } }
+        : await supabase.from('events').select('*').eq('id', eventId).single()
+      
+      if (event) {
+        setEventData(event)
+        // 2. Fetch challenges
+        const { data: chalData } = await supabase.from('challenges').select('*').eq('event_id', event.id)
+        if (chalData) setChallenges(chalData)
+      }
+    }
+    fetchData()
   }, [eventId])
+
+  const saveChallenge = async () => {
+    if (!newChallenge.title) return
+    const { data, error } = await supabase.from('challenges').insert([
+      { ...newChallenge, event_id: eventData.id }
+    ]).select().single()
+
+    if (data) {
+      setChallenges([...challenges, data])
+      setShowChallengeForm(false)
+      setNewChallenge({ title: '', description: '' })
+    } else {
+      console.error(error)
+    }
+  }
 
   if (!eventData) return <div className="p-8 text-center">Chargement...</div>
 
@@ -42,11 +63,29 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">{eventData.name}</h1>
-          <p className="text-sm text-gray-500">Dashboard Organisateur</p>
+        <div className="flex items-center space-x-3">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">{eventData.name}</h1>
+            <div className="flex items-center space-x-2">
+              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                eventData.plan === 'free' ? 'bg-gray-100 text-gray-500' : 'bg-primary/10 text-primary'
+              }`}>
+                Plan {eventData.plan}
+              </span>
+              <p className="text-sm text-gray-500">Dashboard Organisateur</p>
+            </div>
+          </div>
         </div>
         <div className="flex space-x-2">
+          {eventData.plan === 'free' && (
+            <button 
+              onClick={() => navigate(`/dashboard/${eventId}/upgrade`)}
+              className="flex items-center space-x-2 bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-primary/20 transition-all"
+            >
+              <Zap size={16} className="fill-current" />
+              <span>Passer au Premium</span>
+            </button>
+          )}
           <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
             <Download size={20} />
           </button>
@@ -54,6 +93,25 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Photos</p>
+            <p className="text-2xl font-bold text-gray-900">{eventData.photos_count || 0}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Défis</p>
+            <p className="text-2xl font-bold text-gray-900">{challenges.length}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Réactions</p>
+            <p className="text-2xl font-bold text-gray-900">--</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Vues Live</p>
+            <p className="text-2xl font-bold text-gray-900">Direct</p>
+          </div>
+        </div>
         {/* QR Code Section */}
         <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-8 items-center justify-center">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex-shrink-0">
@@ -81,7 +139,83 @@ export default function Dashboard() {
               <Share2 size={18} />
               <span>Partager sur WhatsApp</span>
             </button>
+
+            <button 
+              onClick={() => window.open(`/e/${eventData.token}/live`, '_blank')}
+              className="w-full flex items-center justify-center space-x-2 bg-gray-900 hover:bg-black text-white py-2.5 rounded-lg font-medium transition-colors"
+            >
+              <Share2 size={18} />
+              <span>Lancer le Mur Live</span>
+            </button>
           </div>
+        </section>
+
+        {/* Challenges Section */}
+        <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Défis Photo</h2>
+            <button 
+              onClick={() => setShowChallengeForm(true)}
+              className="text-sm bg-primary/10 text-primary px-3 py-1.5 rounded-lg font-medium hover:bg-primary/20 transition-colors"
+            >
+              + Nouveau défi
+            </button>
+          </div>
+
+          {challenges.length === 0 ? (
+            <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+              <p className="text-sm">Créez des défis pour animer votre événement !</p>
+              <p className="text-xs mt-1">Ex: "Selfie avec le marié", "Le plus beau sourire"...</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {challenges.map((c: any) => (
+                <div key={c.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <div>
+                    <h3 className="font-medium text-gray-900">{c.title}</h3>
+                    <p className="text-xs text-gray-500">{c.description || 'Pas de description'}</p>
+                  </div>
+                  <button className="text-gray-400 hover:text-red-500 transition-colors">
+                    <X size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showChallengeForm && (
+            <div className="mt-6 p-4 border border-primary/20 bg-primary/5 rounded-xl animate-in slide-in-from-top-2 duration-200">
+              <h3 className="text-sm font-bold mb-3">Nouveau défi</h3>
+              <div className="space-y-3">
+                <input 
+                  placeholder="Titre du défi"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-primary transition-colors"
+                  value={newChallenge.title}
+                  onChange={e => setNewChallenge({...newChallenge, title: e.target.value})}
+                />
+                <textarea 
+                  placeholder="Description (optionnel)"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-primary transition-colors h-20"
+                  value={newChallenge.description}
+                  onChange={e => setNewChallenge({...newChallenge, description: e.target.value})}
+                />
+                <div className="flex space-x-2">
+                  <button 
+                    onClick={saveChallenge}
+                    className="flex-1 bg-primary text-white text-sm py-2 rounded-lg font-medium"
+                  >
+                    Enregistrer
+                  </button>
+                  <button 
+                    onClick={() => setShowChallengeForm(false)}
+                    className="flex-1 bg-white border border-gray-200 text-gray-600 text-sm py-2 rounded-lg font-medium"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Gallery Preview Section */}

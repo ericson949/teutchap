@@ -11,9 +11,24 @@ export default function UploadPhoto() {
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [compressedSize, setCompressedSize] = useState(0)
+  const [eventData, setEventData] = useState<any>(null)
+  const [challenges, setChallenges] = useState<any[]>([])
+  const [selectedChallenge, setSelectedChallenge] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const fetchEventInfo = async () => {
+      const { data: event } = await supabase.from('events').select('*').eq('token', token).single()
+      if (event) {
+        setEventData(event)
+        const { data: chalData } = await supabase.from('challenges').select('*').eq('event_id', event.id)
+        if (chalData) setChallenges(chalData)
+      }
+    }
+    fetchEventInfo()
+  }, [token])
 
   const compressImage = (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
@@ -119,10 +134,11 @@ export default function UploadPhoto() {
       // Add to DB
       const { error: dbError } = await supabase.from('photos').insert([
         {
-          event_id: 'mock-event-id', // Normally get this from the token lookup
+          event_id: eventData.id,
           url_original: fileName,
           url_thumb: fileName,
-          file_size_bytes: compressedSize
+          file_size_bytes: compressedSize,
+          challenge_id: selectedChallenge
         }
       ])
       
@@ -193,6 +209,28 @@ export default function UploadPhoto() {
                 {(compressedSize / 1024).toFixed(0)} Ko
               </div>
             </div>
+
+            {/* Challenge Selection */}
+            {challenges.length > 0 && (
+              <div className="mb-6">
+                <p className="text-xs text-gray-400 mb-2 px-1">Relever un défi ?</p>
+                <div className="flex flex-wrap gap-2">
+                  {challenges.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedChallenge(selectedChallenge === c.id ? null : c.id)}
+                      className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${
+                        selectedChallenge === c.id 
+                          ? 'bg-primary border-primary text-white' 
+                          : 'bg-white/5 border-white/10 text-gray-400'
+                      }`}
+                    >
+                      {c.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex space-x-3 mt-auto pb-8">
               <button 
