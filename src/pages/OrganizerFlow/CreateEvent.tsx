@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Calendar, Sparkles, Zap, Hash, Shield, Globe } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
 export default function CreateEvent() {
@@ -16,7 +17,6 @@ export default function CreateEvent() {
     e.preventDefault()
     setLoading(true)
 
-    // Generate a unique token for the event
     const token = Math.random().toString(36).substring(2, 10)
 
     try {
@@ -36,8 +36,6 @@ export default function CreateEvent() {
 
       if (error) {
         console.error('Error creating event:', error)
-        alert("Erreur lors de la création de l'événement. Si vous n'avez pas configuré Supabase, cela est normal.")
-        // Fallback for development without DB
         navigate(`/dashboard/mock-id-${token}`)
       } else if (data) {
         navigate(`/dashboard/${data.id}`)
@@ -50,74 +48,110 @@ export default function CreateEvent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-6">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Teutchap</h1>
-          <p className="text-gray-500 mt-2">Créez votre événement en 30 secondes</p>
+    <div className="min-h-screen bg-[#08060d] text-white flex flex-col items-center justify-center p-6 selection:bg-primary/30 relative overflow-hidden">
+      {/* Background Mesh */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-primary/10 blur-[150px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-accent/5 blur-[150px] rounded-full" />
+      </div>
+
+      <div className="w-full max-w-xl relative z-10 space-y-12">
+        <div className="text-center space-y-4">
+          <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-4 py-2 rounded-2xl backdrop-blur-xl animate-float">
+            <Zap size={14} className="text-primary fill-current" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">Nouveau sur Teutchap</span>
+          </div>
+          <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none">
+            Capturez <br/>
+            <span className="text-gradient">L'éternité</span>
+          </h1>
+          <p className="text-gray-400 text-sm font-medium max-w-sm mx-auto leading-relaxed uppercase tracking-widest opacity-80">
+            Un album collectif. Zéro app. Souvenirs infinis.
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'événement</label>
-            <input 
-              required
-              type="text" 
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-colors"
-              placeholder="Ex: Mariage de Sophie & Marc"
-              value={formData.name}
-              onChange={e => setFormData({...formData, name: e.target.value})}
-            />
-          </div>
+        <div className="glass rounded-[2.5rem] p-8 md:p-12 shadow-2xl space-y-8 border border-white/5 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 blur-[80px] -mr-24 -mt-24 rounded-full group-hover:bg-primary/10 transition-colors" />
+          
+          <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Nom de l'événement</label>
+                <div className="relative">
+                   <Hash className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                   <input 
+                    required
+                    placeholder="Ex: Mariage de Sarah & Marc"
+                    className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] pl-16 pr-6 py-5 text-sm font-bold outline-none focus:border-primary/50 transition-all placeholder:text-gray-700 focus:bg-white/10"
+                    value={formData.name}
+                    onChange={e => setFormData({...formData, name: e.target.value})}
+                  />
+                </div>
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-            <input 
-              required
-              type="date" 
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-colors"
-              value={formData.eventDate}
-              onChange={e => setFormData({...formData, eventDate: e.target.value})}
-            />
-          </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Date</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                    <input 
+                      required
+                      type="date"
+                      className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] pl-16 pr-6 py-5 text-sm font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/10"
+                      value={formData.eventDate}
+                      onChange={e => setFormData({...formData, eventDate: e.target.value})}
+                    />
+                  </div>
+                </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type d'événement</label>
-            <select 
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-colors"
-              value={formData.eventType}
-              onChange={e => setFormData({...formData, eventType: e.target.value})}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Confidentialité</label>
+                  <div className="relative">
+                    <Globe className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                    <select 
+                      className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] pl-16 pr-6 py-5 text-sm font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/10 appearance-none"
+                      value={formData.mode}
+                      onChange={e => setFormData({...formData, mode: e.target.value})}
+                    >
+                      <option value="public" className="bg-[#08060d]">Galerie Publique</option>
+                      <option value="private" className="bg-[#08060d]">Privé (Admin seul)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button 
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary hover:bg-primary-dark active:scale-[0.98] transition-all text-white font-black py-6 rounded-[1.5rem] shadow-[0_20px_50px_rgba(170,59,255,0.3)] flex items-center justify-center space-x-4 text-sm uppercase tracking-widest border-t border-white/20"
             >
-              <option value="mariage">Mariage</option>
-              <option value="anniversaire">Anniversaire</option>
-              <option value="funeraille">Funérailles</option>
-              <option value="diplome">Remise de diplôme</option>
-              <option value="camp">Camp religieux</option>
-              <option value="tontine">Tontine</option>
-              <option value="autre">Autre</option>
-            </select>
-          </div>
+              {loading ? (
+                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <span>Créer mon Teutchap</span>
+                  <Sparkles size={18} />
+                </>
+              )}
+            </button>
+          </form>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mode de galerie</label>
-            <select 
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-colors"
-              value={formData.mode}
-              onChange={e => setFormData({...formData, mode: e.target.value})}
-            >
-              <option value="public">Public (les invités voient tout)</option>
-              <option value="private">Privé (vous seul voyez les photos)</option>
-            </select>
-          </div>
-
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full bg-primary hover:bg-primary-dark text-white font-medium py-3 rounded-lg transition-colors mt-6 disabled:opacity-70"
-          >
-            {loading ? 'Création...' : "Créer l'événement"}
-          </button>
-        </form>
+        <div className="flex items-center justify-center space-x-12 opacity-40">
+           <div className="flex items-center space-x-2">
+             <Shield size={16} />
+             <span className="text-[10px] font-black uppercase tracking-widest">Sécurisé</span>
+           </div>
+           <div className="flex items-center space-x-2">
+             <Zap size={16} />
+             <span className="text-[10px] font-black uppercase tracking-widest">Instantané</span>
+           </div>
+           <div className="flex items-center space-x-2">
+             <Globe size={16} />
+             <span className="text-[10px] font-black uppercase tracking-widest">PWA Ready</span>
+           </div>
+        </div>
       </div>
     </div>
   )

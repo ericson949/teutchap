@@ -102,64 +102,83 @@ export default function EventHome() {
   if (!eventData) return <div className="min-h-screen bg-[#08060d] text-white p-8 flex items-center justify-center">Chargement...</div>
 
   return (
-    <div className="min-h-screen bg-[#08060d] text-white flex flex-col">
-      <div className="flex-1 overflow-y-auto pb-32">
+    <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30">
+      {/* Background Glows */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full" />
+      </div>
+
+      <div className="flex-1 overflow-y-auto pb-32 relative z-10 no-scrollbar">
         {/* Header / Cover */}
-        <div className="relative h-64 bg-gradient-to-br from-primary-dark to-black overflow-hidden">
+        <div className="relative h-80 overflow-hidden">
           {eventData.cover_url ? (
-            <img src={eventData.cover_url} className="w-full h-full object-cover opacity-60" />
+            <img src={eventData.cover_url} className="w-full h-full object-cover opacity-60 scale-105" />
           ) : (
-            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-              <Hash className="text-white/10" size={120} />
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-secondary to-black flex items-center justify-center">
+              <Hash className="text-white/5 animate-float" size={180} />
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#08060d] via-transparent" />
-          <div className="absolute inset-0 p-6 flex flex-col justify-end">
-            <h1 className="text-3xl font-bold tracking-tight mb-1">{eventData.name}</h1>
-            <p className="text-gray-300 text-sm">{new Date(eventData.event_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#08060d] via-[#08060d]/40 to-transparent" />
+          
+          <div className="absolute inset-x-0 bottom-0 p-8 flex flex-col justify-end space-y-2">
+            <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full w-fit border border-white/10">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-200">Événement Live</span>
+            </div>
+            <h1 className="text-4xl font-black tracking-tight text-gradient leading-tight">{eventData.name}</h1>
+            <p className="text-gray-400 text-sm font-medium tracking-wide flex items-center">
+              {new Date(eventData.event_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
           </div>
         </div>
 
-        {/* Welcome Message */}
-        <div className="p-6">
+        <div className="p-6 space-y-10">
+          {/* Welcome Message */}
           {eventData.welcome_message && (
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm mb-8">
-              <p className="text-gray-200 leading-relaxed text-sm italic">
+            <div className="glass rounded-[2rem] p-6 shadow-2xl relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Hash size={40} />
+              </div>
+              <p className="text-gray-200 leading-relaxed text-sm font-light italic relative z-10">
                 "{eventData.welcome_message}"
               </p>
             </div>
           )}
 
           {/* Public Gallery */}
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">Galerie</h2>
-              <span className="bg-white/10 px-3 py-1 rounded-full text-[10px] text-gray-400">
-                {photos.length} photos
-              </span>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold tracking-tight">Galerie</h2>
+              <div className="glass px-4 py-1.5 rounded-full flex items-center space-x-2">
+                <ImageIcon size={14} className="text-primary" />
+                <span className="text-[11px] font-bold text-gray-300">
+                  {photos.length} Souvenirs
+                </span>
+              </div>
             </div>
 
             {/* Challenges Filter */}
             {challenges.length > 0 && (
-              <div className="flex space-x-2 overflow-x-auto pb-6 no-scrollbar -mx-1 px-1">
+              <div className="flex space-x-3 overflow-x-auto pb-4 no-scrollbar -mx-1 px-1">
                 <button 
                   onClick={() => setSelectedChallenge(null)}
-                  className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                  className={`px-6 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 ${
                     !selectedChallenge 
-                      ? 'bg-primary text-white' 
-                      : 'bg-white/5 border border-white/10 text-gray-400'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/30 scale-105' 
+                      : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
                   }`}
                 >
-                  Tout
+                  Tous les moments
                 </button>
                 {challenges.map(c => (
                   <button 
                     key={c.id}
                     onClick={() => setSelectedChallenge(c.id)}
-                    className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center space-x-1.5 ${
+                    className={`px-6 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 flex items-center space-x-2 ${
                       selectedChallenge === c.id 
-                        ? 'bg-primary text-white' 
-                        : 'bg-white/5 border border-white/10 text-gray-400'
+                        ? 'bg-primary text-white shadow-lg shadow-primary/30 scale-105' 
+                        : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
                     }`}
                   >
                     <span>{c.title}</span>
@@ -169,41 +188,49 @@ export default function EventHome() {
             )}
 
             {photos.length === 0 ? (
-              <div className="text-center py-12 px-4">
-                <div className="bg-white/5 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10">
-                  <ImageIcon className="text-gray-600" size={24} />
+              <div className="text-center py-20 px-4 glass rounded-[2rem] border-dashed">
+                <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-primary/20">
+                  <Camera className="text-primary animate-pulse" size={32} />
                 </div>
-                <p className="text-gray-400 text-sm">Aucune photo pour ce défi pour l'instant.</p>
+                <p className="text-gray-300 font-medium">L'album est encore vide</p>
+                <p className="text-gray-500 text-xs mt-2">Capturez le premier souvenir !</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4">
-                {photos.map((photo) => (
-                  <div key={photo.id} className="group relative bg-white/5 rounded-2xl overflow-hidden border border-white/5">
+                {photos.map((photo, idx) => (
+                  <div 
+                    key={photo.id} 
+                    className="group relative bg-white/5 rounded-[1.5rem] overflow-hidden border border-white/5 shadow-xl transition-all duration-500 hover:scale-[1.02] active:scale-95"
+                    style={{ animationDelay: `${idx * 100}ms` }}
+                  >
                     <img 
                       src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
-                      className="w-full aspect-[3/4] object-cover"
+                      className="w-full aspect-[3/4] object-cover transition-transform duration-700 group-hover:scale-110"
                       loading="lazy"
                     />
                     
                     {/* Challenge Badge */}
                     {photo.challenge_id && (
-                      <div className="absolute top-2 left-2 bg-primary/90 backdrop-blur-md px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-wider text-white shadow-lg">
-                        Défi Relevé
+                      <div className="absolute top-3 left-3 bg-primary/90 backdrop-blur-md px-2.5 py-1 rounded-xl text-[7px] font-black uppercase tracking-widest text-white shadow-2xl z-10">
+                        🏆 Défi
                       </div>
                     )}
                     
                     {/* Reactions Overlay */}
-                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-                      <div className="flex flex-wrap gap-1.5">
+                    <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-12">
+                      <div className="flex flex-wrap gap-2">
                         {['❤️', '😂', '🔥', '👏'].map(emoji => (
                           <button 
                             key={emoji}
-                            onClick={() => addReaction(photo.id, emoji)}
-                            className="bg-white/10 hover:bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-full text-[10px] flex items-center space-x-1 transition-all active:scale-90"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addReaction(photo.id, emoji);
+                            }}
+                            className="glass-dark hover:bg-white/20 backdrop-blur-xl px-2.5 py-1 rounded-full text-[11px] flex items-center space-x-1.5 transition-all active:scale-90"
                           >
                             <span>{emoji}</span>
                             {reactions[photo.id]?.[emoji] && (
-                              <span className="font-bold">{reactions[photo.id][emoji]}</span>
+                              <span className="font-extrabold text-white">{reactions[photo.id][emoji]}</span>
                             )}
                           </button>
                         ))}
@@ -218,13 +245,13 @@ export default function EventHome() {
       </div>
 
       {/* Sticky Bottom Actions */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#08060d] via-[#08060d]/95 to-transparent pb-safe z-20">
+      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#08060d] via-[#08060d]/90 to-transparent pb-safe z-30">
         <button 
           onClick={() => navigate(`/e/${token}/upload`)}
-          className="w-full bg-primary hover:bg-primary-dark active:scale-[0.98] transition-all text-white font-bold py-4 rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center space-x-3"
+          className="w-full bg-primary hover:bg-primary-dark active:scale-[0.97] transition-all text-white font-black py-5 rounded-[2rem] shadow-[0_20px_50px_rgba(170,59,255,0.4)] flex items-center justify-center space-x-4 border-t border-white/20"
         >
-          <Camera size={24} />
-          <span>Partager mes photos</span>
+          <Camera size={28} className="drop-shadow-lg" />
+          <span className="text-lg tracking-tight">Capturer l'instant</span>
         </button>
       </div>
     </div>
