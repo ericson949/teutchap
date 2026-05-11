@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { Session, User } from '@supabase/supabase-js'
+// Using any for Session/User to bypass Vite export resolution error
+type Session = any;
+type User = any;
 import { supabase } from '../lib/supabase'
 
 interface AuthContextType {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, Image as ImageIcon, Hash, Zap, Clock, Bell, X, Sparkles } from 'lucide-react'
+import { Camera, Image as ImageIcon, Hash, Clock, Bell, X } from 'lucide-react'
 import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useChallenges } from '../../hooks/useChallenges'
@@ -43,12 +43,12 @@ export default function EventHome() {
         schema: 'public', 
         table: 'photos',
         filter: `event_id=eq.${eventData.id}`
-      }, (payload) => {
+      }, (_payload) => {
         if (Notification.permission === 'granted') {
           sendNotification('Nouvelle photo ! 📸', {
             body: 'Un invité vient de partager un nouveau souvenir.',
             vibrate: [200, 100, 200]
-          })
+          } as any)
         }
       })
       .subscribe()

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Play, Pause, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X, Play, Pause } from 'lucide-react'
 
 interface HighlightReelProps {
   photos: any[]

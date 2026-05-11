@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Share2, Download, Image as ImageIcon, Copy, X, Zap, Hash, Check, Shield, Sparkles, Clock, LogIn, Save } from 'lucide-react'
+import { Share2, Image as ImageIcon, Copy, X, Zap, Hash, Check, Shield, Sparkles, Clock, LogIn, Save } from 'lucide-react'
 import { useEvent } from '../../hooks/useEvent'
 import { useChallenges } from '../../hooks/useChallenges'
 import { usePhotos } from '../../hooks/usePhotos'
@@ -18,7 +18,7 @@ export default function Dashboard() {
   // Custom Hooks
   const { eventData, loading: eventLoading, updateEvent, setEventData } = useEvent(eventId)
   const { challenges, addChallenge, deleteChallenge } = useChallenges(eventData?.id)
-  const { photos, loading: photosLoading } = usePhotos(eventData?.id)
+  const { photos } = usePhotos(eventData?.id)
   
   const [showChallengeForm, setShowChallengeForm] = useState(false)
   const [newChallenge, setNewChallenge] = useState({ title: '', description: '' })
@@ -46,8 +46,8 @@ export default function Dashboard() {
 
   const handleSaveChallenge = async () => {
     if (!newChallenge.title) return
-    const { data } = await addChallenge(newChallenge.title, newChallenge.description)
-    if (data) {
+    const response = await addChallenge(newChallenge.title, newChallenge.description)
+    if (response?.data) {
       setShowChallengeForm(false)
       setNewChallenge({ title: '', description: '' })
     }

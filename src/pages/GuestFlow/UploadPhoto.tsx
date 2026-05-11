@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, Image as ImageIcon, X, Check, Loader2, ArrowLeft, Zap, Upload } from 'lucide-react'
+import { Camera, Image as ImageIcon, X, Loader2, ArrowLeft, Zap, Upload } from 'lucide-react'
 import localforage from 'localforage'
 import { supabase } from '../../lib/supabase'
 
