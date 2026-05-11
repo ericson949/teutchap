@@ -14,13 +14,13 @@ const PLANS = [
     id: 'premium',
     name: 'Premium',
     price: 5000,
-    features: ['1 000 photos', 'Défis illimités', 'Mur Live premium', 'Reveal Mode', 'Tagging IA']
+    features: ['1 000 photos', 'Défis illimités', 'Mur Live premium', 'Reveal Mode', 'Tagging IA', 'Support Multi-Jours']
   },
   {
     id: 'vip',
     name: 'VIP Élite',
     price: 15000,
-    features: ['3 000 photos', 'Branding personnalisé', 'Support prioritaire', 'Modération avancée']
+    features: ['3 000 photos', 'Branding personnalisé', 'Support prioritaire', 'Modération avancée', 'Multi-Jours + Conciergerie']
   }
 ]
 
