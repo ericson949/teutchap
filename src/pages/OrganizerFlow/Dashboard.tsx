@@ -1,15 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Share2, Download, Image as ImageIcon, Copy, X, Zap, Hash, Check, Shield, Sparkles, Clock } from 'lucide-react'
+import { Share2, Download, Image as ImageIcon, Copy, X, Zap, Hash, Check, Shield, Sparkles, Clock, LogIn, Save } from 'lucide-react'
 import { useEvent } from '../../hooks/useEvent'
 import { useChallenges } from '../../hooks/useChallenges'
 import { usePhotos } from '../../hooks/usePhotos'
+import { useAuth } from '../../contexts/AuthContext'
 import HighlightReel from '../../components/HighlightReel'
+import AuthModal from '../../components/AuthModal'
+import { supabase } from '../../lib/supabase'
 
 export default function Dashboard() {
   const { eventId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   
   // Custom Hooks
   const { eventData, loading: eventLoading, updateEvent, setEventData } = useEvent(eventId)
@@ -19,6 +23,26 @@ export default function Dashboard() {
   const [showChallengeForm, setShowChallengeForm] = useState(false)
   const [newChallenge, setNewChallenge] = useState({ title: '', description: '' })
   const [showHighlights, setShowHighlights] = useState(false)
+  const [showAuthModal, setShowAuthModal] = useState(false)
+
+  // Auto-claim event if user logs in and event is anonymous
+  useEffect(() => {
+    if (user && eventData && !eventData.user_id) {
+      claimEvent()
+    }
+  }, [user, eventData])
+
+  const claimEvent = async () => {
+    if (!user || !eventData) return
+    const { error } = await supabase
+      .from('events')
+      .update({ user_id: user.id })
+      .eq('id', eventData.id)
+    
+    if (!error) {
+      setEventData({ ...eventData, user_id: user.id })
+    }
+  }
 
   const handleSaveChallenge = async () => {
     if (!newChallenge.title) return
@@ -60,6 +84,28 @@ export default function Dashboard() {
         <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-accent/5 blur-[150px] rounded-full" />
       </div>
 
+      {/* Lazy Auth Banner */}
+      {!user && !eventData.user_id && (
+        <div className="bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 border-b border-white/10 p-3 sticky top-0 z-[50] backdrop-blur-xl">
+          <div className="max-w-6xl mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-3 px-4">
+               <div className="bg-primary/20 p-2 rounded-lg text-primary animate-pulse">
+                  <Save size={14} />
+               </div>
+               <p className="text-[10px] md:text-xs font-black uppercase tracking-widest">
+                  Sauvegardez cet événement pour ne jamais perdre l'accès
+               </p>
+            </div>
+            <button 
+              onClick={() => setShowAuthModal(true)}
+              className="bg-white text-black px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-95 whitespace-nowrap mr-4"
+            >
+              S'inscrire / Connexion
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="glass-dark border-b border-white/5 px-8 py-5 flex justify-between items-center sticky top-0 z-40 backdrop-blur-2xl">
         <div className="flex items-center space-x-4">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
@@ -87,8 +133,11 @@ export default function Dashboard() {
               <span>UPGRADE</span>
             </button>
           )}
-          <button className="p-2.5 glass border border-white/10 text-gray-400 hover:text-white rounded-xl transition-all">
-            <Download size={18} />
+          <button 
+            onClick={() => user ? navigate('/portal') : setShowAuthModal(true)}
+            className="p-2.5 glass border border-white/10 text-gray-400 hover:text-white rounded-xl transition-all"
+          >
+            <LogIn size={18} />
           </button>
         </div>
       </header>
@@ -397,7 +446,15 @@ export default function Dashboard() {
           onClose={() => setShowHighlights(false)} 
         />
       )}
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          // Logic after successful auth can go here
+        }}
+      />
     </div>
   )
 }
-

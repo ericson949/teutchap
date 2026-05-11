@@ -1,23 +1,31 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Hash, ImageIcon, Calendar, ChevronRight } from 'lucide-react'
+import { Plus, Hash, ImageIcon, Calendar, ChevronRight, LogOut, User, Lock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../contexts/AuthContext'
+import AuthModal from '../../components/AuthModal'
 
 export default function Portal() {
   const navigate = useNavigate()
+  const { user, signOut } = useAuth()
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [showAuthModal, setShowAuthModal] = useState(false)
 
   useEffect(() => {
-    fetchEvents()
-  }, [])
+    if (user) {
+      fetchEvents()
+    } else {
+      setLoading(false)
+    }
+  }, [user])
 
   const fetchEvents = async () => {
-    // In a real app with auth, we'd filter by user_id. 
-    // Here we just fetch all for the MVP/Demo.
+    setLoading(true)
     const { data } = await supabase
       .from('events')
       .select('*, photos(count)')
+      .eq('user_id', user?.id)
       .order('created_at', { ascending: false })
     
     if (data) setEvents(data)
@@ -25,6 +33,29 @@ export default function Portal() {
   }
 
   if (loading) return <div className="min-h-screen bg-[#08060d] text-white flex items-center justify-center font-black uppercase tracking-widest text-[10px]">Chargement...</div>
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#08060d] text-white flex flex-col items-center justify-center p-6 text-center space-y-8">
+        <div className="glass p-10 rounded-[3rem] border border-white/10 max-w-md w-full space-y-6">
+          <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto text-primary">
+            <Lock size={40} />
+          </div>
+          <h1 className="text-3xl font-black tracking-tighter">Accès Réservé</h1>
+          <p className="text-gray-400 text-sm font-medium leading-relaxed">
+            Connectez-vous pour accéder à votre portail multi-événements et gérer vos albums.
+          </p>
+          <button 
+            onClick={() => setShowAuthModal(true)}
+            className="w-full bg-primary hover:bg-primary-dark text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl"
+          >
+            Se connecter / S'inscrire
+          </button>
+        </div>
+        <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#08060d] text-white p-6 md:p-12 relative overflow-hidden">
@@ -36,17 +67,31 @@ export default function Portal() {
 
       <div className="max-w-6xl mx-auto relative z-10 space-y-12">
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-gradient">Vos Événements</h1>
-            <p className="text-gray-400 text-sm font-bold uppercase tracking-widest mt-2">Console Multi-Événements</p>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-3 text-gray-500">
+               <User size={16} />
+               <span className="text-[10px] font-black uppercase tracking-widest">{user.email}</span>
+            </div>
+            <div>
+              <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-gradient">Vos Événements</h1>
+              <p className="text-gray-400 text-sm font-bold uppercase tracking-widest mt-2">Console Multi-Événements</p>
+            </div>
           </div>
-          <button 
-            onClick={() => navigate('/')}
-            className="bg-primary hover:bg-primary-dark text-white px-6 py-4 rounded-[1.5rem] text-[10px] md:text-xs font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl shadow-primary/20 flex items-center justify-center space-x-2"
-          >
-            <Plus size={16} />
-            <span>Nouvel Événement</span>
-          </button>
+          <div className="flex items-center space-x-4">
+            <button 
+              onClick={signOut}
+              className="glass border border-white/10 text-gray-500 hover:text-white p-4 rounded-2xl transition-all"
+            >
+              <LogOut size={20} />
+            </button>
+            <button 
+              onClick={() => navigate('/create')}
+              className="bg-primary hover:bg-primary-dark text-white px-8 py-4 rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl shadow-primary/20 flex items-center justify-center space-x-2"
+            >
+              <Plus size={16} />
+              <span>Nouveau Teutchap</span>
+            </button>
+          </div>
         </header>
 
         {events.length === 0 ? (
@@ -54,8 +99,8 @@ export default function Portal() {
               <div className="bg-white/5 p-8 rounded-full mb-8">
                  <Hash size={40} className="text-gray-500" />
               </div>
-              <p className="text-xl font-black tracking-tight text-white mb-2">Aucun événement</p>
-              <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-500">Commencez par créer votre premier Teutchap</p>
+              <p className="text-xl font-black tracking-tight text-white mb-2">Aucun événement sauvegardé</p>
+              <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-500">Créez votre premier événement pour le voir ici</p>
            </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -100,3 +145,4 @@ export default function Portal() {
     </div>
   )
 }
+
