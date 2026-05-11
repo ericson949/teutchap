@@ -1,105 +1,26 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, Image as ImageIcon, Heart, Hash } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { Camera, Image as ImageIcon, Hash, Zap } from 'lucide-react'
+import { useEvent } from '../../hooks/useEvent'
+import { usePhotos } from '../../hooks/usePhotos'
+import { useChallenges } from '../../hooks/useChallenges'
+import { useReactions } from '../../hooks/useReactions'
 
 export default function EventHome() {
   const { token } = useParams()
   const navigate = useNavigate()
-  const [eventData, setEventData] = useState<any>(null)
-  const [photos, setPhotos] = useState<any[]>([])
-  const [challenges, setChallenges] = useState<any[]>([])
   const [selectedChallenge, setSelectedChallenge] = useState<string | null>(null)
-  const [reactions, setReactions] = useState<Record<string, Record<string, number>>>({})
 
-  useEffect(() => {
-    fetchEventPhotosAndChallenges()
-    
-    // Realtime subscription for new photos and reactions
-    const photosChannel = supabase
-      .channel('public:photos')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'photos' }, (payload) => {
-        setPhotos(prev => [payload.new, ...prev])
-      })
-      .subscribe()
+  // Custom Hooks
+  const { eventData, loading: eventLoading } = useEvent(token, true)
+  const { challenges } = useChallenges(eventData?.id)
+  const { photos, loading: photosLoading } = usePhotos(eventData?.id, { 
+    challengeId: selectedChallenge, 
+    autoModeration: eventData?.auto_moderation 
+  })
+  const { reactions, addReaction } = useReactions()
 
-    const reactionsChannel = supabase
-      .channel('public:reactions')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, () => {
-        fetchReactions() // Refresh reactions on any change
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(photosChannel)
-      supabase.removeChannel(reactionsChannel)
-    }
-  }, [token])
-
-  const fetchEventPhotosAndChallenges = async () => {
-    // 1. Fetch event by token
-    const { data: event } = await supabase
-      .from('events')
-      .select('*')
-      .eq('token', token)
-      .single()
-
-    if (event) {
-      setEventData(event)
-      
-      // 2. Fetch challenges
-      const { data: chalData } = await supabase
-        .from('challenges')
-        .select('*')
-        .eq('event_id', event.id)
-      if (chalData) setChallenges(chalData)
-
-      // 3. Fetch photos
-      let query = supabase
-        .from('photos')
-        .select('*')
-        .eq('event_id', event.id)
-        .order('created_at', { ascending: false })
-      
-      if (selectedChallenge) {
-        query = query.eq('challenge_id', selectedChallenge)
-      }
-
-      const { data: photosData } = await query
-      if (photosData) setPhotos(photosData)
-      
-      fetchReactions()
-    }
-  }
-
-  useEffect(() => {
-    if (eventData) {
-      fetchEventPhotosAndChallenges()
-    }
-  }, [selectedChallenge])
-
-  const fetchReactions = async () => {
-    const { data } = await supabase.from('reactions').select('*')
-    if (data) {
-      const reactionMap: Record<string, Record<string, number>> = {}
-      data.forEach(r => {
-        if (!reactionMap[r.photo_id]) reactionMap[r.photo_id] = {}
-        reactionMap[r.photo_id][r.emoji] = (reactionMap[r.photo_id][r.emoji] || 0) + 1
-      })
-      setReactions(reactionMap)
-    }
-  }
-
-  const addReaction = async (photoId: string, emoji: string) => {
-    const fingerprint = localStorage.getItem('teutchap_fp') || Math.random().toString(36).substring(7)
-    localStorage.setItem('teutchap_fp', fingerprint)
-
-    await supabase.from('reactions').upsert([
-      { photo_id: photoId, emoji, device_fingerprint: fingerprint }
-    ])
-  }
-
-  if (!eventData) return <div className="min-h-screen bg-[#08060d] text-white p-8 flex items-center justify-center">Chargement...</div>
+  if (eventLoading || !eventData) return <div className="min-h-screen bg-[#08060d] text-white p-8 flex items-center justify-center font-black uppercase tracking-[0.3em]">Chargement...</div>
 
   return (
     <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30">
@@ -146,6 +67,27 @@ export default function EventHome() {
             </div>
           )}
 
+          {/* Notifications Opt-in */}
+          {('Notification' in window) && Notification.permission === 'default' && (
+            <div className="glass border-primary/20 bg-primary/5 rounded-3xl p-5 flex items-center justify-between group">
+              <div className="flex items-center space-x-4">
+                <div className="bg-primary/20 p-2.5 rounded-xl text-primary animate-bounce">
+                  <Zap size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-white">Suivre le direct ?</p>
+                  <p className="text-[10px] text-gray-500 font-medium">Recevez une alerte pour chaque nouvelle photo</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => Notification.requestPermission()}
+                className="bg-primary text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-90 transition-all"
+              >
+                Activer
+              </button>
+            </div>
+          )}
+
           {/* Public Gallery */}
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -187,7 +129,9 @@ export default function EventHome() {
               </div>
             )}
 
-            {photos.length === 0 ? (
+            {photosLoading ? (
+              <div className="text-center py-20 opacity-40 animate-pulse uppercase text-[10px] font-black tracking-widest">Mise à jour...</div>
+            ) : photos.length === 0 ? (
               <div className="text-center py-20 px-4 glass rounded-[2rem] border-dashed">
                 <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-primary/20">
                   <Camera className="text-primary animate-pulse" size={32} />
@@ -213,6 +157,17 @@ export default function EventHome() {
                     {photo.challenge_id && (
                       <div className="absolute top-3 left-3 bg-primary/90 backdrop-blur-md px-2.5 py-1 rounded-xl text-[7px] font-black uppercase tracking-widest text-white shadow-2xl z-10">
                         🏆 Défi
+                      </div>
+                    )}
+
+                    {/* AI Tags */}
+                    {eventData.ai_tagging_enabled && photo.ai_tags?.length > 0 && (
+                      <div className="absolute top-3 right-3 flex flex-col items-end gap-1 z-10">
+                        {photo.ai_tags.slice(0, 2).map((tag: string) => (
+                          <div key={tag} className="glass-dark px-2 py-0.5 rounded-lg text-[6px] font-black uppercase tracking-widest text-gray-300">
+                            # {tag}
+                          </div>
+                        ))}
                       </div>
                     )}
                     
