@@ -6,10 +6,12 @@ import { supabase } from '../../lib/supabase'
 export default function CreateEvent() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [isMultiDay, setIsMultiDay] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     eventType: 'mariage',
     eventDate: '',
+    endDate: '',
     mode: 'public',
   })
 
@@ -27,6 +29,7 @@ export default function CreateEvent() {
             name: formData.name,
             event_type: formData.eventType,
             event_date: formData.eventDate,
+            end_date: isMultiDay ? formData.endDate : null,
             mode: formData.mode,
             token: token,
           }
@@ -89,37 +92,67 @@ export default function CreateEvent() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">Date</label>
-                  <div className="relative group/input">
-                    <Calendar className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={20} />
-                    <input 
-                      required
-                      type="date"
-                      className="w-full bg-white/5 border border-white/10 rounded-[2rem] pl-16 pr-8 py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none color-scheme-dark"
-                      value={formData.eventDate}
-                      onChange={e => setFormData({...formData, eventDate: e.target.value})}
-                    />
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">Date {isMultiDay ? 'de début' : ''}</label>
+                    <div className="relative group/input">
+                      <Calendar className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={20} />
+                      <input 
+                        required
+                        type="date"
+                        className="w-full bg-white/5 border border-white/10 rounded-[2rem] pl-16 pr-8 py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none color-scheme-dark"
+                        value={formData.eventDate}
+                        onChange={e => setFormData({...formData, eventDate: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">Confidentialité</label>
+                    <div className="relative group/input">
+                      <Globe className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={20} />
+                      <select 
+                        className="w-full bg-white/5 border border-white/10 rounded-[2rem] pl-16 pr-8 py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none cursor-pointer"
+                        value={formData.mode}
+                        onChange={e => setFormData({...formData, mode: e.target.value})}
+                      >
+                        <option value="public" className="bg-[#0b0910] py-4">Galerie Publique</option>
+                        <option value="private" className="bg-[#0b0910] py-4">Accès Privé</option>
+                      </select>
+                      <div className="absolute right-7 top-1/2 -translate-y-1/2 pointer-events-none text-gray-600 group-focus-within/input:text-primary transition-colors">
+                         <Sparkles size={16} />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">Confidentialité</label>
-                  <div className="relative group/input">
-                    <Globe className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={20} />
-                    <select 
-                      className="w-full bg-white/5 border border-white/10 rounded-[2rem] pl-16 pr-8 py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none cursor-pointer"
-                      value={formData.mode}
-                      onChange={e => setFormData({...formData, mode: e.target.value})}
+                <div className="flex flex-col space-y-4">
+                  <label className="flex items-center space-x-3 cursor-pointer group w-fit ml-2">
+                    <div 
+                      onClick={() => setIsMultiDay(!isMultiDay)}
+                      className={`w-10 h-5 rounded-full transition-all relative ${isMultiDay ? 'bg-primary' : 'bg-white/10'}`}
                     >
-                      <option value="public" className="bg-[#0b0910] py-4">Galerie Publique</option>
-                      <option value="private" className="bg-[#0b0910] py-4">Accès Privé</option>
-                    </select>
-                    <div className="absolute right-7 top-1/2 -translate-y-1/2 pointer-events-none text-gray-600 group-focus-within/input:text-primary transition-colors">
-                       <Sparkles size={16} />
+                      <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isMultiDay ? 'left-6' : 'left-1'}`} />
                     </div>
-                  </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-gray-300 transition-colors">Événement sur plusieurs jours</span>
+                  </label>
+
+                  {isMultiDay && (
+                    <div className="space-y-3 animate-in slide-in-from-top-2 duration-300">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">Date de fin</label>
+                      <div className="relative group/input">
+                        <Calendar className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={20} />
+                        <input 
+                          required={isMultiDay}
+                          type="date"
+                          className="w-full bg-white/5 border border-white/10 rounded-[2rem] pl-16 pr-8 py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none color-scheme-dark"
+                          value={formData.endDate}
+                          onChange={e => setFormData({...formData, endDate: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

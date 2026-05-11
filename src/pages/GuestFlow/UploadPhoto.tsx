@@ -89,6 +89,8 @@ export default function UploadPhoto() {
     }
   }
 
+  const [isAiProcessing, setIsAiProcessing] = useState(false)
+
   const handleUpload = async () => {
     if (!photoBlob) return
     setIsUploading(true)
@@ -135,13 +137,14 @@ export default function UploadPhoto() {
       
       if (dbError) throw dbError
 
-      // Phase 3: AI Processing Simulation
+      // Phase 7: Real-time AI Analysis Simulation
       if (eventData.auto_moderation || eventData.ai_tagging_enabled) {
-        setIsUploading(true) // Keep loading for AI
-        await new Promise(resolve => setTimeout(resolve, 1500)) // Simulation delay
+        setIsAiProcessing(true)
+        // Wait 2.5s for the "AI Analysis" animation
+        await new Promise(resolve => setTimeout(resolve, 2500))
         
-        const mockTags = eventData.ai_tagging_enabled ? ['Événement', 'Sourire', 'Célébration'] : []
-        const mockModerationScore = 0.95 // High safe score
+        const mockTags = eventData.ai_tagging_enabled ? ['Événement', 'Sourire', 'Célébration', 'Joie'] : []
+        const mockModerationScore = 0.98
         
         await supabase.from('photos').update({
           is_moderated: true,
@@ -149,6 +152,7 @@ export default function UploadPhoto() {
           ai_tags: mockTags,
           moderation_score: mockModerationScore
         }).match({ url_original: fileName })
+        setIsAiProcessing(false)
       }
 
       navigate(`/e/${token}`)
@@ -157,6 +161,7 @@ export default function UploadPhoto() {
       alert("Erreur lors de l'envoi.")
     } finally {
       setIsUploading(false)
+      setIsAiProcessing(false)
     }
   }
 
@@ -276,6 +281,40 @@ export default function UploadPhoto() {
       <div className="p-8 text-center opacity-20 pointer-events-none">
         <p className="text-[9px] font-black uppercase tracking-[0.4em]">Propulsé par Teutchap</p>
       </div>
+
+      {/* AI Processing Overlay */}
+      {isAiProcessing && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-8 bg-[#08060d]/95 backdrop-blur-2xl animate-in fade-in duration-500">
+           <div className="relative mb-12">
+              <div className="w-32 h-32 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                 <Sparkles className="text-primary animate-pulse" size={48} />
+              </div>
+           </div>
+           
+           <div className="text-center space-y-4 max-w-xs">
+              <h3 className="text-3xl font-black tracking-tighter text-gradient uppercase">Analyse IA</h3>
+              <p className="text-sm text-gray-400 font-medium leading-relaxed">
+                 Teutchap IA vérifie la qualité et génère les tags intelligents...
+              </p>
+           </div>
+
+           <div className="mt-12 flex gap-3">
+              {[0, 1, 2].map((i) => (
+                <div 
+                  key={i} 
+                  className="w-2 h-2 bg-primary rounded-full animate-bounce" 
+                  style={{ animationDelay: `${i * 200}ms` }}
+                />
+              ))}
+           </div>
+
+           <div className="absolute bottom-12 left-0 right-0 text-center">
+              <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20">Modèle Gemini Flash • V3.1</span>
+           </div>
+        </div>
+      )}
     </div>
   )
 }
+

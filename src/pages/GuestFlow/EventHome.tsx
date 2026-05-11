@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, Image as ImageIcon, Hash, Zap, Clock } from 'lucide-react'
+import { Camera, Image as ImageIcon, Hash, Zap, Clock, Bell, X, Sparkles } from 'lucide-react'
 import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useChallenges } from '../../hooks/useChallenges'
 import { useReactions } from '../../hooks/useReactions'
+import { requestNotificationPermission, sendNotification } from '../../lib/notifications'
+import { supabase } from '../../lib/supabase'
 
 export default function EventHome() {
   const { token } = useParams()
   const navigate = useNavigate()
   const [selectedChallenge, setSelectedChallenge] = useState<string | null>(null)
   const [timeRemaining, setTimeRemaining] = useState<string | null>(null)
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false)
 
   // Custom Hooks
   const { eventData, loading: eventLoading } = useEvent(token, true)
@@ -20,6 +23,48 @@ export default function EventHome() {
     autoModeration: eventData?.auto_moderation 
   })
   const { reactions, addReaction } = useReactions()
+
+  useEffect(() => {
+    // Show notification prompt after 3s if not already granted/denied
+    if ('Notification' in window && Notification.permission === 'default') {
+      const timer = setTimeout(() => setShowNotificationPrompt(true), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!eventData?.id) return
+
+    // Listen for NEW photos to send notifications
+    const channel = supabase
+      .channel(`new_photos_${eventData.id}`)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'photos',
+        filter: `event_id=eq.${eventData.id}`
+      }, (payload) => {
+        if (Notification.permission === 'granted') {
+          sendNotification('Nouvelle photo ! 📸', {
+            body: 'Un invité vient de partager un nouveau souvenir.',
+            vibrate: [200, 100, 200]
+          })
+        }
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [eventData?.id])
+
+  const handleEnableNotifications = async () => {
+    const granted = await requestNotificationPermission()
+    if (granted) {
+      sendNotification('Activé ! 🔔', { body: 'Vous serez alerté des nouveaux moments partagés.' })
+    }
+    setShowNotificationPrompt(false)
+  }
 
   useEffect(() => {
     if (!eventData?.reveal_time) {
@@ -60,6 +105,43 @@ export default function EventHome() {
       </div>
 
       <div className="flex-1 overflow-y-auto pb-32 relative z-10 no-scrollbar">
+        {/* Notification Prompt */}
+        {showNotificationPrompt && (
+          <div className="mx-4 mt-6 animate-in slide-in-from-top-4 duration-500 relative z-[60]">
+            <div className="glass rounded-3xl p-6 border-white/10 shadow-2xl relative overflow-hidden group">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[40px] -mr-16 -mt-16 rounded-full" />
+               <button 
+                onClick={() => setShowNotificationPrompt(false)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
+               >
+                 <X size={16} />
+               </button>
+               <div className="flex items-center space-x-5">
+                  <div className="bg-primary/20 p-4 rounded-2xl text-primary animate-bounce">
+                     <Bell size={24} />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                     <h4 className="text-sm font-black uppercase tracking-widest text-gradient">Vivre l'instant</h4>
+                     <p className="text-[10px] text-gray-400 font-bold leading-tight">Activer les notifications pour voir les photos en direct.</p>
+                  </div>
+               </div>
+               <div className="flex space-x-3 mt-6">
+                  <button 
+                    onClick={handleEnableNotifications}
+                    className="flex-1 bg-white text-black py-3 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl"
+                  >
+                    Activer
+                  </button>
+                  <button 
+                    onClick={() => setShowNotificationPrompt(false)}
+                    className="flex-1 glass border-white/10 text-gray-500 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                  >
+                    Plus tard
+                  </button>
+               </div>
+            </div>
+          </div>
+        )}
         {/* Header / Cover */}
         <div className="relative h-[45vh] md:h-80 overflow-hidden">
           {eventData.cover_url ? (

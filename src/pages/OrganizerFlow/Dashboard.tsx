@@ -383,6 +383,99 @@ export default function Dashboard() {
           </section>
         </div>
 
+        {/* Analytics Section */}
+        <section className="space-y-8">
+           <div className="flex items-center space-x-4">
+              <div className="w-10 h-1 bg-primary rounded-full" />
+              <h2 className="text-3xl font-black tracking-tighter">Insights & Performance</h2>
+           </div>
+
+           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Trend Chart */}
+              <div className="lg:col-span-2 glass rounded-[2.5rem] p-8 md:p-10 border border-white/5 shadow-2xl relative overflow-hidden">
+                 <div className="flex items-center justify-between mb-8">
+                    <div>
+                       <h3 className="text-xl font-black tracking-tight">Activité Live</h3>
+                       <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Photos par heure</p>
+                    </div>
+                    <div className="flex items-center space-x-4 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                       <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-primary rounded-full" />
+                          <span>Aujourd'hui</span>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="h-48 w-full relative flex items-end justify-between px-2">
+                    <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                       <path 
+                          d="M0,150 Q100,50 200,120 T400,80 T600,140 T800,60 T1000,100" 
+                          fill="none" 
+                          stroke="url(#gradient)" 
+                          strokeWidth="4" 
+                          strokeLinecap="round"
+                          className="animate-dash"
+                       />
+                       <defs>
+                          <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                             <stop offset="0%" stopColor="var(--primary)" />
+                             <stop offset="100%" stopColor="var(--accent)" />
+                          </linearGradient>
+                       </defs>
+                    </svg>
+                    {[20, 45, 30, 80, 50, 90, 60].map((h, i) => (
+                       <div key={i} className="relative z-10 w-full flex flex-col items-center group">
+                          <div 
+                             className="w-1 bg-white/5 rounded-t-full transition-all duration-1000 group-hover:bg-primary/40" 
+                             style={{ height: `${h}%` }} 
+                          />
+                          <span className="text-[8px] font-black text-gray-600 mt-3">{12 + i}h</span>
+                       </div>
+                    ))}
+                 </div>
+              </div>
+
+              {/* Engagement & Top Contributors */}
+              <div className="space-y-6">
+                 <div className="glass rounded-[2rem] p-8 border border-white/5 shadow-2xl">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-gray-500 mb-6">Engagement IA</h3>
+                    <div className="flex items-end justify-between">
+                       <div className="space-y-1">
+                          <p className="text-4xl font-black tracking-tighter">84%</p>
+                          <p className="text-[9px] font-bold text-green-400 uppercase tracking-widest">+12% vs hier</p>
+                       </div>
+                       <div className="w-24 h-12">
+                          <svg viewBox="0 0 100 40" className="w-full h-full">
+                             <path d="M0,35 L20,25 L40,30 L60,10 L80,20 L100,5" fill="none" stroke="#22c55e" strokeWidth="3" />
+                          </svg>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="glass rounded-[2rem] p-8 border border-white/5 shadow-2xl space-y-6">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-gray-500">Top Contributeurs</h3>
+                    <div className="space-y-4">
+                       {[
+                         { name: 'Marc A.', count: 24, avatar: 'MA' },
+                         { name: 'Sarah L.', count: 18, avatar: 'SL' },
+                         { name: 'Kevin D.', count: 12, avatar: 'KD' }
+                       ].map((user, i) => (
+                         <div key={i} className="flex items-center justify-between group">
+                            <div className="flex items-center space-x-3">
+                               <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-black text-primary">
+                                  {user.avatar}
+                               </div>
+                               <span className="text-xs font-black tracking-tight group-hover:text-primary transition-colors">{user.name}</span>
+                            </div>
+                            <span className="text-[10px] font-black text-gray-500">{user.count} photos</span>
+                         </div>
+                       ))}
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </section>
+
         {/* Gallery Preview Section */}
         <section className="space-y-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">

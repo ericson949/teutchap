@@ -123,7 +123,10 @@ export default function Portal() {
                     <h3 className="text-2xl font-black tracking-tight leading-tight line-clamp-2">{event.name}</h3>
                     <div className="flex items-center space-x-2 text-gray-500 mt-3">
                        <Calendar size={14} />
-                       <span className="text-[10px] font-bold uppercase tracking-widest">{new Date(event.event_date).toLocaleDateString()}</span>
+                       <span className="text-[10px] font-bold uppercase tracking-widest">
+                        {new Date(event.event_date).toLocaleDateString()}
+                        {event.end_date && ` — ${new Date(event.end_date).toLocaleDateString()}`}
+                       </span>
                     </div>
                   </div>
                 </div>
