@@ -100,19 +100,45 @@ export default function LiveWall() {
         
         {/* Top Bar */}
         <div className="flex justify-between items-start">
-           <div className="glass-dark px-6 py-3 rounded-full flex items-center space-x-4 border-white/10 shadow-2xl">
-              <div className="flex space-x-2">
-                 <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
-              </div>
-              <span className="text-sm font-black uppercase tracking-[0.2em] text-white">Live</span>
+           <div className="flex flex-col space-y-4">
+             <div className="glass-dark px-6 py-3 rounded-full flex items-center space-x-4 border-white/10 shadow-2xl w-fit">
+                <div className="flex space-x-2">
+                   <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
+                </div>
+                <span className="text-sm font-black uppercase tracking-[0.2em] text-white">Live Wall</span>
+             </div>
+             
+             {/* New Photo Badge */}
+             {new Date().getTime() - new Date(currentPhoto.created_at).getTime() < 60000 && (
+               <div className="bg-primary text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.4em] animate-bounce shadow-lg shadow-primary/40 border border-white/20 w-fit">
+                 Nouveau !
+               </div>
+             )}
            </div>
 
-           {/* Event Branding */}
-           <div className="glass-dark px-8 py-4 rounded-[2rem] border-white/10 shadow-2xl text-right flex flex-col items-end">
-              <h2 className="text-3xl font-black text-white tracking-tighter drop-shadow-lg">{eventData.name}</h2>
-              <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary mt-1 drop-shadow-md">
-                {photos.length} Souvenirs
-              </p>
+           <div className="flex items-start space-x-6">
+              {/* Fullscreen Button */}
+              <button 
+                onClick={() => {
+                  if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                  } else {
+                    document.exitFullscreen();
+                  }
+                }}
+                className="glass-dark p-4 rounded-2xl border-white/10 text-white/50 hover:text-white transition-all pointer-events-auto"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
+                   <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                </svg>
+              </button>
+
+              <div className="glass-dark px-8 py-4 rounded-[2rem] border-white/10 shadow-2xl text-right flex flex-col items-end">
+                <h2 className="text-3xl font-black text-white tracking-tighter drop-shadow-lg">{eventData.name}</h2>
+                <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary mt-1 drop-shadow-md">
+                  {photos.length} Souvenirs
+                </p>
+              </div>
            </div>
         </div>
 
@@ -120,34 +146,41 @@ export default function LiveWall() {
         <div className="flex justify-between items-end">
           
           {/* Photo Meta (Tags/Author if any) */}
-          <div className="glass-dark p-6 rounded-[2rem] max-w-md border-white/10 shadow-2xl animate-in slide-in-from-bottom-8 duration-700">
+          <div className="glass-dark p-6 rounded-[2.5rem] max-w-md border-white/10 shadow-2xl animate-in slide-in-from-bottom-8 duration-700">
+             {currentPhoto.uploader_name && (
+               <div className="mb-3 text-xs font-black uppercase tracking-widest text-primary">
+                 Par {currentPhoto.uploader_name}
+               </div>
+             )}
              {currentPhoto.ai_tags && currentPhoto.ai_tags.length > 0 ? (
                <div className="flex flex-wrap gap-2">
                  {currentPhoto.ai_tags.slice(0, 3).map((tag: string) => (
-                   <span key={tag} className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-3 py-1.5 rounded-xl text-white shadow-lg">
+                   <span key={tag} className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-4 py-2 rounded-xl text-white shadow-lg border border-white/10">
                      #{tag}
                    </span>
                  ))}
                </div>
              ) : (
-                <div className="flex items-center space-x-2 text-white/50">
+                <div className="flex items-center space-x-2 text-white/50 px-2">
                    <Sparkles size={16} />
-                   <span className="text-xs font-bold uppercase tracking-widest">Souvenir instantané</span>
+                   <span className="text-[10px] font-black uppercase tracking-widest">Moment capturé à {new Date(currentPhoto.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
              )}
           </div>
 
           {/* Persistent QR Code Call to Action */}
-          <div className="glass-dark p-4 rounded-[2rem] border-white/10 shadow-2xl flex items-center space-x-6 backdrop-blur-3xl">
-             <div className="text-right pl-4">
-                <p className="text-sm font-black text-white uppercase tracking-widest leading-tight">Participez à<br/>l'album</p>
-                <p className="text-[9px] font-bold text-primary uppercase tracking-[0.3em] mt-2">Scannez-moi</p>
+          <div className="glass-dark p-5 rounded-[2.5rem] border-white/10 shadow-2xl flex items-center space-x-8 backdrop-blur-3xl border-t border-l pointer-events-auto">
+             <div className="text-right">
+                <p className="text-sm font-black text-white uppercase tracking-widest leading-tight">Ajoutez votre<br/>photo</p>
+                <div className="flex items-center justify-end space-x-2 mt-2">
+                  <div className="w-1.5 h-1.5 bg-primary rounded-full animate-ping" />
+                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">LIVE</p>
+                </div>
              </div>
-             <div className="bg-white p-3 rounded-2xl shadow-inner">
-               <QRCodeSVG value={eventUrl} size={80} level="H" includeMargin={false} />
+             <div className="bg-white p-4 rounded-[1.5rem] shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+               <QRCodeSVG value={eventUrl} size={100} level="H" includeMargin={false} />
              </div>
           </div>
-
         </div>
       </div>
 

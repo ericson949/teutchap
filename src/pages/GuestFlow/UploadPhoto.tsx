@@ -161,37 +161,36 @@ export default function UploadPhoto() {
         <div className="w-10" />
       </header>
 
-      <main className="flex-1 p-6 space-y-8 relative z-10 max-w-xl mx-auto w-full">
+      <main className="flex-1 p-5 space-y-6 relative z-10 max-w-xl mx-auto w-full">
         {!photoUrl ? (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 py-10">
-            <div className="text-center space-y-3">
-              <h2 className="text-4xl font-black tracking-tighter">Partagez l'instant</h2>
-              <p className="text-gray-500 text-sm font-medium tracking-wide">
-                Votre photo sera ajoutée à l'album de <br/>
-                <span className="text-primary font-bold">{eventData?.name}</span>
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 py-6">
+            <div className="text-center space-y-2">
+              <h2 className="text-3xl font-black tracking-tighter">Partagez l'instant</h2>
+              <p className="text-gray-500 text-[10px] font-bold tracking-widest uppercase">
+                Album : <span className="text-primary">{eventData?.name}</span>
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-4">
               <button 
                 onClick={() => cameraInputRef.current?.click()}
-                className="glass rounded-[2.5rem] p-16 flex flex-col items-center justify-center space-y-5 border-dashed border-white/10 hover:border-primary/40 transition-all group active:scale-95 shadow-2xl"
+                className="glass rounded-[2rem] p-10 flex flex-col items-center justify-center space-y-4 border-dashed border-white/10 hover:border-primary/40 transition-all group active:scale-95 shadow-2xl"
               >
-                <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 group-hover:scale-110 transition-transform">
-                  <Camera size={44} className="text-primary drop-shadow-lg" />
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 group-hover:scale-110 transition-transform">
+                  <Camera size={32} className="text-primary" />
                 </div>
                 <div className="text-center">
-                  <p className="font-black text-xl tracking-tight">Ouvrir la Caméra</p>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1 font-bold">Zéro installation, pur web</p>
+                  <p className="font-black text-lg tracking-tight">Ouvrir l'appareil</p>
+                  <p className="text-[9px] text-gray-600 uppercase tracking-widest mt-1 font-black">Instantané • Qualité HD</p>
                 </div>
               </button>
               
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="glass border border-white/10 rounded-3xl py-6 flex items-center justify-center space-x-4 group hover:bg-white/5 transition-all"
+                className="glass border border-white/10 rounded-2xl py-5 flex items-center justify-center space-x-3 group hover:bg-white/5 transition-all"
               >
-                <ImageIcon size={20} className="text-gray-500 group-hover:text-primary transition-colors" />
-                <span className="font-black text-xs uppercase tracking-widest text-gray-400 group-hover:text-white">Choisir dans la galerie</span>
+                <ImageIcon size={16} className="text-gray-500 group-hover:text-primary transition-colors" />
+                <span className="font-black text-[10px] uppercase tracking-widest text-gray-500 group-hover:text-white">Choisir une photo</span>
               </button>
             </div>
 

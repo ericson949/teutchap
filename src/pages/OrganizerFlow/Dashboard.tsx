@@ -77,16 +77,16 @@ export default function Dashboard() {
   const highlightPhotos = [...photos].sort((a, b) => (b.reaction_count || 0) - (a.reaction_count || 0)).slice(0, 5)
 
   return (
-    <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30">
+    <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30 overflow-x-hidden">
       {/* Background Glows */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[0%] right-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[150px] rounded-full" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-accent/5 blur-[150px] rounded-full" />
+        <div className="absolute top-[0%] right-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[80px] md:blur-[150px] rounded-full will-change-transform" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-accent/5 blur-[80px] md:blur-[150px] rounded-full will-change-transform" />
       </div>
 
       {/* Lazy Auth Banner */}
       {!user && !eventData.user_id && (
-        <div className="bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 border-b border-white/10 p-3 sticky top-0 z-[50] backdrop-blur-xl">
+        <div className="bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 border-b border-white/10 p-3 sticky top-0 z-[50] backdrop-blur-md md:backdrop-blur-xl will-change-transform">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center space-x-3 px-4">
                <div className="bg-primary/20 p-2 rounded-lg text-primary animate-pulse">
@@ -106,7 +106,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <header className="glass-dark border-b border-white/5 px-8 py-5 flex justify-between items-center sticky top-0 z-40 backdrop-blur-2xl">
+      <header className="glass-dark border-b border-white/5 px-8 py-5 flex justify-between items-center sticky top-0 z-40 backdrop-blur-md md:backdrop-blur-2xl will-change-transform">
         <div className="flex items-center space-x-4">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
             <Hash size={24} className="text-white" />
@@ -171,12 +171,46 @@ export default function Dashboard() {
         <section className="glass rounded-[2.5rem] border border-white/5 p-6 md:p-12 flex flex-col lg:flex-row gap-8 lg:gap-16 items-center shadow-2xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 blur-[120px] -mr-40 -mt-40 rounded-full opacity-50 group-hover:opacity-80 transition-opacity" />
           
-          <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.5)] flex-shrink-0 relative z-10 transition-all duration-700 group-hover:scale-[1.03] group-hover:rotate-1">
-            <QRCodeSVG value={eventUrl} size={200} level="H" includeMargin={false} className="w-48 h-48 md:w-56 md:h-56" />
-            <div className="mt-6 flex items-center justify-center space-x-2 text-black/40">
-               <div className="w-2 h-2 bg-black/10 rounded-full" />
-               <span className="text-[8px] font-black uppercase tracking-[0.2em]">Scanner pour rejoindre</span>
+          <div className="flex flex-col items-center space-y-4">
+            <div id="event-qr" className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.5)] flex-shrink-0 relative z-10 transition-all duration-700 group-hover:scale-[1.03] group-hover:rotate-1">
+              <QRCodeSVG value={eventUrl} size={200} level="H" includeMargin={false} className="w-48 h-48 md:w-56 md:h-56" />
+              <div className="mt-6 flex items-center justify-center space-x-2 text-black/40">
+                 <div className="w-2 h-2 bg-black/10 rounded-full" />
+                 <span className="text-[8px] font-black uppercase tracking-[0.2em]">Teutchap Original Code</span>
+              </div>
             </div>
+            <button 
+              onClick={() => {
+                const svg = document.querySelector('#event-qr svg') as SVGGraphicsElement;
+                if (!svg) return;
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                img.onload = () => {
+                  canvas.width = img.width + 100;
+                  canvas.height = img.height + 150;
+                  if (ctx) {
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 50, 50);
+                    ctx.fillStyle = 'black';
+                    ctx.font = 'bold 20px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(eventData.name, canvas.width/2, canvas.height - 40);
+                    const link = document.createElement('a');
+                    link.download = `QR_Teutchap_${eventData.name}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                  }
+                };
+                img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+              }}
+              className="text-[9px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors flex items-center space-x-2"
+            >
+              <Save size={14} />
+              <span>Télécharger l'image</span>
+            </button>
           </div>
           
           <div className="flex flex-col space-y-8 max-w-lg w-full relative z-10 text-center lg:text-left">
