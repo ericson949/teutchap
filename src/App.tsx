@@ -7,6 +7,7 @@ import EventHome from './pages/GuestFlow/EventHome'
 import UploadPhoto from './pages/GuestFlow/UploadPhoto'
 import LiveWall from './pages/GuestFlow/LiveWall'
 import UpgradeEvent from './pages/OrganizerFlow/UpgradeEvent'
+import EventOverview from './pages/OrganizerFlow/EventOverview'
 import AdminDashboard from './pages/Admin/AdminDashboard'
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
           <Route path="/" element={<CreateEvent />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/portal" element={<Portal />} />
+          <Route path="/overview/:eventId" element={<EventOverview />} />
           <Route path="/dashboard/:eventId" element={<Dashboard />} />
           <Route path="/dashboard/:eventId/upgrade" element={<UpgradeEvent />} />
           <Route path="/e/:token" element={<EventHome />} />

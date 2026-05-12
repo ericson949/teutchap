@@ -107,7 +107,7 @@ export default function Portal() {
             {events.map(event => (
               <div 
                 key={event.id}
-                onClick={() => navigate(`/dashboard/${event.id}`)}
+                onClick={() => navigate(`/overview/${event.id}`)}
                 className="glass rounded-[2rem] p-8 border border-white/5 shadow-2xl group hover:border-primary/30 transition-all duration-500 hover:-translate-y-2 cursor-pointer flex flex-col justify-between h-[280px]"
               >
                 <div className="space-y-4">

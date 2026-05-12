@@ -7,10 +7,8 @@ import {
   TrendingUp, 
   Search, 
   ShieldCheck, 
-  MoreVertical, 
   Trash2, 
   Eye, 
-  BarChart3, 
   CreditCard,
   ArrowUpRight,
   Filter
@@ -23,7 +21,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate()
   const [stats, setStats] = useState<any>(null)
   const [events, setEvents] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {

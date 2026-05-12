@@ -39,9 +39,9 @@ export default function CreateEvent() {
 
       if (error) {
         console.error('Error creating event:', error)
-        navigate(`/dashboard/mock-id-${token}`)
+        navigate(`/overview/mock-id-${token}`)
       } else if (data) {
-        navigate(`/dashboard/${data.id}`)
+        navigate(`/overview/${data.id}`)
       }
     } catch (err) {
       console.error(err)
