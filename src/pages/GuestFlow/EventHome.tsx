@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, Image as ImageIcon, Hash, Clock, Bell, X, RefreshCw, CloudLightning, AlertTriangle, Users, Check, Lock, PlusCircle, Calendar, User } from 'lucide-react'
+import { Camera, Image as ImageIcon, Hash, Clock, Bell, X, RefreshCw, CloudLightning, AlertTriangle, Users, Check, Lock, PlusCircle, Calendar, User, Loader2 } from 'lucide-react'
 import localforage from 'localforage'
 import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
@@ -205,9 +205,24 @@ export default function EventHome() {
   // Machine d'États : 1. En cours de chargement
   if (eventLoading) {
     return (
-      <div className="min-h-screen bg-[#08060d] text-white p-8 flex flex-col items-center justify-center space-y-4">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        <div className="font-black uppercase tracking-[0.3em] text-xs text-gray-500 animate-pulse">Connexion à l'album...</div>
+      <div className="min-h-screen bg-[#08060d] text-white flex flex-col items-center justify-center selection:bg-primary/30 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-primary/20 blur-[100px] rounded-full animate-pulse pointer-events-none" />
+        <div className="relative z-10 flex flex-col items-center space-y-6">
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-primary/20 blur-md animate-pulse" />
+            <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center backdrop-blur-xl">
+              <Loader2 size={28} className="text-primary animate-spin" />
+            </div>
+          </div>
+          <div className="text-center space-y-2 animate-fade-in">
+            <div className="text-xs font-black uppercase tracking-[0.3em] bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
+              Ouverture de l'album partagé
+            </div>
+            <p className="text-[10px] text-gray-500 font-bold tracking-widest uppercase opacity-75">
+              Chargement des souvenirs en cours...
+            </p>
+          </div>
+        </div>
       </div>
     )
   }

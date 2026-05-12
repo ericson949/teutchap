@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Share2, Copy, Zap, ArrowLeft, Star, ImageIcon, Lock, ExternalLink, Sparkles, Check, Download, Users } from 'lucide-react'
+import { Share2, Copy, Zap, ArrowLeft, Star, ImageIcon, Lock, ExternalLink, Sparkles, Check, Download, Users, Loader2 } from 'lucide-react'
 import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useAppPlans } from '../../hooks/useAppPlans'
@@ -16,10 +16,50 @@ export default function EventOverview() {
   const { photos } = usePhotos(eventData?.id)
   const { currentConfig } = useAppPlans(eventData?.plan)
 
-  if (eventLoading || !eventData) {
+  if (eventLoading) {
     return (
-      <div className="min-h-screen bg-[#08060d] text-white flex items-center justify-center font-black uppercase tracking-[0.3em] text-xs">
-        Chargement de l'événement...
+      <div className="min-h-screen bg-[#08060d] text-white flex flex-col items-center justify-center selection:bg-primary/30 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-primary/20 blur-[100px] rounded-full animate-pulse pointer-events-none" />
+        <div className="relative z-10 flex flex-col items-center space-y-6">
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-primary/20 blur-md animate-pulse" />
+            <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center backdrop-blur-xl">
+              <Loader2 size={28} className="text-primary animate-spin" />
+            </div>
+          </div>
+          <div className="text-center space-y-2 animate-fade-in">
+            <div className="text-xs font-black uppercase tracking-[0.3em] bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
+              Connexion à l'espace
+            </div>
+            <p className="text-[10px] text-gray-500 font-bold tracking-widest uppercase opacity-75">
+              Synchronisation des données en cours...
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!eventData) {
+    return (
+      <div className="min-h-screen bg-[#08060d] text-white flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
+        <div className="w-full max-w-md glass rounded-3xl p-8 border border-white/10 space-y-6 animate-scale-up">
+          <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center mx-auto">
+            ✕
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-lg font-black tracking-wide uppercase">Événement introuvable</h2>
+            <p className="text-xs text-gray-400 leading-relaxed font-medium">
+              Ce lien est expiré ou l'album n'existe plus. Veuillez vérifier auprès de l'organisateur.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/')}
+            className="w-full bg-white/5 hover:bg-white/10 border border-white/10 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+          >
+            Retourner à l'accueil
+          </button>
+        </div>
       </div>
     )
   }

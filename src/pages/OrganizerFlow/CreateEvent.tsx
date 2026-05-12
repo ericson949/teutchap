@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Sparkles, Zap, Hash, Shield, Globe, Users } from 'lucide-react'
+import { Calendar, Sparkles, Zap, Hash, Shield, Globe, Users, AlertTriangle } from 'lucide-react'
+import { v4 as uuidv4 } from 'uuid'
 import { supabase } from '../../lib/supabase'
 
 export default function CreateEvent() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [creationError, setCreationError] = useState<string | null>(null)
   const [isMultiDay, setIsMultiDay] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -18,15 +20,10 @@ export default function CreateEvent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setCreationError(null)
 
-    // Génération d'UUID compatible avec les contextes HTTP non sécurisés (accès IP réseau local)
-    const eventId = typeof crypto !== 'undefined' && crypto.randomUUID 
-      ? crypto.randomUUID() 
-      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-          const r = Math.random() * 16 | 0
-          const v = c === 'x' ? r : (r & 0x3 | 0x8)
-          return v.toString(16)
-        })
+    // Génération standard et sécurisée d'UUID v4 via la librairie certifiée
+    const eventId = uuidv4()
     const token = Math.random().toString(36).substring(2, 10)
 
     // Formule gratuite affectée par défaut en création
@@ -51,18 +48,20 @@ export default function CreateEvent() {
       const { error } = await supabase.from('events').insert([payload])
 
       if (error) {
-        console.warn("L'insertion Supabase a échoué (RLS). Cache de secours activé pour la résilience locale.", error)
+        console.error("Erreur stricte de création (RLS/Réseau) :", error)
+        setCreationError("Impossible de créer l'événement. La base de données a refusé l'accès en écriture (RLS) ou est indisponible.")
+        setLoading(false)
+        return
       }
       
-      // Persistance de secours
+      // Persistance de secours du payload créé avec succès
       localStorage.setItem(`teutchap_mock_event_${eventId}`, JSON.stringify(payload))
       localStorage.setItem(`teutchap_mock_event_token_${token}`, JSON.stringify(payload))
       
       navigate(`/overview/${eventId}`)
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      navigate(`/overview/${eventId}`)
-    } finally {
+      setCreationError(err?.message || "Une erreur inattendue est survenue lors de la communication avec le serveur.")
       setLoading(false)
     }
   }
@@ -224,6 +223,17 @@ export default function CreateEvent() {
               </div>
             </div>
 
+            {/* Bannière d'erreur stricte */}
+            {creationError && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-start space-x-3 text-red-400 text-xs animate-fade-in">
+                <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+                <div className="space-y-1 font-medium">
+                  <p className="font-bold uppercase tracking-wider text-[10px]">Échec de la transaction</p>
+                  <p className="leading-relaxed">{creationError}</p>
+                </div>
+              </div>
+            )}
+
             <button 
               type="submit"
               disabled={loading}
@@ -234,7 +244,7 @@ export default function CreateEvent() {
                 <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <span className="relative z-10">Générer mon espace gratuit</span>
+                    <span className="relative z-10">Créer mon album</span>
                   <Sparkles size={18} className="relative z-10 animate-pulse" />
                 </>
               )}
