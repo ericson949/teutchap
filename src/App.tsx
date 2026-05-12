@@ -9,11 +9,13 @@ import LiveWall from './pages/GuestFlow/LiveWall'
 import UpgradeEvent from './pages/OrganizerFlow/UpgradeEvent'
 import EventOverview from './pages/OrganizerFlow/EventOverview'
 import AdminDashboard from './pages/Admin/AdminDashboard'
+import PwaInstallBanner from './components/PwaInstallBanner'
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <PwaInstallBanner />
         <Routes>
           <Route path="/" element={<CreateEvent />} />
           <Route path="/admin" element={<AdminDashboard />} />
