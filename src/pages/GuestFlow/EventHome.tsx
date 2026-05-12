@@ -6,6 +6,7 @@ import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useChallenges } from '../../hooks/useChallenges'
 import { useReactions } from '../../hooks/useReactions'
+import { useAppPlans } from '../../hooks/useAppPlans'
 import { requestNotificationPermission, sendNotification } from '../../lib/notifications'
 import { supabase } from '../../lib/supabase'
 
@@ -16,6 +17,7 @@ export default function EventHome() {
   // Custom Hooks
   const { eventData, loading: eventLoading, incrementGuestCount } = useEvent(token, true)
   const { challenges, addChallenge } = useChallenges(eventData?.id)
+  const { currentConfig } = useAppPlans(eventData?.plan)
   
   // Local interface state
   const [selectedChallenge, setSelectedChallenge] = useState<string | null>(null)
@@ -290,7 +292,7 @@ export default function EventHome() {
 
   // Calcul des seuils du plan de l'événement
   const currentPlan = eventData.plan || 'free'
-  const maxGuests = currentPlan === 'vip' ? 500 : currentPlan === 'premium' ? 100 : 15
+  const maxGuests = currentConfig.max_guests
   const fallbackCount = parseInt(localStorage.getItem(`teutchap_guests_count_${eventData.token}`) || '1', 10)
   const currentJoinedGuests = eventData.joined_guests_count || fallbackCount
 

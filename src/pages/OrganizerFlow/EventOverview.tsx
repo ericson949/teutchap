@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Share2, Copy, Zap, ArrowLeft, Star, ImageIcon, Lock, ExternalLink, Sparkles, Check, Download, Users } from 'lucide-react'
 import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
+import { useAppPlans } from '../../hooks/useAppPlans'
 
 export default function EventOverview() {
   const { eventId } = useParams()
@@ -13,6 +14,7 @@ export default function EventOverview() {
   // Fetch event details and photo count
   const { eventData, loading: eventLoading } = useEvent(eventId)
   const { photos } = usePhotos(eventData?.id)
+  const { currentConfig } = useAppPlans(eventData?.plan)
 
   if (eventLoading || !eventData) {
     return (
@@ -84,18 +86,13 @@ export default function EventOverview() {
 
   // Determine limits
   const isFree = eventData.plan === 'free' || !eventData.plan
-  const planType = eventData.plan || 'free'
-  const maxPhotos = planType === 'vip' 
-    ? parseInt(import.meta.env.VITE_MAX_PHOTOS_VIP || '3000', 10) 
-    : planType === 'premium' 
-    ? parseInt(import.meta.env.VITE_MAX_PHOTOS_PREMIUM || '1000', 10) 
-    : parseInt(import.meta.env.VITE_MAX_PHOTOS_FREE || '100', 10)
+  const maxPhotos = currentConfig.max_photos
   const currentPhotos = photos.length
   const percentage = Math.min(100, Math.round((currentPhotos / maxPhotos) * 100))
 
   const fallbackCount = parseInt(localStorage.getItem(`teutchap_guests_count_${eventData.token}`) || '1', 10)
   const joinedGuests = eventData.joined_guests_count || fallbackCount
-  const maxGuests = eventData.plan === 'vip' ? 500 : eventData.plan === 'premium' ? 100 : 15
+  const maxGuests = currentConfig.max_guests
   const guestPercentage = Math.min(100, Math.round((joinedGuests / maxGuests) * 100))
 
   return (

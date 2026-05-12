@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Camera, Image as ImageIcon, X, Loader2, ArrowLeft, Zap, Upload, AlertCircle, ShieldCheck } from 'lucide-react'
 import localforage from 'localforage'
 import { supabase } from '../../lib/supabase'
+import { useAppPlans } from '../../hooks/useAppPlans'
 
 export default function UploadPhoto() {
   const { token } = useParams()
@@ -59,11 +60,8 @@ export default function UploadPhoto() {
 
   // Détermination de la limite d'uploads autorisés sur cet appareil pour protéger les quotas du plan
   const plan = eventData?.plan || 'free'
-  const maxUploadsPerDevice = plan === 'vip' 
-    ? parseInt(import.meta.env.VITE_USER_MAX_PHOTOS_VIP || '100', 10) 
-    : plan === 'premium' 
-    ? parseInt(import.meta.env.VITE_USER_MAX_PHOTOS_PREMIUM || '30', 10) 
-    : parseInt(import.meta.env.VITE_USER_MAX_PHOTOS_FREE || '10', 10)
+  const { currentConfig } = useAppPlans(plan)
+  const maxUploadsPerDevice = currentConfig.max_photos_per_user
   const isUploadQuotaExceeded = localUploadsCount >= maxUploadsPerDevice
 
   const compressImage = (file: File): Promise<Blob> => {
