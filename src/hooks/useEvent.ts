@@ -50,6 +50,32 @@ export function useEvent(idOrToken: string | undefined, isToken: boolean = false
     fetchEvent()
   }, [idOrToken, isToken])
 
+  // Propagation en temps réel garantie des compteurs (invités rejoints, photos) vers toutes les instances
+  useEffect(() => {
+    if (!eventData?.id) return
+
+    const channel = supabase
+      .channel(`event_updates_${eventData.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'events',
+        filter: `id=eq.${eventData.id}`
+      }, (payload) => {
+        if (payload.new) {
+          setEventData(payload.new)
+          if (payload.new.token && payload.new.joined_guests_count !== undefined) {
+            localStorage.setItem(`teutchap_guests_count_${payload.new.token}`, payload.new.joined_guests_count.toString())
+          }
+        }
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [eventData?.id])
+
   const updateEvent = async (updates: any) => {
     if (!eventData?.id) return { data: null, error: new Error("Aucune donnée d'événement") }
 
