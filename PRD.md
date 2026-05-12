@@ -107,12 +107,13 @@ Frontend          → React 18 + Vite + Tailwind CSS (PWA)
 Backend / Auth    → Supabase (PostgreSQL + Auth + Realtime + Edge Functions)
 Storage / CDN     → Supabase Storage
 Compression media → Canvas API (client-side)
+Génération UUID   → Frontend natif (`crypto.randomUUID()`) garantissant un routage déterministe immédiat
 
 ---
 
 ## 6. Fonctionnalités — Phase 1 (MVP)
 
-- F-01 — Création d'événement express
+- F-01 — Création d'événement express (Ciblage par type d'événement et nombre d'invités attendus ; Mode public par défaut pour le plan gratuit)
 - F-02 — QR Code universel
 - F-03 — Upload photo sans compte
 - F-04 — PWA installable
@@ -120,10 +121,10 @@ Compression media → Canvas API (client-side)
 - F-06 — Téléchargement ZIP
 - F-07 — Reveal Mode
 - F-08 — Modération galerie
-- F-09 — Partage WhatsApp natif
+- F-09 — Partage WhatsApp natif avec notification globale de succès au format Toast
 - F-10 — Upload offline (Service Worker)
 - F-11 — Compression intelligente côté client
-- F-12 — Dashboard organisateur
+- F-12 — Vue de Visualisation Organisateur unifiée (Regroupement du QR Code, du lien direct, des limites du plan et de l'incitation à l'amélioration sur une carte unique sans scroll vertical sur mobile)
 
 ---
 

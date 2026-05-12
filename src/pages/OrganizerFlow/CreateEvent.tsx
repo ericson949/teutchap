@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Sparkles, Zap, Hash, Shield, Globe } from 'lucide-react'
+import { Calendar, Sparkles, Zap, Hash, Shield, Globe, Users } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
 export default function CreateEvent() {
@@ -10,41 +10,42 @@ export default function CreateEvent() {
   const [formData, setFormData] = useState({
     name: '',
     eventType: 'mariage',
+    expectedGuests: '50',
     eventDate: '',
     endDate: '',
-    mode: 'public',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
+    const eventId = crypto.randomUUID()
     const token = Math.random().toString(36).substring(2, 10)
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('events')
         .insert([
           {
+            id: eventId,
             name: formData.name,
             event_type: formData.eventType,
             event_date: formData.eventDate,
             end_date: isMultiDay ? formData.endDate : null,
-            mode: formData.mode,
+            mode: 'public',
             token: token,
           }
         ])
-        .select()
-        .single()
 
       if (error) {
         console.error('Error creating event:', error)
-        navigate(`/overview/mock-id-${token}`)
-      } else if (data) {
-        navigate(`/overview/${data.id}`)
       }
+      
+      // Navigation prioritaire et instantanée via l'UUID généré par le front
+      navigate(`/overview/${eventId}`)
     } catch (err) {
       console.error(err)
+      navigate(`/overview/${eventId}`)
     } finally {
       setLoading(false)
     }
@@ -52,7 +53,6 @@ export default function CreateEvent() {
 
   return (
     <div className="min-h-screen bg-[#08060d] text-white flex flex-col items-center p-4 md:p-8 selection:bg-primary/30 relative">
-      {/* Background Mesh */}
       {/* Background Mesh */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-primary/10 blur-[80px] md:blur-[150px] rounded-full will-change-transform" />
@@ -79,6 +79,8 @@ export default function CreateEvent() {
           
           <form onSubmit={handleSubmit} className="space-y-8 md:space-y-10 relative z-10">
             <div className="space-y-6 md:space-y-8">
+              
+              {/* Nom de l'événement */}
               <div className="space-y-3">
                 <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">Nom de l'événement</label>
                 <div className="relative group/input">
@@ -93,46 +95,71 @@ export default function CreateEvent() {
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                  <div className="space-y-3">
-                    <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">Date {isMultiDay ? 'de début' : ''}</label>
-                    <div className="relative group/input">
-                      <Calendar className="absolute left-6 md:left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={18} />
-                      <input 
-                        required
-                        type="date"
-                        className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] pl-14 md:pl-16 pr-8 py-5 md:py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none color-scheme-dark"
-                        value={formData.eventDate}
-                        onChange={e => {
-                          const newDate = e.target.value;
-                          setFormData(prev => ({
-                            ...prev, 
-                            eventDate: newDate,
-                            // Reset endDate if it becomes invalid
-                            endDate: prev.endDate && prev.endDate < newDate ? newDate : prev.endDate
-                          }));
-                        }}
-                      />
+              {/* Type d'événement & Utilisateurs attendus */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                <div className="space-y-3">
+                  <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">Type d'événement</label>
+                  <div className="relative group/input">
+                    <Sparkles className="absolute left-6 md:left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={18} />
+                    <select 
+                      className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] pl-14 md:pl-16 pr-12 py-5 md:py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none cursor-pointer"
+                      value={formData.eventType}
+                      onChange={e => setFormData({...formData, eventType: e.target.value})}
+                    >
+                      <option value="mariage" className="bg-[#0b0910] py-4">💍 Mariage</option>
+                      <option value="anniversaire" className="bg-[#0b0910] py-4">🎂 Anniversaire</option>
+                      <option value="soiree" className="bg-[#0b0910] py-4">🎉 Soirée / Gala</option>
+                      <option value="festival" className="bg-[#0b0910] py-4">🎸 Festival / Concert</option>
+                      <option value="entreprise" className="bg-[#0b0910] py-4">💼 Événement d'Entreprise</option>
+                      <option value="autre" className="bg-[#0b0910] py-4">✨ Autre réception</option>
+                    </select>
+                    <div className="absolute right-6 md:right-7 top-1/2 -translate-y-1/2 pointer-events-none text-gray-600 group-focus-within/input:text-primary transition-colors">
+                       <span className="text-xs">▼</span>
                     </div>
                   </div>
+                </div>
 
-                  <div className="space-y-3">
-                    <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">Confidentialité</label>
-                    <div className="relative group/input">
-                      <Globe className="absolute left-6 md:left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={18} />
-                      <select 
-                        className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] pl-14 md:pl-16 pr-12 py-5 md:py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none cursor-pointer"
-                        value={formData.mode}
-                        onChange={e => setFormData({...formData, mode: e.target.value})}
-                      >
-                        <option value="public" className="bg-[#0b0910] py-4">Galerie Publique</option>
-                        <option value="private" className="bg-[#0b0910] py-4">Accès Privé</option>
-                      </select>
-                      <div className="absolute right-6 md:right-7 top-1/2 -translate-y-1/2 pointer-events-none text-gray-600 group-focus-within/input:text-primary transition-colors">
-                         <Sparkles size={16} />
-                      </div>
+                <div className="space-y-3">
+                  <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">Invités attendus</label>
+                  <div className="relative group/input">
+                    <Users className="absolute left-6 md:left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={18} />
+                    <select 
+                      className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] pl-14 md:pl-16 pr-12 py-5 md:py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none cursor-pointer"
+                      value={formData.expectedGuests}
+                      onChange={e => setFormData({...formData, expectedGuests: e.target.value})}
+                    >
+                      <option value="50" className="bg-[#0b0910] py-4">Moins de 50 personnes</option>
+                      <option value="100" className="bg-[#0b0910] py-4">50 à 100 personnes</option>
+                      <option value="300" className="bg-[#0b0910] py-4">100 à 300 personnes</option>
+                      <option value="1000" className="bg-[#0b0910] py-4">Plus de 300 personnes</option>
+                    </select>
+                    <div className="absolute right-6 md:right-7 top-1/2 -translate-y-1/2 pointer-events-none text-gray-600 group-focus-within/input:text-primary transition-colors">
+                       <span className="text-xs">▼</span>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Date de début & Multi-jours */}
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">Date {isMultiDay ? 'de début' : "de l'événement"}</label>
+                  <div className="relative group/input">
+                    <Calendar className="absolute left-6 md:left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={18} />
+                    <input 
+                      required
+                      type="date"
+                      className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] pl-14 md:pl-16 pr-8 py-5 md:py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none color-scheme-dark"
+                      value={formData.eventDate}
+                      onChange={e => {
+                        const newDate = e.target.value;
+                        setFormData(prev => ({
+                          ...prev, 
+                          eventDate: newDate,
+                          endDate: prev.endDate && prev.endDate < newDate ? newDate : prev.endDate
+                        }));
+                      }}
+                    />
                   </div>
                 </div>
 
