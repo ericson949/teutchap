@@ -30,21 +30,52 @@ export default function CreateEvent() {
     localStorage.setItem('teutchap_dev_plan', 'free')
     localStorage.setItem(`teutchap_guests_count_${token}`, '1') // Initialisation de l'accès
     
-    const payload = {
-      id: eventId,
-      name: formData.name,
-      event_type: formData.eventType,
-      event_date: formData.eventDate,
-      end_date: isMultiDay ? formData.endDate : null,
-      mode: 'public',
-      token: token,
-      plan: 'free',
-      allow_guest_challenges: false,
-      joined_guests_count: 1,
-      ai_tagging_enabled: true
-    }
-
     try {
+      // 1. Déploiement du "Shadow Login" (Authentification Anonyme Supabase)
+      // Permet d'attribuer la propriété de l'événement sans exiger de création de compte préalable
+      let currentUserId: string | null = null
+      const { data: authData } = await supabase.auth.getUser()
+      
+      if (authData?.user?.id) {
+        currentUserId = authData.user.id
+      } else {
+        const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously()
+        if (!anonError && anonData?.user?.id) {
+          currentUserId = anonData.user.id
+          
+          // Synchronisation transparente avec la table publique users
+          // Un email virtuel shadow est généré pour satisfaire la contrainte UNIQUE NOT NULL
+          const shadowEmail = `anon-${currentUserId}@teutchap.shadow`
+          await supabase.from('users').upsert([
+            {
+              id: currentUserId,
+              email: shadowEmail,
+              name: 'Organisateur',
+              plan: 'free'
+            }
+          ], { onConflict: 'id' })
+        }
+      }
+
+      // 2. Construction du payload officiel
+      const payload: any = {
+        id: eventId,
+        name: formData.name,
+        event_type: formData.eventType,
+        event_date: formData.eventDate,
+        end_date: isMultiDay ? formData.endDate : null,
+        mode: 'public',
+        token: token,
+        plan: 'free',
+        allow_guest_challenges: false,
+        joined_guests_count: 1,
+        ai_tagging_enabled: true
+      }
+
+      if (currentUserId) {
+        payload.user_id = currentUserId
+      }
+
       const { error } = await supabase.from('events').insert([payload])
 
       if (error) {

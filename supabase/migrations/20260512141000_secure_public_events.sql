@@ -2,9 +2,11 @@
 -- PLAN DE SÉCURISATION AVANCÉE : ÉVÉNEMENTS PUBLICS & COMPTEURS
 -- ====================================================================
 
--- 1. Nettoyage des anciennes politiques permissives de développement
+-- 1. Nettoyage des anciennes politiques permissives
 DROP POLICY IF EXISTS "Anyone can insert events" ON events;
 DROP POLICY IF EXISTS "Anyone can update events" ON events;
+DROP POLICY IF EXISTS "Insertion publique restreinte et sécurisée" ON events;
+DROP POLICY IF EXISTS "Mise à jour publique restreinte aux compteurs" ON events;
 
 -- ====================================================================
 -- PHASE 1 : POLITIQUES RLS ULTRA-CIBLÉES (SÉCURITÉ D'ÉCRITURE)
@@ -20,20 +22,43 @@ WITH CHECK (
   status = 'active'
 );
 
--- Action 2 : Politique UPDATE verrouillée (Incrémentation exclusive)
--- Protège l'intégrité de l'événement : interdit formellement à un anonyme de renommer l'album, d'altérer sa date ou de voler son token.
--- Autorise uniquement l'évolution positive des compteurs d'invités et d'activité.
+-- Action 2 : Politique UPDATE globale (Le contrôle fin est délégué au Trigger SQL)
 CREATE POLICY "Mise à jour publique restreinte aux compteurs" ON events
 FOR UPDATE TO public
 USING (true)
-WITH CHECK (
-  (OLD.id = NEW.id) AND
-  (OLD.token = NEW.token) AND
-  (OLD.name = NEW.name) AND
-  (OLD.event_date = NEW.event_date) AND
-  (NEW.joined_guests_count >= OLD.joined_guests_count) AND
-  (NEW.photo_count >= OLD.photo_count)
-);
+WITH CHECK (true);
+
+-- ====================================================================
+-- PHASE 1 BIS : CONTRÔLE CROISÉ SQL (TRIGGER DE SÉCURITÉ STRICT)
+-- ====================================================================
+-- Résout la limitation native de PostgreSQL interdisant l'usage de OLD et NEW directement dans un CREATE POLICY.
+
+CREATE OR REPLACE FUNCTION verify_public_event_update()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Vérification d'intégrité : interdit formellement de renommer l'album, d'altérer sa date ou de voler son token.
+  IF OLD.id <> NEW.id OR OLD.token <> NEW.token OR OLD.name <> NEW.name OR OLD.event_date <> NEW.event_date THEN
+    RAISE EXCEPTION 'Sécurité Supabase : Modification interdite des métadonnées critiques de l''événement partagé.';
+  END IF;
+
+  -- Vérification de croissance : interdit formellement la décrémentation malveillante des compteurs
+  IF NEW.joined_guests_count < OLD.joined_guests_count THEN
+    RAISE EXCEPTION 'Sécurité Supabase : Décrémentation illégale du compteur d''invités.';
+  END IF;
+
+  IF NEW.photo_count < OLD.photo_count THEN
+    RAISE EXCEPTION 'Sécurité Supabase : Décrémentation illégale du compteur de photos.';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_secure_public_event_update ON events;
+CREATE TRIGGER trg_secure_public_event_update
+BEFORE UPDATE ON events
+FOR EACH ROW
+EXECUTE FUNCTION verify_public_event_update();
 
 -- ====================================================================
 -- PHASE 2 : VALIDATION ROBUSTE DES DONNÉES (CHECK CONSTRAINTS)
