@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Share2, Copy, Zap, ArrowLeft, Star, ImageIcon, Lock, ExternalLink, Sparkles, Check, Download, Users, Loader2 } from 'lucide-react'
+import { Share2, Copy, Zap, ArrowLeft, Star, ImageIcon, Lock, ExternalLink, Sparkles, Check, Download, Users, Loader2, Shield, Key, UserPlus, Trash2 } from 'lucide-react'
 import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useAppPlans } from '../../hooks/useAppPlans'
@@ -10,9 +10,15 @@ export default function EventOverview() {
   const { eventId } = useParams()
   const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
+  
+  // Custom states for Password and Co-Admin features
+  const [newPassword, setNewPassword] = useState('')
+  const [pwdLoading, setPwdLoading] = useState(false)
+  const [adminInput, setAdminInput] = useState('')
+  const [adminLoading, setAdminLoading] = useState(false)
 
   // Fetch event details and photo count
-  const { eventData, loading: eventLoading } = useEvent(eventId)
+  const { eventData, loading: eventLoading, updateEvent } = useEvent(eventId)
   const { photos } = usePhotos(eventData?.id)
   const { currentConfig } = useAppPlans(eventData?.plan)
 
@@ -122,6 +128,39 @@ export default function EventOverview() {
       }
     }
     img.src = 'data:image/svg+xml;base64,' + btoa(svgData)
+  }
+
+  // Security Management Handlers
+  const handleSetPassword = async () => {
+    if (!newPassword.trim()) return
+    setPwdLoading(true)
+    await updateEvent({ access_password: newPassword.trim() })
+    setNewPassword('')
+    setPwdLoading(false)
+  }
+
+  const handleRevokePassword = async () => {
+    setPwdLoading(true)
+    await updateEvent({ access_password: null })
+    setPwdLoading(false)
+  }
+
+  const handleAddAdmin = async () => {
+    if (!adminInput.trim()) return
+    setAdminLoading(true)
+    const currentAdmins = eventData.co_admins || []
+    if (!currentAdmins.includes(adminInput.trim())) {
+      await updateEvent({ co_admins: [...currentAdmins, adminInput.trim()] })
+    }
+    setAdminInput('')
+    setAdminLoading(false)
+  }
+
+  const handleRemoveAdmin = async (adminToRemove: string) => {
+    setAdminLoading(true)
+    const currentAdmins = eventData.co_admins || []
+    await updateEvent({ co_admins: currentAdmins.filter((a: string) => a !== adminToRemove) })
+    setAdminLoading(false)
   }
 
   // Determine limits
@@ -269,6 +308,101 @@ export default function EventOverview() {
                 <Share2 size={14} className="fill-current" />
                 <span>Partager sur WhatsApp</span>
               </button>
+
+              {/* Carte de Gestion du Mot de Passe */}
+              <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-4 space-y-3 text-left">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Shield size={14} className="text-primary" />
+                    <span className="text-xs font-bold text-gray-200">Mot de passe de l'album</span>
+                  </div>
+                  {eventData.access_password ? (
+                    <span className="text-[8px] font-black uppercase tracking-widest bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full">
+                      Actif
+                    </span>
+                  ) : (
+                    <span className="text-[8px] font-black uppercase tracking-widest bg-gray-500/10 text-gray-400 border border-gray-500/20 px-2 py-0.5 rounded-full">
+                      Désactivé
+                    </span>
+                  )}
+                </div>
+
+                {eventData.access_password ? (
+                  <div className="flex items-center justify-between bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs font-mono text-primary-light">
+                    <span>••••••••</span>
+                    <button 
+                      onClick={handleRevokePassword}
+                      disabled={pwdLoading}
+                      className="text-red-400 hover:text-red-300 font-bold text-[9px] uppercase tracking-widest flex items-center space-x-1 transition-colors"
+                    >
+                      {pwdLoading ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={10} />}
+                      <span>Révoquer</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <div className="relative flex-1">
+                      <Key size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                      <input 
+                        type="text" 
+                        placeholder="Définir un mot de passe..."
+                        className="w-full bg-black/40 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition-colors font-mono"
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                      />
+                    </div>
+                    <button 
+                      onClick={handleSetPassword}
+                      disabled={pwdLoading || !newPassword.trim()}
+                      className="bg-primary hover:bg-primary-dark disabled:opacity-50 text-white font-black text-[9px] uppercase tracking-widest px-3 py-2 rounded-xl transition-all shrink-0 flex items-center justify-center"
+                    >
+                      {pwdLoading ? <Loader2 size={12} className="animate-spin" /> : 'Activer'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Carte de Gestion des Co-Administrateurs */}
+              <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-4 space-y-3 text-left">
+                <div className="flex items-center space-x-2">
+                  <UserPlus size={14} className="text-accent" />
+                  <span className="text-xs font-bold text-gray-200">Co-administrateurs</span>
+                </div>
+
+                {(eventData.co_admins || []).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {(eventData.co_admins || []).map((admin: string, i: number) => (
+                      <div key={i} className="flex items-center space-x-1.5 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-mono text-gray-300">
+                        <span className="truncate max-w-[120px]">{admin}</span>
+                        <button 
+                          onClick={() => handleRemoveAdmin(admin)} 
+                          disabled={adminLoading}
+                          className="text-gray-500 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 size={9} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="text" 
+                    placeholder="Email ou ID Admin..."
+                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-accent/50 transition-colors"
+                    value={adminInput}
+                    onChange={e => setAdminInput(e.target.value)}
+                  />
+                  <button 
+                    onClick={handleAddAdmin}
+                    disabled={adminLoading || !adminInput.trim()}
+                    className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-white font-black text-[9px] uppercase tracking-widest px-3 py-2 rounded-xl transition-all shrink-0 flex items-center justify-center"
+                  >
+                    {adminLoading ? <Loader2 size={12} className="animate-spin" /> : 'Ajouter'}
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Right/Bottom Part: Plan Details & Upgrade Prompt */}

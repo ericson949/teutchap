@@ -14,7 +14,9 @@ export default function CreateEvent() {
     eventType: 'mariage',
     expectedGuests: '50',
     eventDate: '',
-    endDate: ''
+    endDate: '',
+    startTime: '',
+    endTime: ''
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,6 +66,8 @@ export default function CreateEvent() {
         event_type: formData.eventType,
         event_date: formData.eventDate,
         end_date: isMultiDay ? formData.endDate : null,
+        start_time: formData.startTime || null,
+        end_time: (isMultiDay && formData.endTime) ? formData.endTime : null,
         mode: 'public',
         token: token,
         plan: 'free',
@@ -219,7 +223,22 @@ export default function CreateEvent() {
                   </div>
                 </div>
 
-                <div className="flex flex-col space-y-4 pt-1">
+                {/* Heure de début */}
+                <div className="space-y-3 pt-1 animate-in fade-in duration-300">
+                  <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">
+                    Heure de début <span className="text-gray-600 text-[8px] normal-case">(optionnelle)</span>
+                  </label>
+                  <div className="relative group/input">
+                    <input 
+                      type="time"
+                      className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] px-6 py-4 md:py-5 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner color-scheme-dark text-white"
+                      value={formData.startTime}
+                      onChange={e => setFormData({...formData, startTime: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col space-y-4 pt-2">
                   <label className="flex items-center space-x-3 cursor-pointer group w-fit ml-2">
                     <div 
                       onClick={() => setIsMultiDay(!isMultiDay)}
@@ -233,20 +252,36 @@ export default function CreateEvent() {
                   </label>
 
                   {isMultiDay && (
-                    <div className="space-y-3 animate-in slide-in-from-top-2 duration-300">
-                      <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">
-                        Date de fin
-                      </label>
-                      <div className="relative group/input">
-                        <Calendar className="absolute left-6 md:left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={18} />
-                        <input 
-                          required={isMultiDay}
-                          type="date"
-                          min={formData.eventDate}
-                          className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] pl-14 md:pl-16 pr-8 py-5 md:py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none color-scheme-dark text-white"
-                          value={formData.endDate}
-                          onChange={e => setFormData({...formData, endDate: e.target.value})}
-                        />
+                    <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                      <div className="space-y-3">
+                        <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">
+                          Date de fin
+                        </label>
+                        <div className="relative group/input">
+                          <Calendar className="absolute left-6 md:left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={18} />
+                          <input 
+                            required={isMultiDay}
+                            type="date"
+                            min={formData.eventDate}
+                            className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] pl-14 md:pl-16 pr-8 py-5 md:py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none color-scheme-dark text-white"
+                            value={formData.endDate}
+                            onChange={e => setFormData({...formData, endDate: e.target.value})}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 pt-1">
+                        <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">
+                          Heure de fin <span className="text-gray-600 text-[8px] normal-case">(optionnelle)</span>
+                        </label>
+                        <div className="relative group/input">
+                          <input 
+                            type="time"
+                            className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] px-6 py-4 md:py-5 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner color-scheme-dark text-white"
+                            value={formData.endTime}
+                            onChange={e => setFormData({...formData, endTime: e.target.value})}
+                          />
+                        </div>
                       </div>
                     </div>
                   )}

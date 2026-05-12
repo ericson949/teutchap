@@ -39,6 +39,31 @@ export default function EventHome() {
   const [newChalDesc, setNewChalDesc] = useState('')
   const [isAddingChal, setIsAddingChal] = useState(false)
 
+  // Sas de Sécurité Premium (Mot de passe de l'album partagé)
+  const [pwdInput, setPwdInput] = useState('')
+  const [pwdError, setPwdError] = useState(false)
+  const [isPasswordVerified, setIsPasswordVerified] = useState(false)
+
+  // Initialize password verification status
+  useEffect(() => {
+    if (!token) return
+    const verified = localStorage.getItem(`teutchap_pwd_verified_${token}`)
+    if (verified === 'true') {
+      setIsPasswordVerified(true)
+    }
+  }, [token])
+
+  const handleVerifyPassword = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (pwdInput.trim() === eventData?.access_password) {
+      setIsPasswordVerified(true)
+      localStorage.setItem(`teutchap_pwd_verified_${token}`, 'true')
+      setPwdError(false)
+    } else {
+      setPwdError(true)
+    }
+  }
+
   // Load existing session pseudo if available
   useEffect(() => {
     if (!token) return
@@ -375,6 +400,75 @@ export default function EventHome() {
       incrementGuestCount()
       setIsJoinedCountIncremented(true)
     }
+  }
+
+  // Machine d'États : 3.5. Sas de Verrouillage par Mot de passe
+  const isProtected = !!eventData.access_password
+  if (isProtected && !isPasswordVerified) {
+    return (
+      <div className="min-h-screen bg-[#08060d] text-white flex flex-col items-center justify-center p-4 selection:bg-primary/30 relative overflow-hidden">
+        {/* Ambient Meshes */}
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-primary/20 blur-[130px] rounded-full pointer-events-none animate-pulse-slow" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-accent/10 blur-[130px] rounded-full pointer-events-none" />
+
+        <div className="w-full max-w-md relative z-10 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 my-auto py-8 text-center">
+          <div className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mx-auto text-primary shadow-inner">
+            <Lock size={28} />
+          </div>
+
+          <div className="space-y-2 px-2">
+            <div className="inline-block bg-primary/10 text-primary font-black text-[9px] uppercase tracking-widest px-3 py-1 rounded-full border border-primary/20">
+              Accès Privé
+            </div>
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-gradient leading-tight">
+              {eventData.name}
+            </h1>
+            <p className="text-xs text-gray-400 font-medium">
+              Cet album photo est protégé par un mot de passe défini par l'organisateur.
+            </p>
+          </div>
+
+          <div className="glass rounded-[2.5rem] p-6 md:p-8 shadow-2xl border-white/5 relative overflow-hidden text-left">
+            <form onSubmit={handleVerifyPassword} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block ml-1">
+                  Mot de passe de l'album
+                </label>
+                <div className="relative">
+                  <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input 
+                    type="password"
+                    required
+                    autoFocus
+                    placeholder="Saisissez le mot de passe..."
+                    className={`w-full bg-black/40 border rounded-xl pl-10 pr-4 py-3.5 text-xs text-white outline-none transition-colors font-mono ${
+                      pwdError ? 'border-red-500 focus:border-red-500' : 'border-white/10 focus:border-primary/50'
+                    }`}
+                    value={pwdInput}
+                    onChange={e => {
+                      setPwdInput(e.target.value)
+                      setPwdError(false)
+                    }}
+                  />
+                </div>
+                {pwdError && (
+                  <p className="text-[10px] font-bold text-red-400 animate-in fade-in pl-1">
+                    Mot de passe incorrect. Veuillez réessayer.
+                  </p>
+                )}
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full bg-primary hover:bg-primary-dark text-white font-black py-3.5 rounded-xl text-xs uppercase tracking-widest transition-all active:scale-95 shadow-lg"
+              >
+                Déverrouiller l'album
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // Machine d'États : 4. Sas d'Onboarding / Demande d'Accès Invité
