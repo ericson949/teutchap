@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, Image as ImageIcon, Hash, Clock, Bell, X } from 'lucide-react'
+import { Camera, Image as ImageIcon, Hash, Clock, Bell, X, RefreshCw, CloudLightning } from 'lucide-react'
+import localforage from 'localforage'
 import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useChallenges } from '../../hooks/useChallenges'
@@ -14,6 +15,9 @@ export default function EventHome() {
   const [selectedChallenge, setSelectedChallenge] = useState<string | null>(null)
   const [timeRemaining, setTimeRemaining] = useState<string | null>(null)
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false)
+  const [offlineQueueCount, setOfflineQueueCount] = useState(0)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
 
   // Custom Hooks
   const { eventData, loading: eventLoading } = useEvent(token, true)
@@ -64,6 +68,86 @@ export default function EventHome() {
       sendNotification('Activé ! 🔔', { body: 'Vous serez alerté des nouveaux moments partagés.' })
     }
     setShowNotificationPrompt(false)
+  }
+
+  // PWA Offline Queue management
+  useEffect(() => {
+    const checkOfflineQueue = async () => {
+      try {
+        const queue: any[] = await localforage.getItem('teutchap_offline_queue') || []
+        const tokenQueue = queue.filter(item => item.token === token)
+        setOfflineQueueCount(tokenQueue.length)
+      } catch (err) {
+        console.error('Error reading offline queue:', err)
+      }
+    }
+
+    checkOfflineQueue()
+    const interval = setInterval(checkOfflineQueue, 4000)
+
+    const handleOnline = () => {
+      setIsOnline(true)
+      checkOfflineQueue()
+    }
+    const handleOffline = () => setIsOnline(false)
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [token])
+
+  const handleSyncOffline = async () => {
+    if (!eventData?.id) return
+    setIsSyncing(true)
+    try {
+      const queue: any[] = await localforage.getItem('teutchap_offline_queue') || []
+      const tokenQueue = queue.filter(item => item.token === token)
+      const remainingQueue = queue.filter(item => item.token !== token)
+
+      if (tokenQueue.length === 0) return
+
+      let successfulCount = 0
+
+      for (const item of tokenQueue) {
+        const fileName = `${token}_${Date.now()}_${Math.random().toString(36).substring(2,7)}.jpg`
+        const { error: uploadError } = await supabase.storage
+          .from('events_photos')
+          .upload(fileName, item.blob)
+
+        if (!uploadError) {
+          const { error: dbError } = await supabase.from('photos').insert([
+            {
+              event_id: eventData.id,
+              url_original: fileName,
+              url_thumb: fileName,
+              file_size_bytes: item.compressedSize || item.blob.size,
+              challenge_id: item.challengeId || null,
+              is_moderated: false
+            }
+          ])
+          if (!dbError) successfulCount++
+        }
+      }
+
+      await localforage.setItem('teutchap_offline_queue', remainingQueue)
+      setOfflineQueueCount(0)
+      
+      if (successfulCount > 0) {
+        sendNotification('Synchronisation réussie ! 🚀', {
+          body: `${successfulCount} souvenir(s) en attente publiés avec succès.`
+        } as any)
+      }
+    } catch (err) {
+      console.error('Sync error:', err)
+      alert("Une erreur est survenue lors de la synchronisation.")
+    } finally {
+      setIsSyncing(false)
+    }
   }
 
   useEffect(() => {
@@ -169,6 +253,42 @@ export default function EventHome() {
         </div>
 
         <div className="p-4 md:p-10 space-y-10 md:space-y-16">
+          {/* PWA Offline Sync Banner */}
+          {offlineQueueCount > 0 && (
+            <div className="glass border-primary/40 bg-primary/5 rounded-[2.5rem] p-6 shadow-[0_0_40px_rgba(170,59,255,0.15)] animate-in fade-in zoom-in-95 duration-500 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[40px] rounded-full -mr-10 -mt-10 pointer-events-none" />
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 relative z-10">
+                <div className="flex items-center space-x-4 w-full md:w-auto">
+                  <div className="bg-primary/20 p-3.5 rounded-2xl text-primary animate-pulse flex-shrink-0">
+                    <CloudLightning size={24} />
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-black uppercase tracking-widest text-gradient">Mode Hors-Ligne</span>
+                      <span className="bg-white/10 px-2 py-0.5 rounded-full text-[9px] font-black tabular-nums">{offlineQueueCount} en attente</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 font-medium leading-tight">
+                      {isOnline 
+                        ? "Réseau détecté ! Publiez vos souvenirs sauvegardés en zone blanche."
+                        : "Connexion en attente. Vos captures sont stockées en sécurité."}
+                    </p>
+                  </div>
+                </div>
+                
+                {isOnline && (
+                  <button 
+                    onClick={handleSyncOffline}
+                    disabled={isSyncing}
+                    className="w-full md:w-auto px-6 py-3.5 bg-primary hover:bg-primary-dark active:scale-95 transition-all rounded-2xl text-[10px] font-black uppercase tracking-widest text-white shadow-lg flex items-center justify-center space-x-2 disabled:opacity-50 flex-shrink-0"
+                  >
+                    <RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} />
+                    <span>{isSyncing ? "Envoi..." : "Synchroniser"}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Welcome Message */}
           {eventData.welcome_message && (
             <div className="glass rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group border-white/5">

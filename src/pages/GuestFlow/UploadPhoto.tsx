@@ -99,19 +99,27 @@ export default function UploadPhoto() {
       if (!isOnline) {
         const offlineQueue: any[] = await localforage.getItem('teutchap_offline_queue') || []
         offlineQueue.push({
+          id: crypto.randomUUID(),
           token,
+          eventId: eventData?.id,
           blob: photoBlob,
+          compressedSize,
+          challengeId: selectedChallenge,
           timestamp: new Date().toISOString()
         })
         await localforage.setItem('teutchap_offline_queue', offlineQueue)
         
         if ('serviceWorker' in navigator && 'SyncManager' in window) {
-          const swRegistration = await navigator.serviceWorker.ready
-          // @ts-ignore
-          await swRegistration.sync.register('sync-photos')
+          try {
+            const swRegistration = await navigator.serviceWorker.ready
+            // @ts-ignore
+            await swRegistration.sync.register('sync-photos')
+          } catch (swErr) {
+            console.warn('Background sync registration failed or unsupported:', swErr)
+          }
         }
 
-        alert('Réseau indisponible. Photo sauvegardée, elle sera envoyée dès que vous aurez du réseau.')
+        alert('🌐 Réseau indisponible (Zone blanche). Votre souvenir est sauvegardé hors-ligne et sera publié automatiquement dès le retour du réseau !')
         navigate(`/e/${token}`)
         return
       }

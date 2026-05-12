@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Clock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { usePhotos } from '../../hooks/usePhotos'
 
@@ -9,6 +9,7 @@ export default function LiveWall() {
   const { token } = useParams()
   const [eventData, setEventData] = useState<any>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [timeRemaining, setTimeRemaining] = useState<string | null>(null)
   
   const { photos } = usePhotos(eventData?.id, { autoModeration: true })
 
@@ -18,19 +19,44 @@ export default function LiveWall() {
 
   useEffect(() => {
     if (photos.length > 0) {
-      // Show newest photo immediately when added
       setCurrentIndex(0)
     }
-  }, [photos.length]) // Only trigger when photo count changes (new photo added)
+  }, [photos.length])
 
   useEffect(() => {
     if (photos.length > 1) {
       const interval = setInterval(() => {
         setCurrentIndex(prev => (prev + 1) % photos.length)
-      }, 6000) // Rotate every 6 seconds
+      }, 6000)
       return () => clearInterval(interval)
     }
-  }, [photos, currentIndex]) // Reset interval when index changes manually/via new photo
+  }, [photos, currentIndex])
+
+  useEffect(() => {
+    if (!eventData?.reveal_time) {
+      setTimeRemaining(null)
+      return
+    }
+
+    const updateTimer = () => {
+      const now = new Date()
+      const revealDate = new Date(eventData.reveal_time)
+      const diff = revealDate.getTime() - now.getTime()
+
+      if (diff <= 0) {
+        setTimeRemaining(null)
+        return
+      }
+
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+      setTimeRemaining(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+    }
+
+    updateTimer()
+    const timerId = setInterval(updateTimer, 1000)
+    return () => clearInterval(timerId)
+  }, [eventData?.reveal_time])
 
   const fetchEvent = async () => {
     const { data: event } = await supabase.from('events').select('*').eq('token', token).single()
@@ -40,6 +66,75 @@ export default function LiveWall() {
   if (!eventData) return <div className="min-h-screen bg-black text-white flex items-center justify-center font-black uppercase tracking-[0.3em]">Chargement...</div>
 
   const eventUrl = `${window.location.origin}/e/${token}`
+
+  if (timeRemaining) {
+    return (
+      <div className="min-h-screen bg-[#08060d] flex flex-col items-center justify-center text-white p-12 text-center relative overflow-hidden select-none">
+        {/* Intense Pulsating Ambiance Glows */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <div className="absolute top-[10%] left-[10%] w-[60%] h-[60%] bg-primary/20 blur-[250px] rounded-full animate-pulse" />
+          <div className="absolute bottom-[10%] right-[10%] w-[60%] h-[60%] bg-accent/15 blur-[250px] rounded-full" />
+        </div>
+
+        <div className="relative z-10 flex flex-col items-center max-w-5xl mx-auto space-y-12">
+          <div className="inline-flex items-center space-x-3 bg-primary/10 border border-primary/30 px-8 py-3.5 rounded-full backdrop-blur-2xl shadow-[0_0_50px_rgba(170,59,255,0.3)] animate-bounce">
+            <Clock className="text-primary animate-spin" size={20} />
+            <span className="text-sm font-black uppercase tracking-[0.4em] text-white">Mode Reveal Activé</span>
+          </div>
+
+          <div className="space-y-4">
+            <h1 className="text-8xl lg:text-9xl font-black tracking-tighter text-gradient leading-none drop-shadow-2xl">
+              {eventData.name}
+            </h1>
+            <p className="text-xl lg:text-2xl font-bold text-gray-400 uppercase tracking-[0.3em]">
+              Collecte secrète en cours • Préparez-vous
+            </p>
+          </div>
+
+          {/* Majestic Glow Digits Container */}
+          <div className="my-12 relative group">
+            <div className="absolute -inset-4 bg-gradient-to-r from-primary via-accent to-primary rounded-[4rem] blur-2xl opacity-40 group-hover:opacity-75 transition duration-1000 animate-tilt" />
+            <div className="relative glass border-white/10 rounded-[3rem] px-24 py-16 shadow-2xl flex items-center justify-center">
+              <span className="text-9xl lg:text-[14rem] font-black tracking-tighter text-white drop-shadow-[0_0_80px_rgba(255,255,255,0.4)] tabular-nums leading-none">
+                {timeRemaining}
+              </span>
+            </div>
+          </div>
+
+          <p className="text-sm font-bold text-gray-500 uppercase tracking-[0.4em] max-w-md mx-auto">
+            Toutes les captures des invités seront révélées simultanément sur cet écran géant à la fin du décompte.
+          </p>
+        </div>
+
+        {/* Persistent Non-Intrusive Bottom Overlay for active room contributors */}
+        <div className="absolute bottom-12 right-12 glass-dark p-6 rounded-[2.5rem] border-white/10 shadow-2xl flex items-center space-x-6 backdrop-blur-3xl z-20">
+          <div className="text-right">
+            <p className="text-xs font-black text-white uppercase tracking-widest leading-tight">Rejoindre<br/>l'album</p>
+            <p className="text-[9px] text-primary font-bold uppercase tracking-widest mt-1">Scan express</p>
+          </div>
+          <div className="bg-white p-3 rounded-2xl shadow-xl">
+            <QRCodeSVG value={eventUrl} size={80} level="H" includeMargin={false} />
+          </div>
+        </div>
+
+        {/* Fullscreen Button */}
+        <button 
+          onClick={() => {
+            if (!document.fullscreenElement) {
+              document.documentElement.requestFullscreen();
+            } else {
+              document.exitFullscreen();
+            }
+          }}
+          className="absolute top-12 right-12 glass-dark p-4 rounded-2xl border-white/10 text-white/50 hover:text-white transition-all z-20"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-6 h-6">
+             <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+          </svg>
+        </button>
+      </div>
+    )
+  }
 
   if (photos.length === 0) {
     return (
