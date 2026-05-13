@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Share2, Image as ImageIcon, Copy, X, Zap, Hash, Check, Shield, Sparkles, Clock, LogIn, Save, Hourglass, Eye, Cloud } from 'lucide-react'
+import { Share2, Image as ImageIcon, Copy, X, Zap, Hash, Check, Shield, Sparkles, Clock, LogIn, Save, Hourglass, Eye, Cloud, Trash2 } from 'lucide-react'
+import localforage from 'localforage'
 import { useEvent } from '../../hooks/useEvent'
 import { useChallenges } from '../../hooks/useChallenges'
 import { usePhotos } from '../../hooks/usePhotos'
@@ -157,6 +158,34 @@ export default function Dashboard() {
     if (response?.data) {
       setShowChallengeForm(false)
       setNewChallenge({ title: '', description: '' })
+    }
+  }
+
+  const handleDeletePhoto = async (photo: any, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm("En tant qu'organisateur, voulez-vous vraiment supprimer définitivement cette photo de l'événement ?")) return
+
+    if (photo.is_offline_pending) {
+      // Cas peu probable chez l'organisateur sauf s'il a lui-même pris la photo en mode déconnecté
+      try {
+        const queue: any[] = await localforage.getItem('teutchap_offline_queue') || []
+        const filtered = queue.filter(item => item.id !== photo.id)
+        await localforage.setItem('teutchap_offline_queue', filtered)
+        window.dispatchEvent(new Event('online'))
+      } catch(err) {
+        console.error("Erreur suppression photo en attente orga:", err)
+      }
+    } else {
+      try {
+        const { error } = await supabase.from('photos').delete().eq('id', photo.id)
+        if (error) {
+          alert("Erreur lors de la suppression sur le serveur.")
+        } else {
+          window.dispatchEvent(new Event('online'))
+        }
+      } catch(err) {
+        console.error("Erreur suppression photo serveur orga:", err)
+      }
     }
   }
 
@@ -890,12 +919,21 @@ export default function Dashboard() {
                           loading="lazy"
                         />
                         
-                        {photo.is_offline_pending && (
-                          <div className="absolute top-3 right-3 bg-amber-500/90 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center space-x-1 text-black border border-amber-300 z-20 shadow-lg animate-pulse">
-                            <Cloud size={10} className="stroke-[3]" />
-                            <span className="text-[7px] font-black uppercase tracking-widest text-black">Attente</span>
-                          </div>
-                        )}
+                        <div className={`absolute top-3 right-3 flex items-center space-x-1 z-30 transition-opacity ${photo.is_offline_pending ? 'opacity-100' : 'opacity-80 hover:opacity-100'}`}>
+                          {photo.is_offline_pending && (
+                            <div className="bg-amber-500/90 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center space-x-1 text-black border border-amber-300 shadow-lg animate-pulse">
+                              <Cloud size={10} className="stroke-[3]" />
+                              <span className="text-[7px] font-black uppercase tracking-widest text-black">Attente</span>
+                            </div>
+                          )}
+                          <button
+                            onClick={(e) => handleDeletePhoto(photo, e)}
+                            title="Supprimer la photo"
+                            className="bg-red-500/80 hover:bg-red-600 text-white p-1 rounded-full transition-all shadow-md active:scale-90"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
                         
                         {photo.is_flagged ? (
                            <div className="absolute inset-0 bg-red-900/60 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center">

@@ -1031,12 +1031,23 @@ export default function EventHome() {
                             loading="lazy"
                           />
                           
-                          {photo.is_offline_pending && (
-                            <div className="absolute top-2 right-2 bg-amber-500/90 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center space-x-1 text-black border border-amber-300 z-20 shadow-lg animate-pulse">
-                              <Cloud size={8} className="stroke-[3]" />
-                              <span className="text-[6px] font-black uppercase tracking-widest text-black">Attente</span>
-                            </div>
-                          )}
+                          <div className="absolute top-2 right-2 flex items-center space-x-1 z-30">
+                            {photo.is_offline_pending && (
+                              <div className="bg-amber-500/90 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center space-x-1 text-black border border-amber-300 shadow-lg animate-pulse">
+                                <Cloud size={8} className="stroke-[3]" />
+                                <span className="text-[6px] font-black uppercase tracking-widest text-black">Attente</span>
+                              </div>
+                            )}
+                            {(photo.uploader_name === guestPseudo || photo.contributor_name === guestPseudo || photo.is_offline_pending) && (
+                              <button
+                                onClick={(e) => handleDeletePhoto(photo, e)}
+                                title="Supprimer ma photo"
+                                className="bg-red-500/80 hover:bg-red-600 text-white p-1 rounded-full transition-all shadow-md active:scale-90"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
                           
                           {isRevealModeActive ? (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/40">
@@ -1053,7 +1064,7 @@ export default function EventHome() {
 
                         {/* AI Tags overlay */}
                         {eventData.ai_tagging_enabled && photo.ai_tags?.length > 0 && (
-                          <div className="absolute top-2 right-2 flex flex-col items-end gap-1 z-10">
+                          <div className="absolute top-8 right-2 flex flex-col items-end gap-1 z-10">
                             {photo.ai_tags.slice(0, 1).map((tag: string) => (
                               <div key={tag} className="bg-primary/80 backdrop-blur px-1.5 py-0.5 rounded text-[6px] font-black uppercase tracking-wider text-white">
                                 #{tag}
