@@ -209,7 +209,17 @@ export default function Dashboard() {
     updateEvent({ reveal_time: revealTime })
   }
 
-  if (eventLoading || !eventData) return <div className="p-8 text-center text-white bg-[#08060d] min-h-screen flex items-center justify-center font-black uppercase tracking-[0.3em]">Chargement...</div>
+  if (eventLoading) return <div className="p-8 text-center text-white bg-[#08060d] min-h-screen flex items-center justify-center font-black uppercase tracking-[0.3em]">Chargement...</div>
+
+  if (!eventData) {
+    return (
+      <div className="p-8 text-center text-white bg-[#08060d] min-h-screen flex flex-col items-center justify-center space-y-4">
+        <div className="text-red-500 font-black uppercase tracking-widest text-lg animate-pulse">Album Introuvable ou Supprimé</div>
+        <p className="text-xs text-gray-400 max-w-sm">Cet événement n'existe plus dans la base de données. Il a probablement été réinitialisé ou effacé.</p>
+        <button onClick={() => navigate('/')} className="px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary font-bold rounded-xl text-xs uppercase tracking-wider border border-primary/30">Retour à l'accueil</button>
+      </div>
+    )
+  }
 
   const eventUrl = `${window.location.origin}/e/${eventData.token}`
 
@@ -539,16 +549,24 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <button onClick={shareWhatsApp} className="flex items-center justify-center space-x-3 bg-[#25D366] hover:bg-[#1EBE5A] text-white py-5 rounded-[1.5rem] font-black text-[10px] md:text-xs uppercase tracking-widest transition-all shadow-xl shadow-[#25D366]/20 active:scale-95">
-                  <Share2 size={18} />
+              <div className="grid grid-cols-3 gap-3">
+                <button 
+                  onClick={() => window.open(`/e/${eventData.token}`, '_blank')}
+                  className="flex items-center justify-center space-x-2 bg-primary hover:bg-primary-light text-white py-4 rounded-[1.2rem] font-black text-[9px] md:text-[11px] uppercase tracking-wider transition-all shadow-xl shadow-primary/20 active:scale-95"
+                  title="Ouvrir l'espace d'envoi et de signature"
+                >
+                  <Cloud size={16} />
+                  <span>Contribuer</span>
+                </button>
+                <button onClick={shareWhatsApp} className="flex items-center justify-center space-x-2 bg-[#25D366] hover:bg-[#1EBE5A] text-white py-4 rounded-[1.2rem] font-black text-[9px] md:text-[11px] uppercase tracking-wider transition-all shadow-xl shadow-[#25D366]/20 active:scale-95">
+                  <Share2 size={16} />
                   <span>WhatsApp</span>
                 </button>
                 <button 
                   onClick={() => window.open(`/e/${eventData.token}/live`, '_blank')}
-                  className="flex items-center justify-center space-x-3 bg-white text-black hover:bg-gray-100 py-5 rounded-[1.5rem] font-black text-[10px] md:text-xs uppercase tracking-widest transition-all shadow-2xl active:scale-95"
+                  className="flex items-center justify-center space-x-2 bg-white text-black hover:bg-gray-100 py-4 rounded-[1.2rem] font-black text-[9px] md:text-[11px] uppercase tracking-wider transition-all shadow-2xl active:scale-95"
                 >
-                  <ImageIcon size={18} />
+                  <ImageIcon size={16} />
                   <span>Mur Live</span>
                 </button>
               </div>
@@ -867,9 +885,18 @@ export default function Dashboard() {
               <h2 className="text-3xl font-black tracking-tighter">Flux en Direct</h2>
               <p className="text-[11px] text-gray-500 font-black uppercase tracking-widest mt-1 opacity-60">Photos partagées par vos invités</p>
             </div>
-            <div className="flex items-center space-x-3 text-[9px] font-black uppercase tracking-[0.2em] text-primary bg-primary/5 px-4 py-2 rounded-full border border-primary/10">
-              <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
-              <span>Mises à jour automatiques</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => window.open(`/e/${eventData.token}`, '_blank')}
+                className="flex items-center space-x-2 bg-primary hover:bg-primary-light text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95 border border-primary/20"
+              >
+                <Cloud size={14} />
+                <span>Ajouter des photos</span>
+              </button>
+              <div className="flex items-center space-x-3 text-[9px] font-black uppercase tracking-[0.2em] text-primary bg-primary/5 px-4 py-2 rounded-full border border-primary/10">
+                <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
+                <span>Mises à jour automatiques</span>
+              </div>
             </div>
           </div>
 

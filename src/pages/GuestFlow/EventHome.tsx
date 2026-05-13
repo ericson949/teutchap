@@ -402,7 +402,7 @@ export default function EventHome() {
 
           <div className="pt-2">
             <button 
-              onClick={() => alert("Veuillez demander à l'organisateur de vous renvoyer le lien officiel ou de scanner le QR Code imprimé sur les tables.")}
+              onClick={() => navigate('/')}
               className="w-full bg-white/10 hover:bg-white/15 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-widest transition-all active:scale-95 border border-white/10"
             >
               Demander le bon lien

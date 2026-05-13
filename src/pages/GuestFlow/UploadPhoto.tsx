@@ -9,11 +9,16 @@ export default function UploadPhoto() {
   const { token } = useParams()
   const navigate = useNavigate()
   
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
+  interface PendingPhoto {
+    id: string
+    file: File
+    blob: Blob
+    url: string
+    compressedSize: number
+  }
+  const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([])
   const [isCompressing, setIsCompressing] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const [compressedSize, setCompressedSize] = useState(0)
   
   const [eventData, setEventData] = useState<any>(null)
   const [challenges, setChallenges] = useState<any[]>([])
@@ -115,74 +120,112 @@ export default function UploadPhoto() {
   const isUploadQuotaExceeded = localUploadsCount >= maxUploadsPerDevice
 
   const compressImage = (file: File): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image()
-      img.src = URL.createObjectURL(file)
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        let { width, height } = img
-
-        const MAX_WIDTH = 1920
-        const MAX_HEIGHT = 1080
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width
-            width = MAX_WIDTH
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height
-            height = MAX_HEIGHT
-          }
-        }
-
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return reject(new Error('Canvas context null'))
-        
-        ctx.drawImage(img, 0, 0, width, height)
-        
-        canvas.toBlob(
-          (blob) => {
-            if (blob) resolve(blob)
-            else reject(new Error('Blob null'))
-          },
-          'image/jpeg',
-          0.75
-        )
+    return new Promise((resolve) => {
+      // Si le fichier n'est pas une image standard, on retourne directement le fichier d'origine en guise de fallback
+      if (!file.type.startsWith('image/')) {
+        return resolve(file)
       }
-      img.onerror = reject
+      
+      const img = new Image()
+      const objectUrl = URL.createObjectURL(file)
+      img.src = objectUrl
+      
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas')
+          let { width, height } = img
+
+          const MAX_WIDTH = 1920
+          const MAX_HEIGHT = 1080
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width
+              width = MAX_WIDTH
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height
+              height = MAX_HEIGHT
+            }
+          }
+
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            URL.revokeObjectURL(objectUrl)
+            return resolve(file)
+          }
+          
+          ctx.drawImage(img, 0, 0, width, height)
+          
+          canvas.toBlob(
+            (blob) => {
+              URL.revokeObjectURL(objectUrl)
+              if (blob) resolve(blob)
+              else resolve(file)
+            },
+            'image/jpeg',
+            0.75
+          )
+        } catch (e) {
+          URL.revokeObjectURL(objectUrl)
+          resolve(file)
+        }
+      }
+      
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl)
+        // Fallback ultime : garantie d'intégration sans rejet de la capture
+        resolve(file)
+      }
     })
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      if (isUploadQuotaExceeded) {
-        alert(`⚠️ Quota atteint : Votre appareil a déjà partagé le maximum de ${maxUploadsPerDevice} photos autorisées sur cette formule.`)
-        return
-      }
+    if (!e.target.files || e.target.files.length === 0) return
 
-      const file = e.target.files[0]
-      setIsCompressing(true)
-      
-      try {
+    const files = Array.from(e.target.files)
+    const remainingQuota = maxUploadsPerDevice - localUploadsCount - pendingPhotos.length
+
+    if (remainingQuota <= 0) {
+      alert(`⚠️ Quota atteint : Votre appareil a déjà partagé ou mis en file le maximum de ${maxUploadsPerDevice} photos autorisées sur cette formule.`)
+      return
+    }
+
+    const allowedFiles = files.slice(0, remainingQuota)
+    if (files.length > remainingQuota) {
+      alert(`⚠️ Quota limité : Seules les ${remainingQuota} premières photos sélectionnées ont pu être prises en compte pour respecter la limite de votre appareil.`)
+    }
+
+    setIsCompressing(true)
+    
+    try {
+      const newPhotos: PendingPhoto[] = []
+      for (const file of allowedFiles) {
         const compressedBlob = await compressImage(file)
-        setCompressedSize(compressedBlob.size)
-        setPhotoBlob(compressedBlob)
-        setPhotoUrl(URL.createObjectURL(compressedBlob))
-      } catch (err) {
-        console.error('Compression error:', err)
-        alert("Erreur lors de l'optimisation de l'image.")
-      } finally {
-        setIsCompressing(false)
+        newPhotos.push({
+          id: crypto.randomUUID(),
+          file,
+          blob: compressedBlob,
+          url: URL.createObjectURL(compressedBlob),
+          compressedSize: compressedBlob.size
+        })
       }
+      setPendingPhotos(prev => [...prev, ...newPhotos])
+    } catch (err) {
+      console.error('Compression error:', err)
+      alert("Erreur lors de l'optimisation d'une ou plusieurs images.")
+    } finally {
+      setIsCompressing(false)
+      // Réinitialisation de la valeur de l'input pour autoriser la re-sélection des mêmes fichiers
+      e.target.value = ''
     }
   }
 
   const handleUpload = async () => {
-    if (!photoBlob) return
+    if (pendingPhotos.length === 0) return
     setIsUploading(true)
 
     let realEventId = eventData?.id
@@ -193,69 +236,94 @@ export default function UploadPhoto() {
       }
     }
 
-    const payload = {
-      event_id: realEventId || `mock-id-${token}`,
-      url_original: `${token}_${Date.now()}.jpg`,
-      url_thumb: `${token}_${Date.now()}.jpg`,
-      file_size_bytes: compressedSize,
-      challenge_id: selectedChallenge,
-      is_moderated: false,
-      uploader_name: guestPseudo // Rattachement strict et garanti de l'identité
-    }
+    const isOnline = navigator.onLine
+    const targetEventId = realEventId || `mock-id-${token}`
 
-    const enqueueOfflinePhoto = async () => {
+    const enqueueSingleOffline = async (photoItem: any) => {
       try {
         const offlineQueue: any[] = await localforage.getItem('teutchap_offline_queue') || []
         offlineQueue.push({
           id: crypto.randomUUID(),
           token,
-          eventId: realEventId,
-          blob: photoBlob,
-          compressedSize,
+          eventId: targetEventId,
+          blob: photoItem.blob,
+          compressedSize: photoItem.compressedSize,
           challengeId: selectedChallenge,
           contributorName: guestPseudo,
           timestamp: new Date().toISOString()
         })
         await localforage.setItem('teutchap_offline_queue', offlineQueue)
-
-        const nextCount = localUploadsCount + 1
-        localStorage.setItem(`teutchap_uploads_count_${token}`, nextCount.toString())
-        setLocalUploadsCount(nextCount)
       } catch (qErr) {
         console.error("Erreur d'écriture dans la file locale:", qErr)
       }
     }
 
     try {
-      const isOnline = navigator.onLine
-      
       if (!isOnline || !realEventId || realEventId.startsWith('mock-id-')) {
-        await enqueueOfflinePhoto()
-        alert('🌐 Mode Démo / Hors-ligne activé. Votre souvenir signé est rattaché et visible instantanément !')
+        for (const item of pendingPhotos) {
+          await enqueueSingleOffline(item)
+        }
+        const nextCount = localUploadsCount + pendingPhotos.length
+        localStorage.setItem(`teutchap_uploads_count_${token}`, nextCount.toString())
+        setLocalUploadsCount(nextCount)
+
+        alert(`🌐 Mode Démo / Hors-ligne activé. Vos ${pendingPhotos.length} souvenirs signés sont mis en file d'attente et visibles instantanément !`)
         navigate(`/e/${token}`)
         return
       }
 
-      const fileName = payload.url_original
-      const { error: uploadError } = await supabase.storage
-        .from('events_photos')
-        .upload(fileName, photoBlob)
+      // Mode en ligne : Upload séquentiel sécurisé pour le lot de photos
+      let successCount = 0
+      for (const item of pendingPhotos) {
+        try {
+          const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+          const fileName = `${token}_${uniqueSuffix}.jpg`
+          
+          const { error: uploadError } = await supabase.storage
+            .from('events_photos')
+            .upload(fileName, item.blob)
 
-      if (uploadError) throw uploadError
+          if (uploadError) throw uploadError
 
-      const { error: dbError } = await supabase.from('photos').insert([payload])
-      if (dbError) throw dbError
+          const payload = {
+            event_id: targetEventId,
+            url_original: fileName,
+            url_thumb: fileName,
+            file_size_bytes: item.compressedSize,
+            challenge_id: selectedChallenge,
+            is_moderated: false,
+            uploader_name: guestPseudo
+          }
 
-      const nextCount = localUploadsCount + 1
+          const { error: dbError } = await supabase.from('photos').insert([payload])
+          if (dbError) throw dbError
+
+          successCount++
+        } catch (itemErr) {
+          console.error("Erreur sur l'upload d'un item, basculement en file locale:", itemErr)
+          await enqueueSingleOffline(item)
+        }
+      }
+
+      const nextCount = localUploadsCount + pendingPhotos.length
       localStorage.setItem(`teutchap_uploads_count_${token}`, nextCount.toString())
       setLocalUploadsCount(nextCount)
+
+      if (successCount < pendingPhotos.length) {
+        alert(`⚠️ Reçu partiel : ${successCount} photos publiées en ligne. Les autres ont été sécurisées en file locale suite à une perturbation réseau.`)
+      }
 
       navigate(`/e/${token}`)
     } catch (err) {
       console.error(err)
-      // Sauvegarde garantie dans la file hors-ligne en cas d'erreur réseau/timeout
-      await enqueueOfflinePhoto()
-      alert("Erreur réseau/hors-ligne détectée. Votre photo a été conservée en sécurité en attente d'envoi automatique !")
+      for (const item of pendingPhotos) {
+        await enqueueSingleOffline(item)
+      }
+      const nextCount = localUploadsCount + pendingPhotos.length
+      localStorage.setItem(`teutchap_uploads_count_${token}`, nextCount.toString())
+      setLocalUploadsCount(nextCount)
+
+      alert("Erreur de connexion. L'intégralité de vos photos sélectionnées a été conservée en sécurité en attente d'envoi automatique !")
       navigate(`/e/${token}`)
     } finally {
       setIsUploading(false)
@@ -300,7 +368,7 @@ export default function UploadPhoto() {
               <p className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">Compression HD intelligente via Canvas API</p>
             </div>
           </div>
-        ) : !photoUrl ? (
+        ) : pendingPhotos.length === 0 ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 py-4">
             <div className="text-center space-y-1">
               <h2 className="text-2xl font-black tracking-tight">Partagez l'instant</h2>
@@ -339,27 +407,47 @@ export default function UploadPhoto() {
                   className="glass border border-white/10 rounded-xl py-4 flex items-center justify-center space-x-2 group hover:bg-white/5 transition-all"
                 >
                   <ImageIcon size={14} className="text-gray-500 group-hover:text-primary transition-colors" />
-                  <span className="font-black text-[9px] uppercase tracking-widest text-gray-500 group-hover:text-white">Importer depuis l'appareil</span>
+                  <span className="font-black text-[9px] uppercase tracking-widest text-gray-500 group-hover:text-white">Sélectionner plusieurs photos</span>
                 </button>
               </div>
             )}
 
             <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
           </div>
         ) : (
           <div className="space-y-6 animate-in zoom-in-95 duration-300 pb-16">
-            <div className="relative glass rounded-3xl overflow-hidden shadow-xl border border-white/10 group">
-              <img src={photoUrl} className="w-full aspect-[3/4] object-cover" />
-              <button 
-                onClick={() => { setPhotoBlob(null); setPhotoUrl(null); }}
-                className="absolute top-3 right-3 bg-black/60 backdrop-blur-md p-3 rounded-full text-white border border-white/10 hover:bg-black/80 transition-all"
-              >
-                <X size={20} />
-              </button>
-              <div className="absolute bottom-3 left-3 glass-dark px-2.5 py-1 rounded-md text-[8px] font-black text-primary-light border-white/5">
-                {(compressedSize / 1024).toFixed(0)} KB • OPTIMISÉ
-              </div>
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-xs font-black uppercase tracking-wider text-gradient">
+                {pendingPhotos.length} {pendingPhotos.length > 1 ? 'Photos prêtes' : 'Photo prête'}
+              </h3>
+              {localUploadsCount + pendingPhotos.length < maxUploadsPerDevice && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-[10px] font-black uppercase tracking-wider text-primary hover:text-primary-light transition-colors flex items-center space-x-1 glass px-3 py-1.5 rounded-full border border-primary/20"
+                >
+                  <span>+ Ajouter au lot</span>
+                </button>
+              )}
+            </div>
+
+            <div className={`grid gap-3 ${pendingPhotos.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' : 'grid-cols-2'}`}>
+              {pendingPhotos.map(p => (
+                <div key={p.id} className="relative glass rounded-2xl overflow-hidden shadow-xl border border-white/10 group aspect-[3/4]">
+                  <img src={p.url} className="w-full h-full object-cover" />
+                  <button 
+                    type="button"
+                    onClick={() => setPendingPhotos(prev => prev.filter(item => item.id !== p.id))}
+                    className="absolute top-2 right-2 bg-black/60 backdrop-blur-md p-2 rounded-full text-white border border-white/10 hover:bg-black/80 transition-all scale-90"
+                  >
+                    <X size={14} />
+                  </button>
+                  <div className="absolute bottom-2 left-2 glass-dark px-2 py-0.5 rounded text-[8px] font-black text-primary-light border-white/5 truncate max-w-[80%]">
+                    {(p.compressedSize / 1024).toFixed(0)} KB
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Section Défis Optionnels */}
@@ -367,7 +455,7 @@ export default function UploadPhoto() {
               <div className="space-y-3">
                 <div className="flex items-center space-x-1.5">
                   <Zap size={12} className="text-primary fill-current" />
-                  <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">Associer à un défi ?</h3>
+                  <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">Associer le lot à un défi ?</h3>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {challenges.map(c => (
@@ -395,12 +483,12 @@ export default function UploadPhoto() {
               {isUploading ? (
                 <>
                   <Loader2 size={20} className="animate-spin" />
-                  <span className="text-sm tracking-widest uppercase font-black">Publication...</span>
+                  <span className="text-sm tracking-widest uppercase font-black">Envoi de {pendingPhotos.length} photo{pendingPhotos.length > 1 ? 's' : ''}...</span>
                 </>
               ) : (
                 <>
                   <Upload size={20} />
-                  <span className="text-sm tracking-widest uppercase font-black">Publier signée</span>
+                  <span className="text-sm tracking-widest uppercase font-black">Publier {pendingPhotos.length > 1 ? 'les photos signées' : 'la photo signée'}</span>
                 </>
               )}
             </button>

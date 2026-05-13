@@ -29,8 +29,8 @@ export function useEvent(idOrToken: string | undefined, isToken: boolean = false
       return
     }
 
-    const fetchEvent = async () => {
-      setLoading(true)
+    const fetchEvent = async (isBackgroundCheck = false) => {
+      if (!isBackgroundCheck) setLoading(true)
       try {
         const query = supabase.from('events').select('*')
         if (isToken) {
@@ -51,47 +51,94 @@ export function useEvent(idOrToken: string | undefined, isToken: boolean = false
         if (data.id) localStorage.setItem(`teutchap_event_cache_${data.id}`, JSON.stringify(data))
       } catch (err: any) {
         console.error("Échec strict de récupération Supabase (RLS/Introuvable) :", err)
-        // Mode résilience hors-ligne : tenter de lire le cache local
+
+        // Nuance cruciale : si on est connecté à Internet et que l'erreur confirme la non-existence de la ressource (0 rows / introuvable)
+        const isNotFoundError = err?.code === 'PGRST116' || err?.message?.toLowerCase().includes('0 rows') || err?.message?.toLowerCase().includes('no rows returned')
+
+        if (navigator.onLine && isNotFoundError) {
+          console.warn("⚠️ Événement introuvable sur le serveur (supprimé ou BD réinitialisée). Purge locale et déconnexion en cours...")
+          localStorage.removeItem(`teutchap_event_cache_${idOrToken}`)
+          localStorage.removeItem(`teutchap_pseudo_${idOrToken}`)
+          localStorage.removeItem(`teutchap_pwd_verified_${idOrToken}`)
+          setError(new Error("Cet album n'existe plus ou a été supprimé."))
+          setEventData(null)
+          if (!isBackgroundCheck) setLoading(false)
+          return
+        }
+
+        // Mode résilience hors-ligne : si on est hors connexion ou en cas d'erreur de réseau temporaire, tenter de lire le cache local
         const cached = localStorage.getItem(`teutchap_event_cache_${idOrToken}`)
         if (cached) {
           try {
             const parsed = JSON.parse(cached)
             setEventData(parsed)
             setError(null)
-            setLoading(false)
+            if (!isBackgroundCheck) setLoading(false)
             return
           } catch (e) {}
         }
         setError(err || new Error("Événement introuvable en base de données"))
         setEventData(null)
       } finally {
-        setLoading(false)
+        if (!isBackgroundCheck) setLoading(false)
       }
     }
 
     fetchEvent()
   }, [idOrToken, isToken])
 
-  // Propagation en temps réel garantie des compteurs (invités rejoints, photos) vers toutes les instances
+  // Communication 100% basée sur WebSocket (priorisation Realtime absolue sans polling)
   useEffect(() => {
     if (!eventData?.id) return
 
     const channel = supabase
       .channel(`event_updates_${eventData.id}`)
       .on('postgres_changes', {
-        event: 'UPDATE',
+        event: '*',
         schema: 'public',
         table: 'events',
         filter: `id=eq.${eventData.id}`
       }, (payload) => {
-        if (payload.new) {
+        // Détection instantanée via WebSocket de la suppression de l'album
+        if (payload.eventType === 'DELETE') {
+          console.warn("🔴 Signal WebSocket reçu : l'événement a été supprimé. Déconnexion immédiate...")
+          localStorage.removeItem(`teutchap_event_cache_${eventData.id}`)
+          if (eventData.token) {
+            localStorage.removeItem(`teutchap_event_cache_${eventData.token}`)
+            localStorage.removeItem(`teutchap_pseudo_${eventData.token}`)
+            localStorage.removeItem(`teutchap_pwd_verified_${eventData.token}`)
+          }
+          setError(new Error("Cet album n'existe plus ou a été supprimé."))
+          setEventData(null)
+          return
+        }
+
+        if (payload.new && payload.eventType === 'UPDATE') {
           setEventData(payload.new)
           if (payload.new.token && payload.new.joined_guests_count !== undefined) {
             localStorage.setItem(`teutchap_guests_count_${payload.new.token}`, payload.new.joined_guests_count.toString())
           }
         }
       })
-      .subscribe()
+      .subscribe(async (status) => {
+        // En cas de reconnexion réussie du WebSocket (ex: après un redémarrage des conteneurs lors d'un reset BD)
+        if (status === 'SUBSCRIBED' && navigator.onLine) {
+          try {
+            const { error } = await supabase.from('events').select('id').eq('id', eventData.id).single()
+            if (error && (error.code === 'PGRST116' || error.message?.toLowerCase().includes('0 rows'))) {
+              console.warn("🔴 Vérification post-reconnexion WebSocket : l'événement est introuvable. Déconnexion immédiate...")
+              localStorage.removeItem(`teutchap_event_cache_${eventData.id}`)
+              if (eventData.token) {
+                localStorage.removeItem(`teutchap_event_cache_${eventData.token}`)
+                localStorage.removeItem(`teutchap_pseudo_${eventData.token}`)
+                localStorage.removeItem(`teutchap_pwd_verified_${eventData.token}`)
+              }
+              setError(new Error("Cet album n'existe plus ou a été supprimé."))
+              setEventData(null)
+            }
+          } catch (e) {}
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)

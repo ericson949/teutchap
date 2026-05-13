@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Sparkles, Zap, Hash, Shield, Globe, Users, AlertTriangle, Check } from 'lucide-react'
+import { Calendar, Sparkles, Zap, Hash, Shield, Globe, Users, AlertTriangle, Check, ArrowRight, LogIn } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 import { supabase } from '../../lib/supabase'
 
@@ -10,6 +10,11 @@ export default function CreateEvent() {
   const [creationError, setCreationError] = useState<string | null>(null)
   const [isMultiDay, setIsMultiDay] = useState(false)
   
+  // Onglets d'interface pour basculer entre Création et Accès Invité
+  const [activeTab, setActiveTab] = useState<'create' | 'join'>('create')
+  const [joinInput, setJoinInput] = useState('')
+  const [joinError, setJoinError] = useState<string | null>(null)
+
   // États du module de sécurité Anti-Spam (Cloudflare Turnstile)
   const [isSpamVerified, setIsSpamVerified] = useState(false)
   const [turnstileState, setTurnstileState] = useState<'idle' | 'verifying' | 'success'>('idle')
@@ -146,6 +151,32 @@ export default function CreateEvent() {
     }
   }
 
+  const handleJoinSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setJoinError(null)
+    const trimmed = joinInput.trim()
+    if (!trimmed) return
+
+    // Extraction intelligente et robuste du code d'album
+    let cleanToken = trimmed
+    if (trimmed.includes('/e/')) {
+      const parts = trimmed.split('/e/')
+      cleanToken = parts[parts.length - 1].split('?')[0].split('/')[0]
+    } else if (trimmed.includes('/')) {
+      const parts = trimmed.split('/')
+      cleanToken = parts[parts.length - 1].split('?')[0]
+    }
+
+    cleanToken = cleanToken.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+    if (!cleanToken || cleanToken.length < 3) {
+      setJoinError("Veuillez saisir un lien ou un code d'album valide.")
+      return
+    }
+
+    navigate(`/e/${cleanToken}`)
+  }
+
   return (
     <div className="min-h-screen bg-[#08060d] text-white flex flex-col items-center p-4 md:p-8 selection:bg-primary/30 relative overflow-x-hidden">
       {/* Background Mesh */}
@@ -159,21 +190,42 @@ export default function CreateEvent() {
           <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-6 py-2.5 rounded-full backdrop-blur-md md:backdrop-blur-xl animate-float">
             <Zap size={14} className="text-primary fill-current" />
             <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.25em] text-gray-300">
-              Initialisation d'Album
+              {activeTab === 'create' ? "Initialisation d'Album" : "Espace Invité"}
             </span>
           </div>
           <h1 className="text-[2.2rem] md:text-8xl font-black tracking-tighter leading-[1] md:leading-[0.85] px-2 flex flex-col items-center">
-            <span>Capturez</span>
-            <span className="text-gradient">L'éternité</span>
+            <span>{activeTab === 'create' ? 'Capturez' : 'Rejoignez'}</span>
+            <span className="text-gradient">{activeTab === 'create' ? "L'éternité" : 'La Réception'}</span>
           </h1>
           <p className="text-gray-400 text-[10px] md:text-sm font-bold max-w-[280px] md:max-w-sm mx-auto leading-relaxed uppercase tracking-[0.2em] opacity-60">
             Un album collectif. Zéro app. Souvenirs infinis.
           </p>
         </div>
 
+        {/* Switcher de Mode (Organisateur vs Invité) */}
+        <div className="flex bg-white/5 border border-white/10 p-1.5 rounded-full max-w-md mx-auto relative z-20">
+          <button
+            type="button"
+            onClick={() => { setActiveTab('create'); setCreationError(null); }}
+            className={`flex-1 py-3.5 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-2 ${activeTab === 'create' ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+          >
+            <Sparkles size={14} />
+            <span>Créer un album</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActiveTab('join'); setJoinError(null); }}
+            className={`flex-1 py-3.5 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-2 ${activeTab === 'join' ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+          >
+            <LogIn size={14} />
+            <span>Rejoindre</span>
+          </button>
+        </div>
+
         <div className="glass rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-12 shadow-2xl space-y-8 md:space-y-10 border border-white/5 relative overflow-hidden group animate-in fade-in zoom-in-95 duration-700 delay-300 fill-mode-both will-change-transform">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[60px] md:blur-[100px] -mr-32 -mt-32 rounded-full group-hover:bg-primary/20 transition-all duration-1000 pointer-events-none" />
           
+          {activeTab === 'create' ? (
           <form onSubmit={handleSubmit} className="space-y-8 md:space-y-10 relative z-10">
             <div className="space-y-6 md:space-y-8">
               
@@ -370,6 +422,54 @@ export default function CreateEvent() {
               )}
             </button>
           </form>
+          ) : (
+          <form onSubmit={handleJoinSubmit} className="space-y-8 md:space-y-10 relative z-10 animate-in fade-in zoom-in-95 duration-500 text-center">
+            <div className="space-y-4">
+              <div className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mx-auto text-primary shadow-inner">
+                <LogIn size={28} />
+              </div>
+              <h2 className="text-xl md:text-2xl font-black tracking-tight">Accédez aux Souvenirs</h2>
+              <p className="text-xs text-gray-400 font-medium leading-relaxed max-w-xs mx-auto">
+                Saisissez le code secret de l'album ou collez le lien d'invitation partagé par l'organisateur.
+              </p>
+            </div>
+
+            <div className="space-y-4 text-left pt-2">
+              <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">
+                Code Album ou Lien
+              </label>
+              <div className="relative group/input">
+                <Globe className="absolute left-6 md:left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={18} />
+                <input 
+                  required
+                  placeholder="Ex: lwidj0ck ou lien d'invitation..."
+                  className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] pl-14 md:pl-16 pr-8 py-5 md:py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all placeholder:text-gray-700 focus:bg-white/[0.08] shadow-inner text-white"
+                  value={joinInput}
+                  onChange={e => setJoinInput(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {joinError && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-start space-x-3 text-red-400 text-xs text-left animate-fade-in">
+                <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+                <div className="space-y-1 font-medium">
+                  <p className="font-bold uppercase tracking-wider text-[10px]">Accès refusé</p>
+                  <p className="leading-relaxed">{joinError}</p>
+                </div>
+              </div>
+            )}
+
+            <button 
+              type="submit"
+              className="w-full bg-primary hover:bg-primary-dark active:scale-[0.98] transition-all text-white font-black py-6 md:py-7 rounded-[1.5rem] md:rounded-[2rem] shadow-[0_20px_50px_rgba(170,59,255,0.3)] flex items-center justify-center space-x-4 text-[10px] md:text-sm uppercase tracking-[0.25em] border-t border-white/20 relative overflow-hidden group/btn"
+            >
+              <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000 skew-x-12" />
+              <span className="relative z-10">Rejoindre la réception</span>
+              <ArrowRight size={18} className="relative z-10 group-hover/btn:translate-x-1 transition-transform" />
+            </button>
+          </form>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-6 md:gap-12 opacity-30 px-4">
