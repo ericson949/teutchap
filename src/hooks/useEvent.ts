@@ -45,8 +45,23 @@ export function useEvent(idOrToken: string | undefined, isToken: boolean = false
         }
         setEventData(data)
         setError(null)
+        // Mise en cache robuste pour mode hors-ligne
+        localStorage.setItem(`teutchap_event_cache_${idOrToken}`, JSON.stringify(data))
+        if (data.token) localStorage.setItem(`teutchap_event_cache_${data.token}`, JSON.stringify(data))
+        if (data.id) localStorage.setItem(`teutchap_event_cache_${data.id}`, JSON.stringify(data))
       } catch (err: any) {
         console.error("Échec strict de récupération Supabase (RLS/Introuvable) :", err)
+        // Mode résilience hors-ligne : tenter de lire le cache local
+        const cached = localStorage.getItem(`teutchap_event_cache_${idOrToken}`)
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached)
+            setEventData(parsed)
+            setError(null)
+            setLoading(false)
+            return
+          } catch (e) {}
+        }
         setError(err || new Error("Événement introuvable en base de données"))
         setEventData(null)
       } finally {

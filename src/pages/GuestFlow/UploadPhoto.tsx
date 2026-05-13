@@ -150,10 +150,8 @@ export default function UploadPhoto() {
       contributor_name: guestPseudo // Rattachement strict et garanti de l'identité
     }
 
-    try {
-      const isOnline = navigator.onLine
-      
-      if (!isOnline || eventData?.id?.startsWith('mock-id-')) {
+    const enqueueOfflinePhoto = async () => {
+      try {
         const offlineQueue: any[] = await localforage.getItem('teutchap_offline_queue') || []
         offlineQueue.push({
           id: crypto.randomUUID(),
@@ -166,15 +164,16 @@ export default function UploadPhoto() {
           timestamp: new Date().toISOString()
         })
         await localforage.setItem('teutchap_offline_queue', offlineQueue)
-        
-        // Simuler un ajout wahoo dans le cache local pour l'instantanéité
-        const existingLocalPhotos = JSON.parse(localStorage.getItem(`teutchap_dev_photos_${eventData?.id}`) || '[]')
-        localStorage.setItem(`teutchap_dev_photos_${eventData?.id}`, JSON.stringify([{
-          id: crypto.randomUUID(),
-          ...payload,
-          created_at: new Date().toISOString()
-        }, ...existingLocalPhotos]))
+      } catch (qErr) {
+        console.error("Erreur d'écriture dans la file locale:", qErr)
+      }
+    }
 
+    try {
+      const isOnline = navigator.onLine
+      
+      if (!isOnline || eventData?.id?.startsWith('mock-id-')) {
+        await enqueueOfflinePhoto()
         alert('🌐 Mode Démo / Hors-ligne activé. Votre souvenir signé est rattaché et visible instantanément !')
         navigate(`/e/${token}`)
         return
@@ -193,7 +192,9 @@ export default function UploadPhoto() {
       navigate(`/e/${token}`)
     } catch (err) {
       console.error(err)
-      alert("Erreur lors de la publication. Capture conservée en sécurité hors-ligne.")
+      // Sauvegarde garantie dans la file hors-ligne en cas d'erreur réseau/timeout
+      await enqueueOfflinePhoto()
+      alert("Erreur réseau/hors-ligne détectée. Votre photo a été conservée en sécurité en attente d'envoi automatique !")
       navigate(`/e/${token}`)
     } finally {
       setIsUploading(false)

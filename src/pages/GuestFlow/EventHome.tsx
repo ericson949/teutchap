@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, Image as ImageIcon, Hash, Clock, Bell, X, RefreshCw, CloudLightning, AlertTriangle, Users, Check, Lock, PlusCircle, Calendar, User, Loader2 } from 'lucide-react'
+import { Camera, Image as ImageIcon, Hash, Clock, Bell, X, RefreshCw, CloudLightning, AlertTriangle, Users, Check, Lock, PlusCircle, Calendar, User, Loader2, Cloud } from 'lucide-react'
 import localforage from 'localforage'
 import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
@@ -15,7 +15,7 @@ export default function EventHome() {
   const navigate = useNavigate()
   
   // Custom Hooks
-  const { eventData, loading: eventLoading, incrementGuestCount, joinEventAsGuest } = useEvent(token, true)
+  const { eventData, loading: eventLoading, joinEventAsGuest } = useEvent(token, true)
   const { challenges, addChallenge } = useChallenges(eventData?.id)
   const { currentConfig } = useAppPlans(eventData?.plan)
   
@@ -153,6 +153,69 @@ export default function EventHome() {
     setShowNotificationPrompt(false)
   }
 
+  const handleSyncOffline = async () => {
+    if (!eventData?.id) return
+    setIsSyncing(true)
+    try {
+      const queue: any[] = await localforage.getItem('teutchap_offline_queue') || []
+      const tokenQueue = queue.filter(item => item.token === token)
+      const remainingQueue = queue.filter(item => item.token !== token)
+
+      if (tokenQueue.length === 0) return
+
+      let successfulCount = 0
+      const finalRemainingQueue = [...remainingQueue]
+
+      for (const item of tokenQueue) {
+        let itemSuccess = false
+        try {
+          const fileName = `${token}_${Date.now()}_${Math.random().toString(36).substring(2,7)}.jpg`
+          const { error: uploadError } = await supabase.storage
+            .from('events_photos')
+            .upload(fileName, item.blob)
+
+          if (!uploadError) {
+            const { error: dbError } = await supabase.from('photos').insert([
+              {
+                event_id: eventData.id,
+                url_original: fileName,
+                url_thumb: fileName,
+                file_size_bytes: item.compressedSize || item.blob?.size || 0,
+                challenge_id: item.challengeId || null,
+                is_moderated: false,
+                contributor_name: item.contributorName || guestPseudo || 'Invité'
+              }
+            ])
+            if (!dbError) {
+              successfulCount++
+              itemSuccess = true
+            }
+          }
+        } catch (e) {
+          console.error("Erreur de synchro unitaire:", e)
+        }
+        if (!itemSuccess) {
+          finalRemainingQueue.push(item)
+        }
+      }
+
+      await localforage.setItem('teutchap_offline_queue', finalRemainingQueue)
+      const currentTokenQueue = finalRemainingQueue.filter(item => item.token === token)
+      setOfflineQueueCount(currentTokenQueue.length)
+      
+      if (successfulCount > 0) {
+        sendNotification('Synchronisation réussie ! 🚀', {
+          body: `${successfulCount} souvenir(s) en attente publiés avec succès.`
+        } as any)
+      }
+    } catch (err) {
+      console.error('Sync error:', err)
+      alert("Une erreur est survenue lors de la synchronisation.")
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
   // PWA Offline Queue management
   useEffect(() => {
     const checkOfflineQueue = async () => {
@@ -171,6 +234,8 @@ export default function EventHome() {
     const handleOnline = () => {
       setIsOnline(true)
       checkOfflineQueue()
+      // Exécution automatique de la resynchronisation en tâche de fond
+      setTimeout(() => handleSyncOffline(), 1000)
     }
     const handleOffline = () => setIsOnline(false)
 
@@ -182,57 +247,7 @@ export default function EventHome() {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
-  }, [token])
-
-  const handleSyncOffline = async () => {
-    if (!eventData?.id) return
-    setIsSyncing(true)
-    try {
-      const queue: any[] = await localforage.getItem('teutchap_offline_queue') || []
-      const tokenQueue = queue.filter(item => item.token === token)
-      const remainingQueue = queue.filter(item => item.token !== token)
-
-      if (tokenQueue.length === 0) return
-
-      let successfulCount = 0
-
-      for (const item of tokenQueue) {
-        const fileName = `${token}_${Date.now()}_${Math.random().toString(36).substring(2,7)}.jpg`
-        const { error: uploadError } = await supabase.storage
-          .from('events_photos')
-          .upload(fileName, item.blob)
-
-        if (!uploadError) {
-          const { error: dbError } = await supabase.from('photos').insert([
-            {
-              event_id: eventData.id,
-              url_original: fileName,
-              url_thumb: fileName,
-              file_size_bytes: item.compressedSize || item.blob.size,
-              challenge_id: item.challengeId || null,
-              is_moderated: false,
-              contributor_name: guestPseudo || 'Invité Anonyme'
-            }
-          ])
-          if (!dbError) successfulCount++
-        }
-      }
-
-      await localforage.setItem('teutchap_offline_queue', remainingQueue)
-      setOfflineQueueCount(0)
-      
-      if (successfulCount > 0) {
-        sendNotification('Synchronisation réussie ! 🚀', {
-          body: `${successfulCount} souvenir(s) en attente publiés avec succès.`
-        } as any)
-      }
-    } catch (err) {
-      console.error('Sync error:', err)
-      alert("Une erreur est survenue lors de la synchronisation.")
-    } finally {
-      setIsSyncing(false)
-    }
-  }
+  }, [token, eventData?.id, guestPseudo])
 
   useEffect(() => {
     if (!eventData?.reveal_time) {
@@ -906,10 +921,17 @@ export default function EventHome() {
                     className="group relative bg-white/5 rounded-2xl overflow-hidden border border-white/5 shadow-lg"
                   >
                     <img 
-                      src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
+                      src={photo.url_thumb?.startsWith('blob:') ? photo.url_thumb : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
                       className={`w-full aspect-[3/4] object-cover transition-all ${isRevealModeActive ? 'blur-xl scale-110 opacity-30' : ''}`}
                       loading="lazy"
                     />
+                    
+                    {photo.is_offline_pending && (
+                      <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center space-x-1 text-primary-light border border-white/10 z-10 animate-pulse">
+                        <Cloud size={8} />
+                        <span className="text-[6px] font-black uppercase tracking-widest">En attente</span>
+                      </div>
+                    )}
                     
                     {isRevealModeActive ? (
                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">

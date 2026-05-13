@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Share2, Image as ImageIcon, Copy, X, Zap, Hash, Check, Shield, Sparkles, Clock, LogIn, Save, Hourglass, Eye } from 'lucide-react'
+import { Share2, Image as ImageIcon, Copy, X, Zap, Hash, Check, Shield, Sparkles, Clock, LogIn, Save, Hourglass, Eye, Cloud } from 'lucide-react'
 import { useEvent } from '../../hooks/useEvent'
 import { useChallenges } from '../../hooks/useChallenges'
 import { usePhotos } from '../../hooks/usePhotos'
+import { useEventGuests } from '../../hooks/useEventGuests'
 import { useAuth } from '../../contexts/AuthContext'
 import HighlightReel from '../../components/HighlightReel'
 import AuthModal from '../../components/AuthModal'
@@ -19,6 +20,7 @@ export default function Dashboard() {
   const { eventData, loading: eventLoading, updateEvent, setEventData } = useEvent(eventId)
   const { challenges, addChallenge, deleteChallenge } = useChallenges(eventData?.id)
   const { photos } = usePhotos(eventData?.id)
+  const { guests } = useEventGuests(eventData?.id)
   
   const [showChallengeForm, setShowChallengeForm] = useState(false)
   const [newChallenge, setNewChallenge] = useState({ title: '', description: '' })
@@ -239,6 +241,20 @@ export default function Dashboard() {
       .slice(0, 3)
   }
   const topContributors = getTopContributors()
+
+  // 4. Liste finale unifiée des participants en temps réel
+  const extractedNames = Array.from(new Set(photos.map(p => p.guest_name || p.author_name).filter(Boolean)))
+  const existingAdmins = eventData?.co_admins || []
+  const relationalGuestIds = new Set(guests.map(g => g.pseudo))
+  const legacyGuests = extractedNames.filter(name => !relationalGuestIds.has(name)).map(name => ({
+    user_id: 'legacy_' + name,
+    pseudo: name,
+    role: existingAdmins.includes(name) ? 'co_admin' : 'guest',
+    joined_at: new Date().toISOString(),
+    last_active_at: new Date().toISOString(),
+    isOnline: false
+  }))
+  const allDisplayGuests = [...guests, ...legacyGuests]
 
   return (
     <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30 overflow-x-hidden">
@@ -755,6 +771,47 @@ export default function Dashboard() {
                        )}
                     </div>
                  </div>
+
+                 {/* Participants Live Sync */}
+                 <div className="glass rounded-[2rem] p-8 border border-white/5 shadow-2xl space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-black uppercase tracking-widest text-gray-500">Participants ({allDisplayGuests.length})</h3>
+                      <span className="flex items-center space-x-1.5 text-[8px] font-black bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full uppercase tracking-widest">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                        <span>Live Sync</span>
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                      {allDisplayGuests.length > 0 ? (
+                        allDisplayGuests.map((guestObj, i) => {
+                          const isModo = guestObj.role === 'co_admin' || (eventData?.co_admins || []).includes(guestObj.pseudo)
+                          return (
+                            <div key={i} className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/5">
+                              <div className="flex items-center space-x-2.5 min-w-0">
+                                <div className="w-7 h-7 rounded-lg bg-accent/10 text-accent font-bold text-[10px] flex items-center justify-center shrink-0 border border-accent/20">
+                                  {guestObj.pseudo.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                  <div className="flex items-center space-x-1.5">
+                                    <span className="text-xs font-bold text-gray-200 truncate">{guestObj.pseudo}</span>
+                                    {isModo && <span className="text-[7px] bg-accent/20 text-accent font-black px-1 rounded uppercase tracking-widest">Modo</span>}
+                                  </div>
+                                  <span className="text-[9px] text-gray-500 font-medium">
+                                    {guestObj.isOnline ? '🟢 Connecté à l\'instant' : 'Inscrit'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <p className="text-[10px] text-gray-600 italic text-center py-3 font-medium">
+                          Aucun participant synchronisé en base.
+                        </p>
+                      )}
+                    </div>
+                 </div>
               </div>
            </div>
         </section>
@@ -789,10 +846,17 @@ export default function Dashboard() {
                   style={{ animationDelay: `${idx * 100}ms` }}
                 >
                   <img 
-                    src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
+                    src={photo.url_thumb?.startsWith('blob:') ? photo.url_thumb : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
                     className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                     loading="lazy"
                   />
+                  
+                  {photo.is_offline_pending && (
+                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center space-x-1 text-primary-light border border-white/10 z-10 animate-pulse">
+                      <Cloud size={10} />
+                      <span className="text-[7px] font-black uppercase tracking-widest">En attente</span>
+                    </div>
+                  )}
                   
                   {photo.is_flagged ? (
                      <div className="absolute inset-0 bg-red-900/60 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center">

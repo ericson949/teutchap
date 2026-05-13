@@ -56,7 +56,7 @@ export default function HighlightReel({ photos, onClose }: HighlightReelProps) {
       {/* Background Blur */}
       <div className="absolute inset-0 z-0">
         <img 
-          src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${currentPhoto.url_original}`} 
+          src={currentPhoto.url_original?.startsWith('blob:') ? currentPhoto.url_original : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${currentPhoto.url_original}`} 
           className="w-full h-full object-cover blur-3xl opacity-30"
         />
       </div>
@@ -105,7 +105,7 @@ export default function HighlightReel({ photos, onClose }: HighlightReelProps) {
         >
           <img 
             key={currentPhoto.id}
-            src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${currentPhoto.url_original}`} 
+            src={currentPhoto.url_original?.startsWith('blob:') ? currentPhoto.url_original : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${currentPhoto.url_original}`} 
             className="w-full h-full object-cover"
           />
 

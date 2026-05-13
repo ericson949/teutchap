@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Share2, Copy, Zap, ArrowLeft, Star, ImageIcon, Lock, ExternalLink, Sparkles, Check, Download, Users, Loader2, Shield, Key, UserPlus, Trash2, Mail, Clock, Hourglass } from 'lucide-react'
+import { Copy, Zap, ArrowLeft, ImageIcon, Lock, ExternalLink, Sparkles, Check, Download, Users, Loader2, Shield, Key, UserPlus, Trash2, Mail, Clock, Hourglass } from 'lucide-react'
 import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useAppPlans } from '../../hooks/useAppPlans'
@@ -16,7 +16,7 @@ export default function EventOverview() {
   // Custom states for Password and Co-Admin features
   const [newPassword, setNewPassword] = useState('')
   const [pwdLoading, setPwdLoading] = useState(false)
-  const [adminInput, setAdminInput] = useState('')
+  const [stagedAdmins, setStagedAdmins] = useState<string[]>([])
   const [adminLoading, setAdminLoading] = useState(false)
 
   // États des Toggles de visibilité conditionnelle
@@ -147,6 +147,7 @@ export default function EventOverview() {
     if (eventData) {
       if (eventData.access_password) setEnablePasswordToggle(true)
       if (eventData.co_admins && eventData.co_admins.length > 0) setEnableAdminsToggle(true)
+      setStagedAdmins(eventData.co_admins || [])
     }
   }, [eventData])
 
@@ -273,23 +274,7 @@ export default function EventOverview() {
     setPwdLoading(false)
   }
 
-  const handleAddAdmin = async () => {
-    if (!adminInput.trim()) return
-    setAdminLoading(true)
-    const currentAdmins = eventData.co_admins || []
-    if (!currentAdmins.includes(adminInput.trim())) {
-      await updateEvent({ co_admins: [...currentAdmins, adminInput.trim()] })
-    }
-    setAdminInput('')
-    setAdminLoading(false)
-  }
 
-  const handleRemoveAdmin = async (adminToRemove: string) => {
-    setAdminLoading(true)
-    const currentAdmins = eventData.co_admins || []
-    await updateEvent({ co_admins: currentAdmins.filter((a: string) => a !== adminToRemove) })
-    setAdminLoading(false)
-  }
 
   // Toggles de gestion conditionnelle
   const handleTogglePasswordFeature = async () => {
@@ -425,26 +410,28 @@ export default function EventOverview() {
   // Liste finale unifiée
   const allDisplayGuests = [...guests, ...legacyGuests]
 
-  const handleToggleAdminGuest = async (guestObj: any) => {
+  const handleToggleStagedAdmin = (pseudo: string) => {
+    setStagedAdmins(prev => 
+      prev.includes(pseudo) ? prev.filter(p => p !== pseudo) : [...prev, pseudo]
+    )
+  }
+
+  const handleSaveAdmins = async () => {
     setAdminLoading(true)
-    const currentAdmins = eventData?.co_admins || []
-    const isCurrentlyAdmin = guestObj.role === 'co_admin' || currentAdmins.includes(guestObj.pseudo)
-    
-    // 1. Mise à jour dans le tableau legacy dénormalisé par sécurité
-    let newAdmins: string[]
-    if (isCurrentlyAdmin) {
-      newAdmins = currentAdmins.filter((a: string) => a !== guestObj.pseudo)
-    } else {
-      newAdmins = [...currentAdmins, guestObj.pseudo]
+    try {
+      await updateEvent({ co_admins: stagedAdmins })
+      for (const g of guests) {
+        const shouldBeAdmin = stagedAdmins.includes(g.pseudo)
+        const currentRoleIsAdmin = g.role === 'co_admin'
+        if (shouldBeAdmin !== currentRoleIsAdmin) {
+          await updateGuestRole(g.user_id, shouldBeAdmin ? 'co_admin' : 'guest')
+        }
+      }
+    } catch (err) {
+      console.error("Erreur lors de la sauvegarde des rôles :", err)
+    } finally {
+      setAdminLoading(false)
     }
-    await updateEvent({ co_admins: newAdmins })
-
-    // 2. Mise à jour dans la table relationnelle si c'est un vrai utilisateur
-    if (guestObj.user_id && !guestObj.user_id.startsWith('legacy_')) {
-      await updateGuestRole(guestObj.user_id, isCurrentlyAdmin ? 'guest' : 'co_admin')
-    }
-
-    setAdminLoading(false)
   }
 
   return (
@@ -652,71 +639,6 @@ export default function EventOverview() {
                 )}
               </div>
 
-              {/* LISTE PERMANENTE DES INVITÉS EN TEMPS RÉEL (Visibilité immédiate garantie) */}
-              <div className="w-full bg-white/[0.02] border border-white/10 rounded-2xl p-4 space-y-3 text-left overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-xs font-bold text-gray-200">Invités & Participants ({allDisplayGuests.length})</span>
-                  </div>
-                  <span className="text-[8px] font-black px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 uppercase tracking-widest">
-                    Live Sync
-                  </span>
-                </div>
-                
-                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                  {allDisplayGuests.length > 0 ? (
-                    allDisplayGuests.map((guestObj, i) => {
-                      const isAdmin = guestObj.role === 'co_admin' || (eventData?.co_admins || []).includes(guestObj.pseudo)
-                      return (
-                        <div
-                          key={i}
-                          className={`w-full flex items-center justify-between p-2 rounded-xl border text-left transition-all ${
-                            isAdmin 
-                              ? 'bg-accent/10 border-accent/30 text-white' 
-                              : 'bg-black/30 border-white/5 text-gray-400'
-                          }`}
-                        >
-                          <div className="flex items-center space-x-2 min-w-0">
-                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[9px] shrink-0 ${
-                              isAdmin ? 'bg-accent text-white' : 'bg-white/5 text-gray-500'
-                            }`}>
-                              {guestObj.pseudo.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <div className="flex items-center space-x-1.5">
-                                <span className="text-xs font-medium truncate text-gray-200">{guestObj.pseudo}</span>
-                                {isAdmin && <span className="text-[7px] bg-accent/20 text-accent font-black px-1 rounded uppercase tracking-widest">Co-Admin</span>}
-                              </div>
-                              <div className="flex items-center space-x-1 mt-0.5">
-                                <span className={`w-1.5 h-1.5 rounded-full ${guestObj.isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
-                                <span className="text-[8px] text-gray-500 font-normal">
-                                  {guestObj.isOnline ? 'En ligne' : 'Inscrit'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <button
-                            onClick={() => handleToggleAdminGuest(guestObj)}
-                            disabled={adminLoading}
-                            title={isAdmin ? "Révocation des droits d'administration" : "Promouvoir Co-Administrateur"}
-                            className={`p-1.5 rounded-lg border transition-all ${
-                              isAdmin 
-                                ? 'bg-accent/20 text-accent border-accent/30 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30' 
-                                : 'bg-white/5 text-gray-500 border-white/5 hover:text-accent hover:border-accent/30'
-                            }`}
-                          >
-                            <UserPlus size={12} />
-                          </button>
-                        </div>
-                      )
-                    })
-                  ) : (
-                    <p className="text-xs text-gray-500 italic py-3 text-center">Aucun participant enregistré en base</p>
-                  )}
-                </div>
-              </div>
 
               {/* Carte de Gestion des Co-Administrateurs (Sélecteur Multiple) */}
               <div className="w-full bg-white/[0.02] border border-white/10 rounded-2xl p-4 space-y-3 text-left overflow-hidden">
@@ -744,21 +666,21 @@ export default function EventOverview() {
                     <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                       {allDisplayGuests.length > 0 ? (
                         allDisplayGuests.map((guestObj, i) => {
-                          const isAdmin = guestObj.role === 'co_admin' || (eventData?.co_admins || []).includes(guestObj.pseudo)
+                          const isStagedAdmin = stagedAdmins.includes(guestObj.pseudo)
                           return (
                             <button
                               key={i}
-                              onClick={() => handleToggleAdminGuest(guestObj)}
+                              onClick={() => handleToggleStagedAdmin(guestObj.pseudo)}
                               disabled={adminLoading}
                               className={`w-full flex items-center justify-between p-2 rounded-xl border text-left transition-all ${
-                                isAdmin 
+                                isStagedAdmin 
                                   ? 'bg-accent/10 border-accent/30 text-white' 
                                   : 'bg-black/30 border-white/5 hover:border-white/10 text-gray-400 hover:text-gray-300'
                               }`}
                             >
                               <div className="flex items-center space-x-2 min-w-0">
                                 <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[9px] shrink-0 ${
-                                  isAdmin ? 'bg-accent text-white' : 'bg-white/5 text-gray-500'
+                                  isStagedAdmin ? 'bg-accent text-white' : 'bg-white/5 text-gray-500'
                                 }`}>
                                   {guestObj.pseudo.charAt(0).toUpperCase()}
                                 </div>
@@ -773,9 +695,9 @@ export default function EventOverview() {
                                 </div>
                               </div>
                               <div className={`w-3.5 h-3.5 rounded-md border flex items-center justify-center transition-colors ${
-                                isAdmin ? 'bg-accent border-accent text-white' : 'border-white/20'
+                                isStagedAdmin ? 'bg-accent border-accent text-white' : 'border-white/20'
                               }`}>
-                                {isAdmin && <Check size={8} className="stroke-[3]" />}
+                                {isStagedAdmin && <Check size={8} className="stroke-[3]" />}
                               </div>
                             </button>
                           )
@@ -785,21 +707,14 @@ export default function EventOverview() {
                       )}
                     </div>
 
-                    {/* Champ manuel d'ajout direct avec bouton Ajouter */}
-                    <div className="pt-2 flex items-center space-x-2 border-t border-white/5 mt-2">
-                      <input 
-                        type="text" 
-                        placeholder="Ajout manuel (Email ou Nom)..."
-                        className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-accent/50 transition-colors"
-                        value={adminInput}
-                        onChange={e => setAdminInput(e.target.value)}
-                      />
+                    {/* Bouton d'application globale des modifications */}
+                    <div className="pt-2 border-t border-white/5 mt-2">
                       <button 
-                        onClick={handleAddAdmin}
-                        disabled={adminLoading || !adminInput.trim()}
-                        className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-white font-black text-[9px] uppercase tracking-widest px-3 py-2 rounded-xl transition-all shrink-0 flex items-center justify-center shadow-md"
+                        onClick={handleSaveAdmins}
+                        disabled={adminLoading}
+                        className="w-full bg-accent hover:bg-accent/80 disabled:opacity-50 text-white font-black text-[9px] uppercase tracking-widest py-2.5 rounded-xl transition-all flex items-center justify-center shadow-md"
                       >
-                        {adminLoading ? <Loader2 size={12} className="animate-spin" /> : 'Ajouter'}
+                        {adminLoading ? <Loader2 size={12} className="animate-spin" /> : 'Ajouter / Valider'}
                       </button>
                     </div>
                   </div>
