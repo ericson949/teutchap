@@ -393,7 +393,7 @@ export default function EventOverview() {
   const guestPercentage = Math.min(100, Math.round((joinedGuests / maxGuests) * 100))
 
   // Déduire les invités uniques ayant interagi à partir du tableau photos en incluant la colonne prioritaire contributor_name
-  const extractedNames = photos.map(p => p.contributor_name || p.guest_name || p.author_name || p.guest_id).filter(Boolean)
+  const extractedNames = photos.map(p => p.uploader_name || p.contributor_name || p.guest_name || p.author_name || p.guest_id).filter(Boolean)
   const existingAdmins = eventData?.co_admins || []
   
   // Combinaison premium des invités DB relationnels et des anciens contributeurs extraits des photos

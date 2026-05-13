@@ -92,7 +92,7 @@ export default function GlobalOfflineSyncManager() {
                   file_size_bytes: item.compressedSize || item.blob?.size || 0,
                   challenge_id: item.challengeId || null,
                   is_moderated: false,
-                  contributor_name: item.contributorName || 'Invité'
+                  uploader_name: item.contributorName || 'Invité'
                 }
               ])
               if (!dbError) {

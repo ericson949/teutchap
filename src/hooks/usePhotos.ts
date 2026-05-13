@@ -33,6 +33,7 @@ export function usePhotos(eventId: string | undefined, options: { challengeId?: 
           file_size_bytes: item.compressedSize || 0,
           challenge_id: item.challengeId || null,
           is_moderated: false,
+          uploader_name: item.contributorName || 'Invité',
           contributor_name: item.contributorName || 'Invité',
           created_at: item.timestamp || new Date().toISOString(),
           is_offline_pending: true
@@ -66,10 +67,13 @@ export function usePhotos(eventId: string | undefined, options: { challengeId?: 
 
         const { data, error } = await query
         if (!error && data) {
-          remotePhotos = data
+          remotePhotos = data.map((p: any) => ({
+            ...p,
+            contributor_name: p.uploader_name || p.contributor_name
+          }))
           fetchSuccess = true
           const cacheKey = options.challengeId ? `teutchap_photos_cache_${eventId}_c_${options.challengeId}` : `teutchap_photos_cache_${eventId}`
-          localStorage.setItem(cacheKey, JSON.stringify(data))
+          localStorage.setItem(cacheKey, JSON.stringify(remotePhotos))
         }
       } catch (err) {
         console.error("Erreur réseau silencieuse fetchPhotos:", err)

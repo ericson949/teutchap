@@ -44,7 +44,7 @@ export default function UploadPhoto() {
         if (cachedP) {
           try {
             const arr = JSON.parse(cachedP)
-            remoteCount = arr.filter((p: any) => p.contributor_name === savedPseudo).length
+            remoteCount = arr.filter((p: any) => p.uploader_name === savedPseudo || p.contributor_name === savedPseudo).length
           } catch(e){}
         }
         if (navigator.onLine) {
@@ -53,7 +53,7 @@ export default function UploadPhoto() {
               .from('photos')
               .select('*', { count: 'exact', head: true })
               .eq('event_id', evId)
-              .eq('contributor_name', savedPseudo)
+              .eq('uploader_name', savedPseudo)
             if (count !== null && count !== undefined) {
               remoteCount = count
             }

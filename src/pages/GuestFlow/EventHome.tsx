@@ -26,6 +26,7 @@ export default function EventHome() {
   const [offlineQueueCount, setOfflineQueueCount] = useState(0)
   const [isSyncing, setIsSyncing] = useState(false)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const [filterOfflineOnly, setFilterOfflineOnly] = useState(false)
   
   // Onboarding session management via local persistence
   const [guestPseudo, setGuestPseudo] = useState('')
@@ -205,7 +206,7 @@ export default function EventHome() {
                 file_size_bytes: item.compressedSize || item.blob?.size || 0,
                 challenge_id: item.challengeId || null,
                 is_moderated: false,
-                contributor_name: item.contributorName || guestPseudo || 'Invité'
+                uploader_name: item.contributorName || guestPseudo || 'Invité'
               }
             ])
             if (!dbError) {
@@ -927,50 +928,88 @@ export default function EventHome() {
               </div>
             </div>
 
-            {photosLoading ? (
-              <div className="grid grid-cols-2 gap-3 animate-pulse">
-                 {[1,2,3,4].map(i => (
-                    <div key={i} className="aspect-[3/4] bg-white/5 rounded-2xl" />
-                 ))}
-              </div>
-            ) : photos.length === 0 ? (
-              <div className="text-center py-16 px-4 glass rounded-3xl border-dashed border-white/10 bg-white/[0.01]">
-                <Camera className="text-primary opacity-30 mx-auto mb-3" size={32} />
-                <p className="text-gray-400 font-bold text-sm">Aucune photo pour l'instant</p>
-                <p className="text-gray-600 text-[9px] mt-1 uppercase tracking-wider font-black">Soyez le premier contributeur !</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {photos.map((photo) => (
-                  <div 
-                    key={photo.id} 
-                    className="group relative bg-white/5 rounded-2xl overflow-hidden border border-white/5 shadow-lg"
-                  >
-                    <img 
-                      src={photo.url_thumb?.startsWith('blob:') ? photo.url_thumb : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
-                      className={`w-full aspect-[3/4] object-cover transition-all ${isRevealModeActive ? 'blur-xl scale-110 opacity-30' : ''}`}
-                      loading="lazy"
-                    />
-                    
-                    {photo.is_offline_pending && (
-                      <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center space-x-1 text-primary-light border border-white/10 z-10 animate-pulse">
-                        <Cloud size={8} />
-                        <span className="text-[6px] font-black uppercase tracking-widest">En attente</span>
+            {(() => {
+              const pendingPhotos = photos.filter(p => p.is_offline_pending)
+              const displayedPhotos = filterOfflineOnly ? pendingPhotos : photos
+
+              return (
+                <>
+                  {pendingPhotos.length > 0 && (
+                    <div className="glass-dark border border-amber-500/30 p-3 rounded-2xl bg-amber-500/5 flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3 min-w-0">
+                        <div className="p-2 bg-amber-500/10 rounded-xl text-amber-400 shrink-0">
+                          <Cloud size={18} className="animate-bounce" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-black text-amber-200 truncate">
+                            {pendingPhotos.length} souvenir(s) en attente
+                          </p>
+                          <p className="text-[9px] text-amber-400/80 truncate">
+                            Envoi auto au retour de la connexion
+                          </p>
+                        </div>
                       </div>
-                    )}
-                    
-                    {isRevealModeActive ? (
-                       <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                          <Clock className="text-white/30" size={24} />
-                       </div>
-                    ) : (
-                      <>
-                        {/* Contributor Signature */}
-                        {photo.contributor_name && (
-                          <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[7px] font-bold text-white/90 max-w-[100px] truncate">
-                            ✍️ {photo.contributor_name}
-                          </div>
-                        )}
+                      <button
+                        onClick={() => setFilterOfflineOnly(!filterOfflineOnly)}
+                        className={`px-2.5 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-wider transition-all border shrink-0 ml-2 ${
+                          filterOfflineOnly 
+                            ? 'bg-amber-500 text-black border-amber-400 shadow-lg' 
+                            : 'glass border-amber-500/20 text-amber-300 hover:bg-amber-500/10'
+                        }`}
+                      >
+                        {filterOfflineOnly ? 'Voir tout' : 'Filtrer'}
+                      </button>
+                    </div>
+                  )}
+
+                  {photosLoading ? (
+                    <div className="grid grid-cols-2 gap-3 animate-pulse">
+                      {[1,2,3,4].map(i => (
+                        <div key={i} className="aspect-[3/4] bg-white/5 rounded-2xl" />
+                      ))}
+                    </div>
+                  ) : displayedPhotos.length === 0 ? (
+                    <div className="text-center py-16 px-4 glass rounded-3xl border-dashed border-white/10 bg-white/[0.01]">
+                      <Camera className="text-primary opacity-30 mx-auto mb-3" size={32} />
+                      <p className="text-gray-400 font-bold text-sm">
+                        {filterOfflineOnly ? 'Aucune photo en attente' : 'Aucune photo pour l\'instant'}
+                      </p>
+                      <p className="text-gray-600 text-[9px] mt-1 uppercase tracking-wider font-black">
+                        {filterOfflineOnly ? 'Tout est synchronisé !' : 'Soyez le premier contributeur !'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {displayedPhotos.map((photo) => (
+                        <div 
+                          key={photo.id} 
+                          className="group relative bg-white/5 rounded-2xl overflow-hidden border border-white/5 shadow-lg"
+                        >
+                          <img 
+                            src={photo.url_thumb?.startsWith('blob:') ? photo.url_thumb : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
+                            className={`w-full aspect-[3/4] object-cover transition-all ${isRevealModeActive ? 'blur-xl scale-110 opacity-30' : ''}`}
+                            loading="lazy"
+                          />
+                          
+                          {photo.is_offline_pending && (
+                            <div className="absolute top-2 right-2 bg-amber-500/90 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center space-x-1 text-black border border-amber-300 z-20 shadow-lg animate-pulse">
+                              <Cloud size={8} className="stroke-[3]" />
+                              <span className="text-[6px] font-black uppercase tracking-widest text-black">Attente</span>
+                            </div>
+                          )}
+                          
+                          {isRevealModeActive ? (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                              <Clock className="text-white/30" size={24} />
+                            </div>
+                          ) : (
+                            <>
+                              {/* Contributor Signature */}
+                              {(photo.uploader_name || photo.contributor_name) && (
+                                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[7px] font-bold text-white/90 max-w-[100px] truncate z-10">
+                                  ✍️ {photo.uploader_name || photo.contributor_name}
+                                </div>
+                              )}
 
                         {/* AI Tags overlay */}
                         {eventData.ai_tagging_enabled && photo.ai_tags?.length > 0 && (
@@ -1009,6 +1048,9 @@ export default function EventHome() {
                 ))}
               </div>
             )}
+          </>
+        )
+      })()}
           </div>
         </div>
       </div>
