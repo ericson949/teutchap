@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [newChallenge, setNewChallenge] = useState({ title: '', description: '' })
   const [showHighlights, setShowHighlights] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [filterOfflineOnly, setFilterOfflineOnly] = useState(false)
 
   // --- CHRONOMÈTRE INTELLIGENT MULTI-PHASES (NIVEAU SUPÉRIEUR) ---
   const [timeRemaining, setTimeRemaining] = useState<{
@@ -829,53 +830,94 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {photos.length === 0 ? (
-            <div className="glass border border-white/5 border-dashed rounded-[3rem] p-24 flex flex-col items-center justify-center text-gray-600 bg-white/[0.01] group">
-              <div className="bg-white/5 p-8 rounded-full mb-8 group-hover:scale-110 transition-transform duration-500">
-                <ImageIcon size={56} className="opacity-10" />
-              </div>
-              <p className="font-black tracking-tight text-xl text-gray-500">L'album est encore vide</p>
-              <p className="text-[10px] mt-3 uppercase tracking-[0.2em] font-bold opacity-40 text-center max-w-xs leading-loose">Les photos de vos convives apparaîtront ici <br className="hidden md:block" /> instantanément.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-              {photos.map((photo: any, idx: number) => (
-                <div 
-                  key={photo.id} 
-                  className="relative aspect-[3/4] rounded-[1.5rem] md:rounded-[2rem] overflow-hidden glass border border-white/10 group shadow-xl transition-all duration-500 hover:-translate-y-2"
-                  style={{ animationDelay: `${idx * 100}ms` }}
-                >
-                  <img 
-                    src={photo.url_thumb?.startsWith('blob:') ? photo.url_thumb : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
-                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                    loading="lazy"
-                  />
-                  
-                  {photo.is_offline_pending && (
-                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center space-x-1 text-primary-light border border-white/10 z-10 animate-pulse">
-                      <Cloud size={10} />
-                      <span className="text-[7px] font-black uppercase tracking-widest">En attente</span>
+          {(() => {
+            const pendingPhotos = photos.filter((p: any) => p.is_offline_pending)
+            const displayedPhotos = filterOfflineOnly ? pendingPhotos : photos
+
+            return (
+              <>
+                {pendingPhotos.length > 0 && (
+                  <div className="glass-dark border border-amber-500/30 p-4 rounded-3xl bg-amber-500/5 flex items-center justify-between mb-6 shadow-xl">
+                    <div className="flex items-center space-x-4 min-w-0">
+                      <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-400 shrink-0">
+                        <Cloud size={24} className="animate-bounce" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-black text-amber-200 truncate">
+                          {pendingPhotos.length} photo(s) en attente de réseau partagée(s) en local
+                        </p>
+                        <p className="text-[10px] text-amber-400/80 truncate mt-0.5">
+                          Elles seront synchronisées automatiquement en tâche de fond au retour de la connexion.
+                        </p>
+                      </div>
                     </div>
-                  )}
-                  
-                  {photo.is_flagged ? (
-                     <div className="absolute inset-0 bg-red-900/60 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center">
-                        <Shield size={24} className="text-white mb-2" />
-                        <span className="text-[8px] font-black uppercase tracking-widest text-white">Photo bloquée par l'IA</span>
-                     </div>
-                  ) : (
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                       <div className="flex gap-1">
-                          {photo.ai_tags?.slice(0, 2).map((t: string) => (
-                            <span key={t} className="text-[6px] font-black uppercase tracking-widest bg-white/20 px-1.5 py-0.5 rounded-md text-white">#{t}</span>
-                          ))}
-                       </div>
+                    <button
+                      onClick={() => setFilterOfflineOnly(!filterOfflineOnly)}
+                      className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border shrink-0 ml-3 ${
+                        filterOfflineOnly 
+                          ? 'bg-amber-500 text-black border-amber-400 shadow-xl' 
+                          : 'glass border-amber-500/20 text-amber-300 hover:bg-amber-500/10'
+                      }`}
+                    >
+                      {filterOfflineOnly ? 'Voir l\'album entier' : 'Inspecter l\'attente'}
+                    </button>
+                  </div>
+                )}
+
+                {displayedPhotos.length === 0 ? (
+                  <div className="glass border border-white/5 border-dashed rounded-[3rem] p-24 flex flex-col items-center justify-center text-gray-600 bg-white/[0.01] group">
+                    <div className="bg-white/5 p-8 rounded-full mb-8 group-hover:scale-110 transition-transform duration-500">
+                      <ImageIcon size={56} className="opacity-10" />
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                    <p className="font-black tracking-tight text-xl text-gray-500">
+                      {filterOfflineOnly ? 'Aucune photo en file d\'attente' : 'L\'album est encore vide'}
+                    </p>
+                    <p className="text-[10px] mt-3 uppercase tracking-[0.2em] font-bold opacity-40 text-center max-w-xs leading-loose">
+                      {filterOfflineOnly ? 'Toutes les photos locales ont été synchronisées avec succès.' : 'Les photos de vos convives apparaîtront ici instantanément.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                    {displayedPhotos.map((photo: any, idx: number) => (
+                      <div 
+                        key={photo.id} 
+                        className="relative aspect-[3/4] rounded-[1.5rem] md:rounded-[2rem] overflow-hidden glass border border-white/10 group shadow-xl transition-all duration-500 hover:-translate-y-2"
+                        style={{ animationDelay: `${idx * 100}ms` }}
+                      >
+                        <img 
+                          src={photo.url_thumb?.startsWith('blob:') ? photo.url_thumb : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
+                          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                          loading="lazy"
+                        />
+                        
+                        {photo.is_offline_pending && (
+                          <div className="absolute top-3 right-3 bg-amber-500/90 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center space-x-1 text-black border border-amber-300 z-20 shadow-lg animate-pulse">
+                            <Cloud size={10} className="stroke-[3]" />
+                            <span className="text-[7px] font-black uppercase tracking-widest text-black">Attente</span>
+                          </div>
+                        )}
+                        
+                        {photo.is_flagged ? (
+                           <div className="absolute inset-0 bg-red-900/60 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center">
+                              <Shield size={24} className="text-white mb-2" />
+                              <span className="text-[8px] font-black uppercase tracking-widest text-white">Photo bloquée par l'IA</span>
+                           </div>
+                        ) : (
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                             <div className="flex gap-1">
+                                {photo.ai_tags?.slice(0, 2).map((t: string) => (
+                                  <span key={t} className="text-[6px] font-black uppercase tracking-widest bg-white/20 px-1.5 py-0.5 rounded-md text-white">#{t}</span>
+                                ))}
+                             </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </section>
       </main>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, Image as ImageIcon, Hash, Clock, Bell, X, RefreshCw, CloudLightning, AlertTriangle, Users, Check, Lock, PlusCircle, Calendar, User, Loader2, Cloud } from 'lucide-react'
+import { Camera, Image as ImageIcon, Hash, Clock, Bell, X, RefreshCw, CloudLightning, AlertTriangle, Users, Check, Lock, PlusCircle, Calendar, User, Loader2, Cloud, Trash2 } from 'lucide-react'
 import localforage from 'localforage'
 import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
@@ -153,6 +153,46 @@ export default function EventHome() {
       sendNotification('Activé ! 🔔', { body: 'Vous serez alerté des nouveaux moments partagés.' })
     }
     setShowNotificationPrompt(false)
+  }
+
+  const handleDeletePhoto = async (photo: any, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm("Voulez-vous vraiment supprimer cette photo ?")) return
+
+    if (photo.is_offline_pending) {
+      try {
+        const queue: any[] = await localforage.getItem('teutchap_offline_queue') || []
+        const filtered = queue.filter(item => item.id !== photo.id)
+        await localforage.setItem('teutchap_offline_queue', filtered)
+        
+        // Décrémenter le compteur d'uploads local
+        const currentCount = parseInt(localStorage.getItem(`teutchap_uploads_count_${token}`) || '0', 10)
+        if (currentCount > 0) {
+          localStorage.setItem(`teutchap_uploads_count_${token}`, (currentCount - 1).toString())
+        }
+        setOfflineQueueCount(filtered.filter(item => item.token === token).length)
+        // Re-déclencher un rafraîchissement local
+        window.dispatchEvent(new Event('online'))
+      } catch(err) {
+        console.error("Erreur suppression photo en attente:", err)
+      }
+    } else {
+      try {
+        const { error } = await supabase.from('photos').delete().eq('id', photo.id)
+        if (error) {
+          alert("Erreur lors de la suppression sur le serveur.")
+        } else {
+          const currentCount = parseInt(localStorage.getItem(`teutchap_uploads_count_${token}`) || '0', 10)
+          if (currentCount > 0) {
+            localStorage.setItem(`teutchap_uploads_count_${token}`, (currentCount - 1).toString())
+          }
+          // Déclencher un re-fetch si nécessaire, bien que le real-time ou le polling s'en charge
+          window.dispatchEvent(new Event('online'))
+        }
+      } catch(err) {
+        console.error("Erreur suppression photo serveur:", err)
+      }
+    }
   }
 
   const handleSyncOffline = async () => {
