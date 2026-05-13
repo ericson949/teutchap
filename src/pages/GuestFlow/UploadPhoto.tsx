@@ -28,32 +28,82 @@ export default function UploadPhoto() {
     if (!token) return
     
     // Récupérer la session persistante
-    const savedPseudo = localStorage.getItem(`teutchap_pseudo_${token}`)
-    if (savedPseudo) setGuestPseudo(savedPseudo)
+    const savedPseudo = localStorage.getItem(`teutchap_pseudo_${token}`) || 'Invité Anonyme'
+    setGuestPseudo(savedPseudo)
 
-    // Récupérer le compteur d'uploads de cet appareil
-    const uploadsKey = `teutchap_uploads_count_${token}`
-    const count = parseInt(localStorage.getItem(uploadsKey) || '0', 10)
-    setLocalUploadsCount(count)
+    const checkAccurateCount = async (evId?: string) => {
+      let offlineCount = 0
+      try {
+        const queue: any[] = await localforage.getItem('teutchap_offline_queue') || []
+        offlineCount = queue.filter(item => item.token === token).length
+      } catch(e){}
+
+      let remoteCount = 0
+      if (evId && !evId.startsWith('mock-id-')) {
+        const cachedP = localStorage.getItem(`teutchap_photos_cache_${evId}`)
+        if (cachedP) {
+          try {
+            const arr = JSON.parse(cachedP)
+            remoteCount = arr.filter((p: any) => p.contributor_name === savedPseudo).length
+          } catch(e){}
+        }
+        if (navigator.onLine) {
+          try {
+            const { count } = await supabase
+              .from('photos')
+              .select('*', { count: 'exact', head: true })
+              .eq('event_id', evId)
+              .eq('contributor_name', savedPseudo)
+            if (count !== null && count !== undefined) {
+              remoteCount = count
+            }
+          } catch(e){}
+        }
+      }
+
+      const accurateTotal = offlineCount + remoteCount
+      setLocalUploadsCount(accurateTotal)
+      localStorage.setItem(`teutchap_uploads_count_${token}`, accurateTotal.toString())
+    }
 
     const fetchEventInfo = async () => {
-      try {
-        const { data: event } = await supabase.from('events').select('*').eq('token', token).single()
-        if (event) {
-          setEventData(event)
-          const { data: chalData } = await supabase.from('challenges').select('*').eq('event_id', event.id)
-          if (chalData) setChallenges(chalData)
+      let resolvedEvent = null
+      const cachedEvent = localStorage.getItem(`teutchap_event_cache_${token}`)
+      if (cachedEvent) {
+        try {
+          resolvedEvent = JSON.parse(cachedEvent)
+          setEventData(resolvedEvent)
+        } catch(e){}
+      }
+
+      if (navigator.onLine) {
+        try {
+          const { data: event } = await supabase.from('events').select('*').eq('token', token).single()
+          if (event) {
+            resolvedEvent = event
+            setEventData(event)
+            localStorage.setItem(`teutchap_event_cache_${token}`, JSON.stringify(event))
+            if (event.id) localStorage.setItem(`teutchap_event_cache_${event.id}`, JSON.stringify(event))
+            const { data: chalData } = await supabase.from('challenges').select('*').eq('event_id', event.id)
+            if (chalData) setChallenges(chalData)
+          }
+        } catch (err) {
+          console.error("Erreur fetchEventInfo Supabase:", err)
         }
-      } catch (err) {
-        // Mode résilience locale
+      }
+
+      if (!resolvedEvent) {
         const mockPlan = localStorage.getItem('teutchap_dev_plan') || 'premium'
-        setEventData({
+        resolvedEvent = {
           id: `mock-id-${token}`,
           name: "Célébration Teutchap",
           token: token,
           plan: mockPlan
-        })
+        }
+        setEventData(resolvedEvent)
       }
+
+      await checkAccurateCount(resolvedEvent?.id)
     }
     fetchEventInfo()
   }, [token])
@@ -135,19 +185,22 @@ export default function UploadPhoto() {
     if (!photoBlob) return
     setIsUploading(true)
 
-    // Incrémenter et persister le compteur local de protection de l'espace
-    const nextCount = localUploadsCount + 1
-    localStorage.setItem(`teutchap_uploads_count_${token}`, nextCount.toString())
-    setLocalUploadsCount(nextCount)
+    let realEventId = eventData?.id
+    if (!realEventId || realEventId.startsWith('mock-id-')) {
+      const cached = localStorage.getItem(`teutchap_event_cache_${token}`)
+      if (cached) {
+        try { realEventId = JSON.parse(cached).id } catch(e){}
+      }
+    }
 
     const payload = {
-      event_id: eventData?.id || `mock-id-${token}`,
+      event_id: realEventId || `mock-id-${token}`,
       url_original: `${token}_${Date.now()}.jpg`,
       url_thumb: `${token}_${Date.now()}.jpg`,
       file_size_bytes: compressedSize,
       challenge_id: selectedChallenge,
       is_moderated: false,
-      contributor_name: guestPseudo // Rattachement strict et garanti de l'identité
+      uploader_name: guestPseudo // Rattachement strict et garanti de l'identité
     }
 
     const enqueueOfflinePhoto = async () => {
@@ -156,7 +209,7 @@ export default function UploadPhoto() {
         offlineQueue.push({
           id: crypto.randomUUID(),
           token,
-          eventId: eventData?.id,
+          eventId: realEventId,
           blob: photoBlob,
           compressedSize,
           challengeId: selectedChallenge,
@@ -164,6 +217,10 @@ export default function UploadPhoto() {
           timestamp: new Date().toISOString()
         })
         await localforage.setItem('teutchap_offline_queue', offlineQueue)
+
+        const nextCount = localUploadsCount + 1
+        localStorage.setItem(`teutchap_uploads_count_${token}`, nextCount.toString())
+        setLocalUploadsCount(nextCount)
       } catch (qErr) {
         console.error("Erreur d'écriture dans la file locale:", qErr)
       }
@@ -172,7 +229,7 @@ export default function UploadPhoto() {
     try {
       const isOnline = navigator.onLine
       
-      if (!isOnline || eventData?.id?.startsWith('mock-id-')) {
+      if (!isOnline || !realEventId || realEventId.startsWith('mock-id-')) {
         await enqueueOfflinePhoto()
         alert('🌐 Mode Démo / Hors-ligne activé. Votre souvenir signé est rattaché et visible instantanément !')
         navigate(`/e/${token}`)
@@ -188,6 +245,10 @@ export default function UploadPhoto() {
 
       const { error: dbError } = await supabase.from('photos').insert([payload])
       if (dbError) throw dbError
+
+      const nextCount = localUploadsCount + 1
+      localStorage.setItem(`teutchap_uploads_count_${token}`, nextCount.toString())
+      setLocalUploadsCount(nextCount)
 
       navigate(`/e/${token}`)
     } catch (err) {

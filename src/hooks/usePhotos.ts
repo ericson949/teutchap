@@ -2,19 +2,24 @@ import { useState, useEffect } from 'react'
 import localforage from 'localforage'
 import { supabase } from '../lib/supabase'
 
-export function usePhotos(eventId: string | undefined, options: { challengeId?: string | null, autoModeration?: boolean } = {}) {
+export function usePhotos(eventId: string | undefined, options: { challengeId?: string | null, autoModeration?: boolean, token?: string } = {}) {
   const [photos, setPhotos] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchPhotos = async () => {
-    if (!eventId) return
+    if (!eventId && !options.token) return
     setLoading(true)
 
     // 1. Lire d'abord les photos en attente hors-ligne pour cet événement
     let offlineVirtualPhotos: any[] = []
     try {
       const queue: any[] = await localforage.getItem('teutchap_offline_queue') || []
-      const eventQueue = queue.filter(item => item.eventId === eventId || item.eventId?.startsWith('mock-id-'))
+      const eventQueue = queue.filter(item => {
+        if (eventId && item.eventId === eventId) return true
+        if (options.token && item.token === options.token) return true
+        if (item.eventId?.startsWith('mock-id-')) return true
+        return false
+      })
       offlineVirtualPhotos = eventQueue.map(item => {
         let objectUrl = ''
         if (item.blob) {
@@ -22,7 +27,7 @@ export function usePhotos(eventId: string | undefined, options: { challengeId?: 
         }
         return {
           id: item.id || crypto.randomUUID(),
-          event_id: eventId,
+          event_id: eventId || item.eventId || 'local-event',
           url_original: objectUrl,
           url_thumb: objectUrl,
           file_size_bytes: item.compressedSize || 0,
@@ -43,7 +48,7 @@ export function usePhotos(eventId: string | undefined, options: { challengeId?: 
     let remotePhotos: any[] = []
     let fetchSuccess = false
 
-    if (navigator.onLine) {
+    if (eventId && navigator.onLine) {
       try {
         let query = supabase
           .from('photos')
@@ -71,7 +76,7 @@ export function usePhotos(eventId: string | undefined, options: { challengeId?: 
       }
     }
 
-    if (!fetchSuccess) {
+    if (!fetchSuccess && eventId) {
       // Tenter de lire le cache local
       const cacheKey = options.challengeId ? `teutchap_photos_cache_${eventId}_c_${options.challengeId}` : `teutchap_photos_cache_${eventId}`
       const cached = localStorage.getItem(cacheKey)
@@ -87,12 +92,14 @@ export function usePhotos(eventId: string | undefined, options: { challengeId?: 
   useEffect(() => {
     fetchPhotos()
 
-    if (!eventId) return
-
     // Rafraîchissement périodique pour intégrer les captures locales instantanément
     const localInterval = setInterval(() => {
       fetchPhotos()
     }, 3000)
+
+    if (!eventId) {
+      return () => clearInterval(localInterval)
+    }
 
     // Real-time subscription
     const channel = supabase
@@ -109,7 +116,7 @@ export function usePhotos(eventId: string | undefined, options: { challengeId?: 
       clearInterval(localInterval)
       supabase.removeChannel(channel)
     }
-  }, [eventId, options.challengeId, options.autoModeration])
+  }, [eventId, options.challengeId, options.autoModeration, options.token])
 
   return { photos, loading, refreshPhotos: fetchPhotos }
 }

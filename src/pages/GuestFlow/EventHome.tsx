@@ -109,7 +109,8 @@ export default function EventHome() {
 
   const { photos, loading: photosLoading } = usePhotos(eventData?.id, { 
     challengeId: selectedChallenge, 
-    autoModeration: eventData?.auto_moderation 
+    autoModeration: eventData?.auto_moderation,
+    token
   })
   const { reactions, addReaction } = useReactions()
 
@@ -154,7 +155,28 @@ export default function EventHome() {
   }
 
   const handleSyncOffline = async () => {
-    if (!eventData?.id) return
+    // 1. Déterminer le vrai ID de l'événement de manière garantie
+    let resolvedEventId = eventData?.id
+    if (!resolvedEventId || resolvedEventId.startsWith('mock-id-')) {
+      const cached = localStorage.getItem(`teutchap_event_cache_${token}`)
+      if (cached) {
+        try { resolvedEventId = JSON.parse(cached).id } catch(e){}
+      }
+    }
+    if (!resolvedEventId || resolvedEventId.startsWith('mock-id-')) {
+      if (navigator.onLine) {
+        try {
+          const { data } = await supabase.from('events').select('id').eq('token', token).single()
+          if (data?.id) resolvedEventId = data.id
+        } catch(e){}
+      }
+    }
+
+    if (!resolvedEventId || resolvedEventId.startsWith('mock-id-')) {
+      console.warn("Synchronisation suspendue: ID réel de l'événement introuvable.")
+      return
+    }
+
     setIsSyncing(true)
     try {
       const queue: any[] = await localforage.getItem('teutchap_offline_queue') || []
@@ -177,7 +199,7 @@ export default function EventHome() {
           if (!uploadError) {
             const { error: dbError } = await supabase.from('photos').insert([
               {
-                event_id: eventData.id,
+                event_id: resolvedEventId,
                 url_original: fileName,
                 url_thumb: fileName,
                 file_size_bytes: item.compressedSize || item.blob?.size || 0,
@@ -189,7 +211,11 @@ export default function EventHome() {
             if (!dbError) {
               successfulCount++
               itemSuccess = true
+            } else {
+              console.error("Erreur insertion BDD en synchro:", dbError)
             }
+          } else {
+            console.error("Erreur upload storage en synchro:", uploadError)
           }
         } catch (e) {
           console.error("Erreur de synchro unitaire:", e)
