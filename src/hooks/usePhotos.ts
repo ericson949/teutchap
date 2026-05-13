@@ -21,8 +21,8 @@ export function usePhotos(eventId: string | undefined, options: { challengeId?: 
         return false
       })
       offlineVirtualPhotos = eventQueue.map(item => {
-        let objectUrl = ''
-        if (item.blob) {
+        let objectUrl = item.previewUrl || ''
+        if (!objectUrl && item.blob) {
           try { objectUrl = URL.createObjectURL(item.blob) } catch(e){}
         }
         return {

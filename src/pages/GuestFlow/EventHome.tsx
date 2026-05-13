@@ -250,7 +250,11 @@ export default function EventHome() {
           const fileName = `${token}_${Date.now()}_${Math.random().toString(36).substring(2,7)}.jpg`
           const { error: uploadError } = await supabase.storage
             .from('events_photos')
-            .upload(fileName, item.blob)
+            .upload(fileName, item.blob, {
+              cacheControl: '3600',
+              upsert: false,
+              contentType: item.blob?.type || 'image/jpeg'
+            })
 
           if (!uploadError) {
             const { error: dbError } = await supabase.from('photos').insert([
@@ -1041,7 +1045,7 @@ export default function EventHome() {
                           className="group relative bg-white/5 rounded-2xl overflow-hidden border border-white/5 shadow-lg"
                         >
                           <img 
-                            src={photo.url_thumb?.startsWith('blob:') ? photo.url_thumb : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
+                            src={photo.url_thumb?.startsWith('blob:') || photo.url_thumb?.startsWith('data:') ? photo.url_thumb : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
                             className={`w-full aspect-[3/4] object-cover transition-all ${isRevealModeActive ? 'blur-xl scale-110 opacity-30' : ''}`}
                             loading="lazy"
                           />

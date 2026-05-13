@@ -121,67 +121,89 @@ export default function UploadPhoto() {
 
   const compressImage = (file: File): Promise<Blob> => {
     return new Promise((resolve) => {
-      // Si le fichier n'est pas une image standard, on retourne directement le fichier d'origine en guise de fallback
-      if (!file.type.startsWith('image/')) {
-        return resolve(file)
-      }
-      
-      const img = new Image()
-      const objectUrl = URL.createObjectURL(file)
-      img.src = objectUrl
-      
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas')
-          let { width, height } = img
-
-          const MAX_WIDTH = 1920
-          const MAX_HEIGHT = 1080
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width
-              width = MAX_WIDTH
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height
-              height = MAX_HEIGHT
-            }
-          }
-
-          canvas.width = width
-          canvas.height = height
-          const ctx = canvas.getContext('2d')
-          if (!ctx) {
-            URL.revokeObjectURL(objectUrl)
-            return resolve(file)
-          }
-          
-          ctx.drawImage(img, 0, 0, width, height)
-          
-          canvas.toBlob(
-            (blob) => {
-              URL.revokeObjectURL(objectUrl)
-              if (blob) resolve(blob)
-              else resolve(file)
-            },
-            'image/jpeg',
-            0.75
-          )
-        } catch (e) {
-          URL.revokeObjectURL(objectUrl)
-          resolve(file)
+      let resolved = false;
+      const complete = (res: Blob) => {
+        if (!resolved) {
+          resolved = true;
+          resolve(res);
         }
+      };
+
+      // Sécurité anti-gel : si l'image native mobile (HEIC, etc.) ne charge pas en 1.2s, on renvoie le fichier brut
+      setTimeout(() => {
+        complete(file);
+      }, 1200);
+
+      try {
+        if (!file || !file.type || !file.type.startsWith('image/')) {
+          return complete(file);
+        }
+        
+        let objectUrl = '';
+        try {
+          objectUrl = URL.createObjectURL(file);
+        } catch (e) {
+          return complete(file);
+        }
+
+        const img = new Image();
+        img.src = objectUrl;
+        
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            let { width, height } = img;
+
+            const MAX_WIDTH = 1920;
+            const MAX_HEIGHT = 1080;
+
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              try { URL.revokeObjectURL(objectUrl); } catch(e){}
+              return complete(file);
+            }
+            
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            canvas.toBlob(
+              (blob) => {
+                try { URL.revokeObjectURL(objectUrl); } catch(e){}
+                if (blob) complete(blob);
+                else complete(file);
+              },
+              'image/jpeg',
+              0.75
+            );
+          } catch (e) {
+            try { URL.revokeObjectURL(objectUrl); } catch(err){}
+            complete(file);
+          }
+        };
+        
+        img.onerror = () => {
+          try { URL.revokeObjectURL(objectUrl); } catch(e){}
+          complete(file);
+        };
+      } catch (fatalErr) {
+        complete(file);
       }
-      
-      img.onerror = () => {
-        URL.revokeObjectURL(objectUrl)
-        // Fallback ultime : garantie d'intégration sans rejet de la capture
-        resolve(file)
-      }
-    })
+    });
   }
+
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return
@@ -204,19 +226,42 @@ export default function UploadPhoto() {
     try {
       const newPhotos: PendingPhoto[] = []
       for (const file of allowedFiles) {
-        const compressedBlob = await compressImage(file)
-        newPhotos.push({
-          id: crypto.randomUUID(),
-          file,
-          blob: compressedBlob,
-          url: URL.createObjectURL(compressedBlob),
-          compressedSize: compressedBlob.size
-        })
+        try {
+          const compressedBlob = await compressImage(file)
+          
+          let previewUrl = ''
+          try {
+            previewUrl = URL.createObjectURL(compressedBlob)
+          } catch (urlErr) {
+            try {
+              previewUrl = await new Promise<string>((res) => {
+                const reader = new FileReader()
+                reader.onloadend = () => res((reader.result as string) || '')
+                reader.onerror = () => res('')
+                reader.readAsDataURL(compressedBlob)
+              })
+            } catch (readerErr) {
+              previewUrl = ''
+            }
+          }
+
+          newPhotos.push({
+            id: crypto.randomUUID(),
+            file,
+            blob: compressedBlob,
+            url: previewUrl,
+            compressedSize: compressedBlob.size
+          })
+        } catch (itemErr) {
+          console.warn('Skipping item compression error:', itemErr)
+        }
       }
-      setPendingPhotos(prev => [...prev, ...newPhotos])
+      
+      if (newPhotos.length > 0) {
+        setPendingPhotos(prev => [...prev, ...newPhotos])
+      }
     } catch (err) {
-      console.error('Compression error:', err)
-      alert("Erreur lors de l'optimisation d'une ou plusieurs images.")
+      console.error('File selection error:', err)
     } finally {
       setIsCompressing(false)
       // Réinitialisation de la valeur de l'input pour autoriser la re-sélection des mêmes fichiers
@@ -247,6 +292,7 @@ export default function UploadPhoto() {
           token,
           eventId: targetEventId,
           blob: photoItem.blob,
+          previewUrl: photoItem.url,
           compressedSize: photoItem.compressedSize,
           challengeId: selectedChallenge,
           contributorName: guestPseudo,
@@ -281,7 +327,11 @@ export default function UploadPhoto() {
           
           const { error: uploadError } = await supabase.storage
             .from('events_photos')
-            .upload(fileName, item.blob)
+            .upload(fileName, item.blob, {
+              cacheControl: '3600',
+              upsert: false,
+              contentType: item.blob.type || 'image/jpeg'
+            })
 
           if (uploadError) throw uploadError
 
@@ -309,8 +359,12 @@ export default function UploadPhoto() {
       localStorage.setItem(`teutchap_uploads_count_${token}`, nextCount.toString())
       setLocalUploadsCount(nextCount)
 
-      if (successCount < pendingPhotos.length) {
+      if (successCount === pendingPhotos.length) {
+        alert(`✨ Succès : ${successCount} photo(s) publiée(s) et signée(s) en direct sur le mur !`)
+      } else if (successCount > 0) {
         alert(`⚠️ Reçu partiel : ${successCount} photos publiées en ligne. Les autres ont été sécurisées en file locale suite à une perturbation réseau.`)
+      } else {
+        alert(`🌐 Mode de secours local activé. Vos photos signées sont sécurisées en file d'attente et visibles instantanément !`)
       }
 
       navigate(`/e/${token}`)

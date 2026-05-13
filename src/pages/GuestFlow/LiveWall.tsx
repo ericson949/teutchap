@@ -175,7 +175,7 @@ export default function LiveWall() {
       <div className="absolute inset-0 z-0 transition-opacity duration-1000">
         <img 
           key={`bg-${currentPhoto.id}`}
-          src={currentPhoto.url_original?.startsWith('blob:') ? currentPhoto.url_original : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${currentPhoto.url_original}`} 
+          src={currentPhoto.url_original?.startsWith('blob:') || currentPhoto.url_original?.startsWith('data:') ? currentPhoto.url_original : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${currentPhoto.url_original}`} 
           className="w-full h-full object-cover blur-[120px] opacity-40 scale-125"
         />
         <div className="absolute inset-0 bg-black/40" />
@@ -185,7 +185,7 @@ export default function LiveWall() {
       <div className="absolute inset-0 z-10 flex items-center justify-center">
         <img 
           key={currentPhoto.id}
-          src={currentPhoto.url_original?.startsWith('blob:') ? currentPhoto.url_original : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${currentPhoto.url_original}`} 
+          src={currentPhoto.url_original?.startsWith('blob:') || currentPhoto.url_original?.startsWith('data:') ? currentPhoto.url_original : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${currentPhoto.url_original}`} 
           className="w-full h-full object-contain animate-ken-burns shadow-[0_0_150px_rgba(0,0,0,0.9)]"
         />
       </div>

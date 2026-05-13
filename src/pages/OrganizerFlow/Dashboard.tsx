@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { Share2, Image as ImageIcon, Copy, X, Zap, Hash, Check, Shield, Sparkles, Clock, LogIn, Save, Hourglass, Eye, Cloud, Trash2 } from 'lucide-react'
@@ -30,6 +30,8 @@ export default function Dashboard() {
   const [showHighlights, setShowHighlights] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [filterOfflineOnly, setFilterOfflineOnly] = useState(false)
+  const adminFileInputRef = useRef<HTMLInputElement>(null)
+  const [isAdminUploading, setIsAdminUploading] = useState(false)
 
   // --- CHRONOMÈTRE INTELLIGENT MULTI-PHASES (NIVEAU SUPÉRIEUR) ---
   const [timeRemaining, setTimeRemaining] = useState<{
@@ -200,6 +202,53 @@ export default function Dashboard() {
       } catch(err) {
         console.error("Erreur suppression photo serveur orga:", err)
       }
+    }
+  }
+
+  const handleAdminUploadChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setIsAdminUploading(true)
+    const token = eventData.token
+    const targetEventId = eventData.id
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      try {
+        // Simple client-side scaling/compression or direct upload
+        const fileName = `${token}_admin_${Date.now()}_${Math.random().toString(36).substring(2,7)}.jpg`
+        const { error: uploadError } = await supabase.storage
+          .from('events_photos')
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: file.type || 'image/jpeg'
+          })
+
+        if (!uploadError) {
+          await supabase.from('photos').insert([
+            {
+              event_id: targetEventId,
+              url_original: fileName,
+              url_thumb: fileName,
+              file_size_bytes: file.size,
+              is_moderated: false,
+              uploader_name: 'Organisateur',
+              contributor_name: 'Organisateur'
+            }
+          ])
+        } else {
+          console.error("Erreur upload storage orga:", uploadError)
+        }
+      } catch (err) {
+        console.error("Erreur de traitement upload admin:", err)
+      }
+    }
+
+    setIsAdminUploading(false)
+    if (adminFileInputRef.current) {
+      adminFileInputRef.current.value = ''
     }
   }
 
@@ -886,12 +935,25 @@ export default function Dashboard() {
               <p className="text-[11px] text-gray-500 font-black uppercase tracking-widest mt-1 opacity-60">Photos partagées par vos invités</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
+              <input 
+                ref={adminFileInputRef} 
+                type="file" 
+                accept="image/*" 
+                multiple 
+                className="hidden" 
+                onChange={handleAdminUploadChange} 
+              />
               <button
-                onClick={() => window.open(`/e/${eventData.token}`, '_blank')}
-                className="flex items-center space-x-2 bg-primary hover:bg-primary-light text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95 border border-primary/20"
+                disabled={isAdminUploading}
+                onClick={() => adminFileInputRef.current?.click()}
+                className="flex items-center space-x-2 bg-primary hover:bg-primary-light text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95 border border-primary/20 disabled:opacity-50"
               >
-                <Cloud size={14} />
-                <span>Ajouter des photos</span>
+                {isAdminUploading ? (
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Cloud size={14} />
+                )}
+                <span>{isAdminUploading ? 'Envoi...' : 'Ajouter des photos'}</span>
               </button>
               <div className="flex items-center space-x-3 text-[9px] font-black uppercase tracking-[0.2em] text-primary bg-primary/5 px-4 py-2 rounded-full border border-primary/10">
                 <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
@@ -955,7 +1017,7 @@ export default function Dashboard() {
                         style={{ animationDelay: `${idx * 100}ms` }}
                       >
                         <img 
-                          src={photo.url_thumb?.startsWith('blob:') ? photo.url_thumb : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
+                          src={photo.url_thumb?.startsWith('blob:') || photo.url_thumb?.startsWith('data:') ? photo.url_thumb : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
                           className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                           loading="lazy"
                         />
