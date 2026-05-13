@@ -44,12 +44,22 @@ export default function EventHome() {
   const [pwdError, setPwdError] = useState(false)
   const [isPasswordVerified, setIsPasswordVerified] = useState(false)
 
-  // Initialize password verification status
+  // Initialize password verification status with URL recovery for In-App Browser transfer
   useEffect(() => {
     if (!token) return
-    const verified = localStorage.getItem(`teutchap_pwd_verified_${token}`)
-    if (verified === 'true') {
+    const params = new URLSearchParams(window.location.search)
+    const urlPwdOk = params.get('pwd_ok')
+
+    const verified = urlPwdOk === '1' || localStorage.getItem(`teutchap_pwd_verified_${token}`) === 'true'
+    if (verified) {
       setIsPasswordVerified(true)
+      localStorage.setItem(`teutchap_pwd_verified_${token}`, 'true')
+      
+      if (urlPwdOk) {
+        params.delete('pwd_ok')
+        const newSearch = params.toString() ? `?${params.toString()}` : ''
+        window.history.replaceState(null, '', window.location.pathname + newSearch)
+      }
     }
   }, [token])
 
@@ -59,18 +69,38 @@ export default function EventHome() {
       setIsPasswordVerified(true)
       localStorage.setItem(`teutchap_pwd_verified_${token}`, 'true')
       setPwdError(false)
+
+      // Transmission dans l'URL pour la transition In-App Browser -> Navigateur Externe
+      const url = new URL(window.location.href)
+      url.searchParams.set('pwd_ok', '1')
+      window.history.replaceState(null, '', url.toString())
     } else {
       setPwdError(true)
     }
   }
 
-  // Load existing session pseudo if available
+  // Load existing session pseudo or recover from In-App Browser URL transfer
   useEffect(() => {
     if (!token) return
-    const saved = localStorage.getItem(`teutchap_pseudo_${token}`)
+    
+    // Vérification prioritaire d'un transfert de session depuis l'URL (échappement In-App)
+    const params = new URLSearchParams(window.location.search)
+    const urlPseudo = params.get('p_sess')
+
+    const saved = urlPseudo || localStorage.getItem(`teutchap_pseudo_${token}`)
+    
     if (saved) {
+      localStorage.setItem(`teutchap_pseudo_${token}`, saved)
       setGuestPseudo(saved)
       setHasSession(true)
+      
+      // Nettoyage discret de la barre d'adresse
+      if (urlPseudo) {
+        params.delete('p_sess')
+        const newSearch = params.toString() ? `?${params.toString()}` : ''
+        window.history.replaceState(null, '', window.location.pathname + newSearch)
+      }
+
       if (joinEventAsGuest && eventData?.id) {
         joinEventAsGuest(saved).then()
       }
@@ -395,6 +425,11 @@ export default function EventHome() {
     localStorage.setItem(`teutchap_pseudo_${token}`, pseudo)
     setGuestPseudo(pseudo)
     setHasSession(true)
+
+    // Injection dans l'URL pour assurer le transfert de session en cas de clic sur "Ouvrir dans le navigateur"
+    const url = new URL(window.location.href)
+    url.searchParams.set('p_sess', pseudo)
+    window.history.replaceState(null, '', url.toString())
 
     // Enregistrement garanti dans la base relationnelle
     if (joinEventAsGuest) {
