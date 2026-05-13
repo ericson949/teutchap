@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Share2, Image as ImageIcon, Copy, X, Zap, Hash, Check, Shield, Sparkles, Clock, LogIn, Save } from 'lucide-react'
+import { Share2, Image as ImageIcon, Copy, X, Zap, Hash, Check, Shield, Sparkles, Clock, LogIn, Save, Hourglass, Eye } from 'lucide-react'
 import { useEvent } from '../../hooks/useEvent'
 import { useChallenges } from '../../hooks/useChallenges'
 import { usePhotos } from '../../hooks/usePhotos'
@@ -24,6 +24,107 @@ export default function Dashboard() {
   const [newChallenge, setNewChallenge] = useState({ title: '', description: '' })
   const [showHighlights, setShowHighlights] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
+
+  // --- CHRONOMÈTRE INTELLIGENT MULTI-PHASES (NIVEAU SUPÉRIEUR) ---
+  const [timeRemaining, setTimeRemaining] = useState<{
+    label: string;
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+    phase: 'before_start' | 'active' | 'before_reveal' | 'finished';
+  }>({
+    label: 'Calcul du cycle...',
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+    phase: 'before_start'
+  })
+
+  useEffect(() => {
+    const getParsedDateTime = (dateStr?: string, timeStr?: string) => {
+      if (!dateStr) return null
+      const base = new Date(dateStr)
+      if (isNaN(base.getTime())) return null
+      if (timeStr) {
+        const [hours, mins] = timeStr.split(':').map(Number)
+        if (!isNaN(hours)) base.setHours(hours)
+        if (!isNaN(mins)) base.setMinutes(mins)
+      }
+      return base
+    }
+
+    // Utiliser event_date, ou à défaut created_at, ou à défaut la date actuelle
+    const baseDateStr = eventData?.event_date || eventData?.created_at || new Date().toISOString()
+    const startDt = getParsedDateTime(baseDateStr, eventData?.start_time) || new Date()
+    
+    // Garde-fou de normalisation si la base renvoie un format inattendu interprété au-delà de l'an 2100
+    if (startDt.getFullYear() > 2100 || startDt.getFullYear() < 2000) {
+      startDt.setTime(Date.now())
+    }
+
+    const endDt = getParsedDateTime(eventData?.end_date || baseDateStr, eventData?.end_time) || new Date(startDt.getTime() + 24 * 3600 * 1000)
+    if (endDt.getFullYear() > 2100 || endDt.getFullYear() < 2000) {
+      endDt.setTime(startDt.getTime() + 24 * 3600 * 1000)
+    }
+
+    const revealDt = new Date(endDt.getTime() + 12 * 3600 * 1000)
+
+    const updateTimer = () => {
+      const now = new Date().getTime()
+      const start = startDt.getTime()
+      const end = endDt.getTime()
+      const reveal = revealDt.getTime()
+
+      let target = start
+      let labelStr = "Avant le début de l'événement"
+      let currentPhase: 'before_start' | 'active' | 'before_reveal' | 'finished' = 'before_start'
+
+      if (now < start) {
+        target = start
+        labelStr = "Avant le début de l'événement"
+        currentPhase = 'before_start'
+      } else if (now >= start && now < end) {
+        target = end
+        labelStr = "Temps restant avant la fin"
+        currentPhase = 'active'
+      } else if (now >= end && now < reveal) {
+        target = reveal
+        labelStr = "Avant le Reveal de l'album"
+        currentPhase = 'before_reveal'
+      } else {
+        setTimeRemaining({
+          label: "Album finalisé et révélé",
+          days: 0,
+          hours: 0,
+          minutes: 0,
+          seconds: 0,
+          phase: 'finished'
+        })
+        return
+      }
+
+      const diff = Math.max(0, target - now)
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+      setTimeRemaining({
+        label: labelStr,
+        days,
+        hours,
+        minutes,
+        seconds,
+        phase: currentPhase
+      })
+    }
+
+    updateTimer()
+    const interval = setInterval(updateTimer, 1000)
+    return () => clearInterval(interval)
+  }, [eventData?.event_date, eventData?.start_time, eventData?.end_date, eventData?.end_time])
 
   // Auto-claim event if user logs in and event is anonymous
   useEffect(() => {
@@ -75,6 +176,66 @@ export default function Dashboard() {
 
   // Get top photos for highlight reel (e.g., top 5 by reactions)
   const highlightPhotos = [...photos].sort((a, b) => (b.reaction_count || 0) - (a.reaction_count || 0)).slice(0, 5)
+
+  // --- DERIVATION DES DONNÉES RÉELLES (PURGE DES MOCKS) ---
+  
+  // 1. Répartition horaire réelle calculée sur l'horodatage de création des photos
+  const getHourlyActivity = () => {
+    const counts = new Array(7).fill(0)
+    if (!photos || photos.length === 0) return { heights: counts, hoursLabel: counts.map((_, i) => `${12 + i}h`) }
+    
+    const now = new Date()
+    const currentHour = now.getHours()
+    
+    photos.forEach(p => {
+      if (!p.created_at) return
+      const dt = new Date(p.created_at)
+      const hr = dt.getHours()
+      const diff = currentHour - hr
+      if (diff >= 0 && diff < 7) {
+        counts[6 - diff]++
+      } else if (diff < 0 && (diff + 24) < 7) {
+        counts[6 - (diff + 24)]++
+      }
+    })
+    
+    const max = Math.max(...counts, 1)
+    const heights = counts.map(c => Math.round((c / max) * 100))
+    const hoursLabel = counts.map((_, idx) => {
+      const h = (currentHour - 6 + idx + 24) % 24
+      return `${h}h`
+    })
+    
+    return { heights, hoursLabel }
+  }
+
+  const { heights: hourlyHeights, hoursLabel } = getHourlyActivity()
+
+  // 2. Taux d'engagement IA basé sur les vraies réactions et tags générés
+  const totalReactions = photos.reduce((sum, p) => sum + (p.reaction_count || 0), 0)
+  const totalTagged = photos.filter(p => p.ai_tags && p.ai_tags.length > 0).length
+  const calculatedEngagement = photos.length > 0 
+    ? Math.min(100, Math.round(((totalReactions + totalTagged * 2) / (photos.length * 3)) * 100))
+    : 0
+
+  // 3. Top Contributeurs déduits à partir des posteurs réels
+  const getTopContributors = () => {
+    if (!photos || photos.length === 0) return []
+    const map: { [key: string]: number } = {}
+    photos.forEach(p => {
+      const author = p.guest_name || p.author_name || 'Invité Anonyme'
+      map[author] = (map[author] || 0) + 1
+    })
+    return Object.entries(map)
+      .map(([name, count]) => ({
+        name,
+        count,
+        avatar: name === 'Invité Anonyme' ? 'IA' : name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3)
+  }
+  const topContributors = getTopContributors()
 
   return (
     <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30 overflow-x-hidden">
@@ -133,6 +294,17 @@ export default function Dashboard() {
               <span>UPGRADE</span>
             </button>
           )}
+
+          {/* Bouton de bascule vers la Vue Simplifiée */}
+          <button 
+            onClick={() => navigate(`/overview/${eventId}`)}
+            className="flex items-center space-x-1.5 glass border border-white/10 hover:border-accent/30 hover:bg-white/5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-300 hover:text-white transition-all active:scale-95"
+            title="Passer en vue simplifiée"
+          >
+            <Eye size={14} className="text-accent" />
+            <span className="hidden sm:inline">Vue Simplifiée</span>
+          </button>
+
           <button 
             onClick={() => user ? navigate('/portal') : setShowAuthModal(true)}
             className="p-2.5 glass border border-white/10 text-gray-400 hover:text-white rounded-xl transition-all"
@@ -143,13 +315,80 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-6xl mx-auto p-4 md:p-10 space-y-8 md:space-y-12 relative z-10">
+        
+        {/* Carte Chronomètre Multi-Phases Dynamique */}
+        <div className="bg-white/[0.02] border border-white/10 rounded-[2rem] p-6 shadow-2xl backdrop-blur-xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-accent/10 blur-[60px] rounded-full pointer-events-none transition-transform group-hover:scale-125" />
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/5 pb-4 gap-3 sm:gap-0">
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-accent/10 border border-accent/20 rounded-2xl text-accent">
+                {timeRemaining.phase === 'finished' ? (
+                  <Check size={20} className="text-green-400 stroke-[3]" />
+                ) : timeRemaining.phase === 'active' ? (
+                  <Hourglass size={20} className="animate-spin" />
+                ) : (
+                  <Clock size={20} className="animate-pulse" />
+                )}
+              </div>
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-widest text-accent block">Cycle Événementiel Intelligent</span>
+                <h3 className="text-sm md:text-base font-bold text-gray-200">{timeRemaining.label}</h3>
+              </div>
+            </div>
+
+            <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border w-fit ${
+              timeRemaining.phase === 'finished' ? 'bg-green-500/10 text-green-400 border-green-500/30' :
+              timeRemaining.phase === 'active' ? 'bg-accent/10 text-accent border-accent/30 animate-pulse' :
+              'bg-primary/10 text-primary-light border-primary/30'
+            }`}>
+              {timeRemaining.phase === 'finished' ? 'Clôturé' :
+               timeRemaining.phase === 'active' ? 'En Cours' :
+               timeRemaining.phase === 'before_reveal' ? 'Attente Reveal' : 'Programmé'}
+            </span>
+          </div>
+
+          {/* Bloc Compteurs avec Tabular-Nums */}
+          {timeRemaining.phase !== 'finished' ? (
+            <div className="grid grid-cols-4 gap-3 pt-4 text-center max-w-2xl mx-auto">
+              <div className="bg-black/40 border border-white/5 rounded-2xl py-3 flex flex-col justify-center">
+                <span className="text-2xl md:text-3xl font-black tabular-nums text-white leading-none">{timeRemaining.days}</span>
+                <span className="text-[8px] font-extrabold uppercase tracking-widest text-gray-500 mt-1">Jours</span>
+              </div>
+              <div className="bg-black/40 border border-white/5 rounded-2xl py-3 flex flex-col justify-center">
+                <span className="text-2xl md:text-3xl font-black tabular-nums text-white leading-none">{String(timeRemaining.hours).padStart(2, '0')}</span>
+                <span className="text-[8px] font-extrabold uppercase tracking-widest text-gray-500 mt-1">Heures</span>
+              </div>
+              <div className="bg-black/40 border border-white/5 rounded-2xl py-3 flex flex-col justify-center">
+                <span className="text-2xl md:text-3xl font-black tabular-nums text-white leading-none">{String(timeRemaining.minutes).padStart(2, '0')}</span>
+                <span className="text-[8px] font-extrabold uppercase tracking-widest text-gray-500 mt-1">Min</span>
+              </div>
+              <div className="bg-black/40 border border-white/5 rounded-2xl py-3 flex flex-col justify-center">
+                <span className="text-2xl md:text-3xl font-black tabular-nums text-gradient leading-none animate-pulse">{String(timeRemaining.seconds).padStart(2, '0')}</span>
+                <span className="text-[8px] font-extrabold uppercase tracking-widest text-accent mt-1">Sec</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 italic text-center py-4 font-medium">
+              ✨ Les souvenirs sont immortalisés et accessibles par tous les invités.
+            </p>
+          )}
+
+          {/* Scénarios d'usages additionnels */}
+          <div className="pt-3 mt-2 border-t border-white/5">
+            <p className="text-[10px] text-gray-500 leading-tight">
+              💡 <span className="font-semibold text-gray-400">Cas d'usage :</span> Idéal pour coordonner un <span className="text-primary-light">lancement surprise</span>, un <span className="text-accent">mariage</span> (décompte jusqu'au vin d'honneur) ou un <span className="text-pink-400">séminaire</span> avec clôture automatique des contributions.
+            </p>
+          </div>
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {[
             { label: 'Photos', value: photos.length, icon: ImageIcon, color: 'text-primary' },
             { label: 'Défis', value: challenges.length, icon: Hash, color: 'text-accent' },
-            { label: 'Réactions', value: 'Live', icon: Zap, color: 'text-yellow-400' },
-            { label: 'Statut', value: 'Actif', icon: Check, color: 'text-green-400' }
+            { label: 'Réactions', value: totalReactions, icon: Zap, color: 'text-yellow-400' },
+            { label: 'Statut', value: timeRemaining.phase === 'finished' ? 'Clôturé' : 'Actif', icon: Check, color: 'text-green-400' }
           ].map((stat, i) => (
             <div key={i} className="glass rounded-[2rem] p-6 border border-white/5 shadow-2xl group hover:border-primary/20 transition-all duration-500 hover:-translate-y-1">
               <div className="flex items-center justify-between mb-4">
@@ -457,13 +696,13 @@ export default function Dashboard() {
                           </linearGradient>
                        </defs>
                     </svg>
-                    {[20, 45, 30, 80, 50, 90, 60].map((h, i) => (
+                    {hourlyHeights.map((h, i) => (
                        <div key={i} className="relative z-10 w-full flex flex-col items-center group">
                           <div 
                              className="w-1 bg-white/5 rounded-t-full transition-all duration-1000 group-hover:bg-primary/40" 
                              style={{ height: `${h}%` }} 
                           />
-                          <span className="text-[8px] font-black text-gray-600 mt-3">{12 + i}h</span>
+                          <span className="text-[8px] font-black text-gray-600 mt-3">{hoursLabel[i]}</span>
                        </div>
                     ))}
                  </div>
@@ -475,12 +714,14 @@ export default function Dashboard() {
                     <h3 className="text-sm font-black uppercase tracking-widest text-gray-500 mb-6">Engagement IA</h3>
                     <div className="flex items-end justify-between">
                        <div className="space-y-1">
-                          <p className="text-4xl font-black tracking-tighter">84%</p>
-                          <p className="text-[9px] font-bold text-green-400 uppercase tracking-widest">+12% vs hier</p>
+                          <p className="text-4xl font-black tracking-tighter">{calculatedEngagement}%</p>
+                          <p className="text-[9px] font-bold text-primary uppercase tracking-widest">
+                            {photos.length > 0 ? 'Actif & Indexé' : 'En attente de flux'}
+                          </p>
                        </div>
                        <div className="w-24 h-12">
                           <svg viewBox="0 0 100 40" className="w-full h-full">
-                             <path d="M0,35 L20,25 L40,30 L60,10 L80,20 L100,5" fill="none" stroke="#22c55e" strokeWidth="3" />
+                             <path d="M0,35 L20,25 L40,30 L60,10 L80,20 L100,5" fill="none" stroke="var(--primary)" strokeWidth="3" />
                           </svg>
                        </div>
                     </div>
@@ -489,21 +730,23 @@ export default function Dashboard() {
                  <div className="glass rounded-[2rem] p-8 border border-white/5 shadow-2xl space-y-6">
                     <h3 className="text-sm font-black uppercase tracking-widest text-gray-500">Top Contributeurs</h3>
                     <div className="space-y-4">
-                       {[
-                         { name: 'Marc A.', count: 24, avatar: 'MA' },
-                         { name: 'Sarah L.', count: 18, avatar: 'SL' },
-                         { name: 'Kevin D.', count: 12, avatar: 'KD' }
-                       ].map((user, i) => (
-                         <div key={i} className="flex items-center justify-between group">
-                            <div className="flex items-center space-x-3">
-                               <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-black text-primary">
-                                  {user.avatar}
-                               </div>
-                               <span className="text-xs font-black tracking-tight group-hover:text-primary transition-colors">{user.name}</span>
-                            </div>
-                            <span className="text-[10px] font-black text-gray-500">{user.count} photos</span>
-                         </div>
-                       ))}
+                       {topContributors.length > 0 ? (
+                         topContributors.map((user, i) => (
+                           <div key={i} className="flex items-center justify-between group">
+                              <div className="flex items-center space-x-3">
+                                 <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-black text-primary">
+                                    {user.avatar}
+                                 </div>
+                                 <span className="text-xs font-black tracking-tight group-hover:text-primary transition-colors">{user.name}</span>
+                              </div>
+                              <span className="text-[10px] font-black text-gray-500">{user.count} photo{user.count > 1 ? 's' : ''}</span>
+                           </div>
+                         ))
+                       ) : (
+                         <p className="text-[10px] text-gray-600 italic text-center py-2 font-medium">
+                           Les premiers contributeurs apparaîtront dès le partage de photos.
+                         </p>
+                       )}
                     </div>
                  </div>
               </div>
