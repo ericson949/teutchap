@@ -89,7 +89,7 @@ export default function PwaInstallBanner() {
   if (isStandalone || !isVisible) return null
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50 max-w-lg mx-auto animate-in fade-in slide-in-from-bottom-5 duration-700">
+    <div className="fixed top-4 left-4 right-4 z-50 max-w-lg mx-auto animate-in fade-in slide-in-from-top-5 duration-700">
       <div className="glass rounded-2xl p-4 border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.8)] backdrop-blur-xl bg-[#08060d]/80 text-white relative overflow-hidden group">
         {/* Lueur d'accentuation en arrière-plan */}
         <div className="absolute -top-12 -right-12 w-28 h-28 bg-primary/20 blur-[30px] rounded-full pointer-events-none" />
