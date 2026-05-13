@@ -404,6 +404,28 @@ export default function EventOverview() {
   const maxGuests = currentConfig.max_guests
   const guestPercentage = Math.min(100, Math.round((joinedGuests / maxGuests) * 100))
 
+  // Déduire les invités uniques ayant interagi à partir du tableau photos en incluant la colonne prioritaire contributor_name
+  const extractedNames = photos.map(p => p.contributor_name || p.guest_name || p.author_name || p.guest_id).filter(Boolean)
+  // Ajouter également les co-administrateurs déjà enregistrés pour qu'ils restent visibles et modifiables
+  const existingAdmins = eventData.co_admins || []
+  const availableGuests = Array.from(new Set([...extractedNames, ...existingAdmins]))
+  
+  // Liste finale affichée dans le sélecteur multiple
+  const displayGuests = availableGuests.length > 0 ? availableGuests : ['Aucun invité identifié pour le moment']
+
+  const handleToggleAdminGuest = async (guestName: string) => {
+    setAdminLoading(true)
+    const currentAdmins = eventData.co_admins || []
+    let newAdmins: string[]
+    if (currentAdmins.includes(guestName)) {
+      newAdmins = currentAdmins.filter((a: string) => a !== guestName)
+    } else {
+      newAdmins = [...currentAdmins, guestName]
+    }
+    await updateEvent({ co_admins: newAdmins })
+    setAdminLoading(false)
+  }
+
   return (
     <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30 relative overflow-x-hidden">
       {/* Immersive Ambient Glows */}
@@ -609,12 +631,12 @@ export default function EventOverview() {
                 )}
               </div>
 
-              {/* Carte de Gestion des Co-Administrateurs */}
-              <div className="w-full bg-white/[0.02] border border-white/10 rounded-2xl p-4 space-y-3 text-left">
+              {/* Carte de Gestion des Co-Administrateurs (Sélecteur Multiple) */}
+              <div className="w-full bg-white/[0.02] border border-white/10 rounded-2xl p-4 space-y-3 text-left overflow-hidden">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <UserPlus size={14} className="text-accent" />
-                    <span className="text-xs font-bold text-gray-200">Co-administrateurs</span>
+                    <span className="text-xs font-bold text-gray-200">Délégation aux invités</span>
                   </div>
 
                   {/* Toggle Switch conditionnel */}
@@ -628,28 +650,47 @@ export default function EventOverview() {
                 </div>
 
                 {enableAdminsToggle ? (
-                  <div className="space-y-3 animate-in fade-in duration-200 pt-1">
-                    {(eventData.co_admins || []).length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-0.5">
-                        {(eventData.co_admins || []).map((admin: string, i: number) => (
-                          <div key={i} className="flex items-center space-x-1.5 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-mono text-gray-300">
-                            <span className="truncate max-w-[120px]">{admin}</span>
-                            <button 
-                              onClick={() => handleRemoveAdmin(admin)} 
-                              disabled={adminLoading}
-                              className="text-gray-500 hover:text-red-400 transition-colors"
-                            >
-                              <Trash2 size={9} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  <div className="space-y-2 animate-in fade-in duration-200 pt-1">
+                    <p className="text-[9px] text-gray-400 font-medium">
+                      Sélectionnez les invités autorisés à modérer cet espace :
+                    </p>
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                      {displayGuests.map((guest: string, i: number) => {
+                        const isAdmin = (eventData.co_admins || []).includes(guest)
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => handleToggleAdminGuest(guest)}
+                            disabled={adminLoading}
+                            className={`w-full flex items-center justify-between p-2 rounded-xl border text-left transition-all ${
+                              isAdmin 
+                                ? 'bg-accent/10 border-accent/30 text-white' 
+                                : 'bg-black/30 border-white/5 hover:border-white/10 text-gray-400 hover:text-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2 min-w-0">
+                              <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[9px] shrink-0 ${
+                                isAdmin ? 'bg-accent text-white' : 'bg-white/5 text-gray-500'
+                              }`}>
+                                {guest.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="text-xs font-medium truncate">{guest}</span>
+                            </div>
+                            <div className={`w-3.5 h-3.5 rounded-md border flex items-center justify-center transition-colors ${
+                              isAdmin ? 'bg-accent border-accent text-white' : 'border-white/20'
+                            }`}>
+                              {isAdmin && <Check size={8} className="stroke-[3]" />}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
 
-                    <div className="flex items-center space-x-2">
+                    {/* Champ manuel d'ajout direct avec bouton Ajouter */}
+                    <div className="pt-2 flex items-center space-x-2 border-t border-white/5 mt-2">
                       <input 
                         type="text" 
-                        placeholder="Email ou ID Admin..."
+                        placeholder="Ajout manuel (Email ou Nom)..."
                         className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-accent/50 transition-colors"
                         value={adminInput}
                         onChange={e => setAdminInput(e.target.value)}
@@ -657,7 +698,7 @@ export default function EventOverview() {
                       <button 
                         onClick={handleAddAdmin}
                         disabled={adminLoading || !adminInput.trim()}
-                        className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-white font-black text-[9px] uppercase tracking-widest px-3 py-2 rounded-xl transition-all shrink-0 flex items-center justify-center"
+                        className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-white font-black text-[9px] uppercase tracking-widest px-3 py-2 rounded-xl transition-all shrink-0 flex items-center justify-center shadow-md"
                       >
                         {adminLoading ? <Loader2 size={12} className="animate-spin" /> : 'Ajouter'}
                       </button>
@@ -665,7 +706,7 @@ export default function EventOverview() {
                   </div>
                 ) : (
                   <p className="text-[10px] text-gray-500 font-medium leading-snug">
-                    Activez la bascule pour déléguer la gestion. Accessible dès qu'un invité rejoint l'album.
+                    Activez la bascule pour lister et autoriser d'autres invités à co-administrer l'album.
                   </p>
                 )}
               </div>

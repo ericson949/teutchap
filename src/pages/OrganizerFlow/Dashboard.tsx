@@ -248,76 +248,79 @@ export default function Dashboard() {
         <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-accent/5 blur-[80px] md:blur-[150px] rounded-full will-change-transform" />
       </div>
 
-      {/* Lazy Auth Banner */}
-      {!user && !eventData.user_id && (
-        <div className="bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 border-b border-white/10 p-3 sticky top-0 z-[50] backdrop-blur-md md:backdrop-blur-xl will-change-transform">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
-            <div className="flex items-center space-x-3 px-4">
-               <div className="bg-primary/20 p-2 rounded-lg text-primary animate-pulse">
-                  <Save size={14} />
-               </div>
-               <p className="text-[10px] md:text-xs font-black uppercase tracking-widest">
-                  Sauvegardez cet événement pour ne jamais perdre l'accès
-               </p>
-            </div>
-            <button 
-              onClick={() => setShowAuthModal(true)}
-              className="bg-white text-black px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-95 whitespace-nowrap mr-4"
-            >
-              S'inscrire / Connexion
-            </button>
-          </div>
-        </div>
-      )}
-
-      <header className="glass-dark border-b border-white/5 px-8 py-5 flex justify-between items-center sticky top-0 z-40 backdrop-blur-md md:backdrop-blur-2xl will-change-transform">
-        <div className="flex items-center space-x-4">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-            <Hash size={24} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-gradient">{eventData.name}</h1>
-            <div className="flex items-center space-x-2">
-              <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
-                eventData.plan === 'free' ? 'border-white/10 text-gray-500' : 'border-primary/30 bg-primary/10 text-primary'
-              }`}>
-                Plan {eventData.plan || 'Free'}
-              </span>
-              <p className="text-[11px] text-gray-500 font-bold uppercase tracking-tighter">Console Organisateur</p>
+      {/* Conteneur d'En-têtes Solidaire Fixé (Bannière Auth + Barre de Titre) pour garantir l'ancrage sans superposition */}
+      <div className="fixed top-0 left-0 right-0 z-50 flex flex-col will-change-transform">
+        {/* Lazy Auth Banner */}
+        {!user && !eventData.user_id && (
+          <div className="bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 border-b border-white/10 p-3 backdrop-blur-md md:backdrop-blur-xl">
+            <div className="max-w-6xl mx-auto flex items-center justify-between">
+              <div className="flex items-center space-x-3 px-4">
+                 <div className="bg-primary/20 p-2 rounded-lg text-primary animate-pulse">
+                    <Save size={14} />
+                 </div>
+                 <p className="text-[10px] md:text-xs font-black uppercase tracking-widest">
+                    Sauvegardez cet événement pour ne jamais perdre l'accès
+                 </p>
+              </div>
+              <button 
+                onClick={() => setShowAuthModal(true)}
+                className="bg-white text-black px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-95 whitespace-nowrap mr-4"
+              >
+                S'inscrire / Connexion
+              </button>
             </div>
           </div>
-        </div>
-        <div className="flex items-center space-x-3">
-          {eventData.plan !== 'premium' && (
+        )}
+
+        <header className="glass-dark border-b border-white/5 px-8 py-5 flex justify-between items-center backdrop-blur-md md:backdrop-blur-2xl">
+          <div className="flex items-center space-x-4">
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+              <Hash size={24} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-black tracking-tight text-gradient">{eventData.name}</h1>
+              <div className="flex items-center space-x-2">
+                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                  eventData.plan === 'free' ? 'border-white/10 text-gray-500' : 'border-primary/30 bg-primary/10 text-primary'
+                }`}>
+                  Plan {eventData.plan || 'Free'}
+                </span>
+                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-tighter">Console Organisateur</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            {eventData.plan !== 'premium' && (
+              <button 
+                onClick={() => navigate(`/dashboard/${eventId}/upgrade`)}
+                className="hidden md:flex items-center space-x-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-lg shadow-primary/20"
+              >
+                <Zap size={14} className="fill-current" />
+                <span>UPGRADE</span>
+              </button>
+            )}
+
+            {/* Bouton de bascule vers la Vue Simplifiée */}
             <button 
-              onClick={() => navigate(`/dashboard/${eventId}/upgrade`)}
-              className="hidden md:flex items-center space-x-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-lg shadow-primary/20"
+              onClick={() => navigate(`/overview/${eventId}`)}
+              className="flex items-center space-x-1.5 glass border border-white/10 hover:border-accent/30 hover:bg-white/5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-300 hover:text-white transition-all active:scale-95"
+              title="Passer en vue simplifiée"
             >
-              <Zap size={14} className="fill-current" />
-              <span>UPGRADE</span>
+              <Eye size={14} className="text-accent" />
+              <span className="hidden sm:inline">Vue Simplifiée</span>
             </button>
-          )}
 
-          {/* Bouton de bascule vers la Vue Simplifiée */}
-          <button 
-            onClick={() => navigate(`/overview/${eventId}`)}
-            className="flex items-center space-x-1.5 glass border border-white/10 hover:border-accent/30 hover:bg-white/5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-300 hover:text-white transition-all active:scale-95"
-            title="Passer en vue simplifiée"
-          >
-            <Eye size={14} className="text-accent" />
-            <span className="hidden sm:inline">Vue Simplifiée</span>
-          </button>
+            <button 
+              onClick={() => user ? navigate('/portal') : setShowAuthModal(true)}
+              className="p-2.5 glass border border-white/10 text-gray-400 hover:text-white rounded-xl transition-all"
+            >
+              <LogIn size={18} />
+            </button>
+          </div>
+        </header>
+      </div>
 
-          <button 
-            onClick={() => user ? navigate('/portal') : setShowAuthModal(true)}
-            className="p-2.5 glass border border-white/10 text-gray-400 hover:text-white rounded-xl transition-all"
-          >
-            <LogIn size={18} />
-          </button>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto p-4 md:p-10 space-y-8 md:space-y-12 relative z-10">
+      <main className="max-w-6xl mx-auto p-4 md:p-10 space-y-8 md:space-y-12 relative z-10 mt-[140px]">
         
         {/* Carte Chronomètre Multi-Phases Dynamique */}
         <div className="bg-white/[0.02] border border-white/10 rounded-[2rem] p-6 shadow-2xl backdrop-blur-xl relative overflow-hidden group">
