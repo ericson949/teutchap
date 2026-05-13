@@ -30,9 +30,9 @@ export default function CreateEvent() {
         setTurnstileState('success')
         setIsSpamVerified(true)
         setCreationError(null)
-      }, 1200)
+      }, 10)
       return () => clearTimeout(successTimer)
-    }, 600)
+    }, 10)
 
     return () => clearTimeout(initTimer)
   }, [])
@@ -46,7 +46,7 @@ export default function CreateEvent() {
       setTurnstileState('success')
       setIsSpamVerified(true)
       setCreationError(null)
-    }, 1200)
+    }, 10)
 
     return () => clearTimeout(timer)
   }
@@ -76,25 +76,27 @@ export default function CreateEvent() {
       let currentUserId: string | null = null
       const { data: authData } = await supabase.auth.getUser()
       
-      if (authData?.user?.id) {
-        currentUserId = authData.user.id
-      } else {
+      let userId = authData?.user?.id
+      if (!userId) {
         const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously()
         if (!anonError && anonData?.user?.id) {
-          currentUserId = anonData.user.id
-          
-          // Synchronisation transparente avec la table publique users
-          // Un email virtuel shadow est généré pour satisfaire la contrainte UNIQUE NOT NULL
-          const shadowEmail = `anon-${currentUserId}@teutchap.shadow`
-          await supabase.from('users').upsert([
-            {
-              id: currentUserId,
-              email: shadowEmail,
-              name: 'Organisateur',
-              plan: 'free'
-            }
-          ], { onConflict: 'id' })
+          userId = anonData.user.id
         }
+      }
+
+      if (userId) {
+        currentUserId = userId
+        // Synchronisation garantie et hyper-rapide avec la table publique users
+        // Un email virtuel shadow est généré pour satisfaire la contrainte UNIQUE NOT NULL
+        const shadowEmail = authData?.user?.email || `anon-${userId}@teutchap.shadow`
+        await supabase.from('users').upsert([
+          {
+            id: userId,
+            email: shadowEmail,
+            name: 'Organisateur',
+            plan: 'free'
+          }
+        ], { onConflict: 'id' })
       }
 
       // 2. Construction du payload officiel

@@ -15,7 +15,7 @@ export default function EventHome() {
   const navigate = useNavigate()
   
   // Custom Hooks
-  const { eventData, loading: eventLoading, incrementGuestCount } = useEvent(token, true)
+  const { eventData, loading: eventLoading, incrementGuestCount, joinEventAsGuest } = useEvent(token, true)
   const { challenges, addChallenge } = useChallenges(eventData?.id)
   const { currentConfig } = useAppPlans(eventData?.plan)
   
@@ -71,8 +71,11 @@ export default function EventHome() {
     if (saved) {
       setGuestPseudo(saved)
       setHasSession(true)
+      if (joinEventAsGuest && eventData?.id) {
+        joinEventAsGuest(saved).then()
+      }
     }
-  }, [token])
+  }, [token, eventData?.id])
 
   const { photos, loading: photosLoading } = usePhotos(eventData?.id, { 
     challengeId: selectedChallenge, 
@@ -384,7 +387,7 @@ export default function EventHome() {
   }
 
   // Gestion de la soumission de l'onboarding invité
-  const handleJoinSubmit = (e: React.FormEvent) => {
+  const handleJoinSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inputPseudo.trim()) return
 
@@ -393,11 +396,15 @@ export default function EventHome() {
     setGuestPseudo(pseudo)
     setHasSession(true)
 
+    // Enregistrement garanti dans la base relationnelle
+    if (joinEventAsGuest) {
+      await joinEventAsGuest(pseudo)
+    }
+
     // Incrémentation locale / RPC en backend de joined_guests_count
     if (!isJoinedCountIncremented) {
       const nextCount = currentJoinedGuests + 1
-      localStorage.setItem(`teutchap_guests_count_${eventData.token}`, nextCount.toString())
-      incrementGuestCount()
+      localStorage.setItem(`teutchap_guests_count_${eventData?.token}`, nextCount.toString())
       setIsJoinedCountIncremented(true)
     }
   }

@@ -76,6 +76,59 @@ export function useEvent(idOrToken: string | undefined, isToken: boolean = false
     }
   }, [eventData?.id])
 
+  // Suivi en temps réel de la Présence (Activité connectée)
+  useEffect(() => {
+    if (!eventData?.id) return
+
+    let channel: any = null
+
+    const setupPresence = async () => {
+      try {
+        const { data: authData } = await supabase.auth.getUser()
+        let userId = authData?.user?.id
+        if (!userId) {
+          const { data: anonData } = await supabase.auth.signInAnonymously()
+          userId = anonData?.user?.id || getDeviceId()
+        }
+
+        const savedPseudo = eventData.token ? localStorage.getItem(`teutchap_pseudo_${eventData.token}`) : null
+        const pseudo = savedPseudo || 'Invité'
+
+        channel = supabase.channel(`presence_${eventData.id}`, {
+          config: { presence: { key: userId } }
+        })
+
+        channel.subscribe(async (status: string) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.track({
+              user_id: userId,
+              pseudo: pseudo,
+              online_at: new Date().toISOString()
+            })
+
+            // Mise à jour silencieuse de last_active_at en base
+            if (userId && userId.includes('-')) {
+              supabase
+                .from('event_invite_user')
+                .update({ last_active_at: new Date().toISOString() })
+                .eq('event_id', eventData.id)
+                .eq('user_id', userId)
+                .then()
+            }
+          }
+        })
+      } catch (err) {
+        console.error("Erreur d'initialisation de Presence :", err)
+      }
+    }
+
+    setupPresence()
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+    }
+  }, [eventData?.id, eventData?.token])
+
   const updateEvent = async (updates: any) => {
     if (!eventData?.id) return { data: null, error: new Error("Aucune donnée d'événement") }
 
@@ -113,6 +166,55 @@ export function useEvent(idOrToken: string | undefined, isToken: boolean = false
     return true
   }
 
+  // Enregistrement relationnel complet d'un invité (users + event_invite_user)
+  const joinEventAsGuest = async (pseudo: string) => {
+    if (!eventData?.id) return false
+
+    try {
+      const { data: authData } = await supabase.auth.getUser()
+      let userId = authData?.user?.id
+
+      if (!userId) {
+        const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously()
+        if (!anonError && anonData?.user?.id) {
+          userId = anonData.user.id
+        } else {
+          userId = getDeviceId()
+        }
+      }
+
+      if (userId && userId.includes('-')) {
+        const shadowEmail = `anon-${userId}@teutchap.shadow`
+        await supabase.from('users').upsert([
+          {
+            id: userId,
+            email: shadowEmail,
+            name: pseudo,
+            plan: 'free'
+          }
+        ], { onConflict: 'id' })
+
+        await supabase.from('event_invite_user').upsert([
+          {
+            event_id: eventData.id,
+            user_id: userId,
+            role: 'guest',
+            last_active_at: new Date().toISOString()
+          }
+        ], { onConflict: 'event_id,user_id' })
+      }
+
+      const currentCount = eventData.joined_guests_count || 0
+      await updateEvent({ joined_guests_count: currentCount + 1 })
+      return true
+    } catch (err) {
+      console.error("Erreur d'enregistrement invité :", err)
+      const currentCount = eventData.joined_guests_count || 0
+      await updateEvent({ joined_guests_count: currentCount + 1 })
+      return true
+    }
+  }
+
   return { 
     eventData, 
     loading, 
@@ -120,6 +222,8 @@ export function useEvent(idOrToken: string | undefined, isToken: boolean = false
     updateEvent, 
     setEventData,
     incrementGuestCount,
+    joinEventAsGuest,
     deviceId: getDeviceId()
   }
 }
+

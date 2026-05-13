@@ -6,6 +6,7 @@ import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useAppPlans } from '../../hooks/useAppPlans'
 import { supabase } from '../../lib/supabase'
+import { useEventGuests } from '../../hooks/useEventGuests'
 
 export default function EventOverview() {
   const { eventId } = useParams()
@@ -35,6 +36,7 @@ export default function EventOverview() {
   const { eventData, loading: eventLoading, updateEvent } = useEvent(eventId)
   const { photos } = usePhotos(eventData?.id)
   const { currentConfig } = useAppPlans(eventData?.plan)
+  const { guests, updateGuestRole } = useEventGuests(eventData?.id)
 
   // --- CHRONOMÈTRE INTELLIGENT MULTI-PHASES (NIVEAU SUPÉRIEUR) ---
   const [timeRemaining, setTimeRemaining] = useState<{
@@ -399,30 +401,49 @@ export default function EventOverview() {
   const currentPhotos = photos.length
   const percentage = Math.min(100, Math.round((currentPhotos / maxPhotos) * 100))
 
-  const fallbackCount = parseInt(localStorage.getItem(`teutchap_guests_count_${eventData.token}`) || '1', 10)
-  const joinedGuests = eventData.joined_guests_count || fallbackCount
+  const fallbackCount = parseInt(localStorage.getItem(`teutchap_guests_count_${eventData?.token}`) || '1', 10)
+  // Combinaison de l'historique avec les invités relationnels réels
+  const joinedGuests = Math.max(guests.length, eventData?.joined_guests_count || fallbackCount)
   const maxGuests = currentConfig.max_guests
   const guestPercentage = Math.min(100, Math.round((joinedGuests / maxGuests) * 100))
 
   // Déduire les invités uniques ayant interagi à partir du tableau photos en incluant la colonne prioritaire contributor_name
   const extractedNames = photos.map(p => p.contributor_name || p.guest_name || p.author_name || p.guest_id).filter(Boolean)
-  // Ajouter également les co-administrateurs déjà enregistrés pour qu'ils restent visibles et modifiables
-  const existingAdmins = eventData.co_admins || []
-  const availableGuests = Array.from(new Set([...extractedNames, ...existingAdmins]))
+  const existingAdmins = eventData?.co_admins || []
   
-  // Liste finale affichée dans le sélecteur multiple
-  const displayGuests = availableGuests.length > 0 ? availableGuests : ['Aucun invité identifié pour le moment']
+  // Combinaison premium des invités DB relationnels et des anciens contributeurs extraits des photos
+  const relationalGuestIds = new Set(guests.map(g => g.pseudo))
+  const legacyGuests = extractedNames.filter(name => !relationalGuestIds.has(name)).map(name => ({
+    user_id: 'legacy_' + name,
+    pseudo: name,
+    role: existingAdmins.includes(name) ? 'co_admin' : 'guest',
+    joined_at: new Date().toISOString(),
+    last_active_at: new Date().toISOString(),
+    isOnline: false
+  }))
 
-  const handleToggleAdminGuest = async (guestName: string) => {
+  // Liste finale unifiée
+  const allDisplayGuests = [...guests, ...legacyGuests]
+
+  const handleToggleAdminGuest = async (guestObj: any) => {
     setAdminLoading(true)
-    const currentAdmins = eventData.co_admins || []
+    const currentAdmins = eventData?.co_admins || []
+    const isCurrentlyAdmin = guestObj.role === 'co_admin' || currentAdmins.includes(guestObj.pseudo)
+    
+    // 1. Mise à jour dans le tableau legacy dénormalisé par sécurité
     let newAdmins: string[]
-    if (currentAdmins.includes(guestName)) {
-      newAdmins = currentAdmins.filter((a: string) => a !== guestName)
+    if (isCurrentlyAdmin) {
+      newAdmins = currentAdmins.filter((a: string) => a !== guestObj.pseudo)
     } else {
-      newAdmins = [...currentAdmins, guestName]
+      newAdmins = [...currentAdmins, guestObj.pseudo]
     }
     await updateEvent({ co_admins: newAdmins })
+
+    // 2. Mise à jour dans la table relationnelle si c'est un vrai utilisateur
+    if (guestObj.user_id && !guestObj.user_id.startsWith('legacy_')) {
+      await updateGuestRole(guestObj.user_id, isCurrentlyAdmin ? 'guest' : 'co_admin')
+    }
+
     setAdminLoading(false)
   }
 
@@ -655,35 +676,47 @@ export default function EventOverview() {
                       Sélectionnez les invités autorisés à modérer cet espace :
                     </p>
                     <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                      {displayGuests.map((guest: string, i: number) => {
-                        const isAdmin = (eventData.co_admins || []).includes(guest)
-                        return (
-                          <button
-                            key={i}
-                            onClick={() => handleToggleAdminGuest(guest)}
-                            disabled={adminLoading}
-                            className={`w-full flex items-center justify-between p-2 rounded-xl border text-left transition-all ${
-                              isAdmin 
-                                ? 'bg-accent/10 border-accent/30 text-white' 
-                                : 'bg-black/30 border-white/5 hover:border-white/10 text-gray-400 hover:text-gray-300'
-                            }`}
-                          >
-                            <div className="flex items-center space-x-2 min-w-0">
-                              <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[9px] shrink-0 ${
-                                isAdmin ? 'bg-accent text-white' : 'bg-white/5 text-gray-500'
-                              }`}>
-                                {guest.charAt(0).toUpperCase()}
+                      {allDisplayGuests.length > 0 ? (
+                        allDisplayGuests.map((guestObj, i) => {
+                          const isAdmin = guestObj.role === 'co_admin' || (eventData?.co_admins || []).includes(guestObj.pseudo)
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => handleToggleAdminGuest(guestObj)}
+                              disabled={adminLoading}
+                              className={`w-full flex items-center justify-between p-2 rounded-xl border text-left transition-all ${
+                                isAdmin 
+                                  ? 'bg-accent/10 border-accent/30 text-white' 
+                                  : 'bg-black/30 border-white/5 hover:border-white/10 text-gray-400 hover:text-gray-300'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-2 min-w-0">
+                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[9px] shrink-0 ${
+                                  isAdmin ? 'bg-accent text-white' : 'bg-white/5 text-gray-500'
+                                }`}>
+                                  {guestObj.pseudo.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-xs font-medium truncate">{guestObj.pseudo}</span>
+                                  <div className="flex items-center space-x-1 mt-0.5">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${guestObj.isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
+                                    <span className="text-[8px] text-gray-500 font-normal">
+                                      {guestObj.isOnline ? 'En ligne' : 'Hors ligne'}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                              <span className="text-xs font-medium truncate">{guest}</span>
-                            </div>
-                            <div className={`w-3.5 h-3.5 rounded-md border flex items-center justify-center transition-colors ${
-                              isAdmin ? 'bg-accent border-accent text-white' : 'border-white/20'
-                            }`}>
-                              {isAdmin && <Check size={8} className="stroke-[3]" />}
-                            </div>
-                          </button>
-                        )
-                      })}
+                              <div className={`w-3.5 h-3.5 rounded-md border flex items-center justify-center transition-colors ${
+                                isAdmin ? 'bg-accent border-accent text-white' : 'border-white/20'
+                              }`}>
+                                {isAdmin && <Check size={8} className="stroke-[3]" />}
+                              </div>
+                            </button>
+                          )
+                        })
+                      ) : (
+                        <p className="text-xs text-gray-500 italic py-2">Aucun invité identifié pour le moment</p>
+                      )}
                     </div>
 
                     {/* Champ manuel d'ajout direct avec bouton Ajouter */}
