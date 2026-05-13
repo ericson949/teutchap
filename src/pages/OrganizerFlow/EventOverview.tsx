@@ -5,6 +5,7 @@ import { Share2, Copy, Zap, ArrowLeft, Star, ImageIcon, Lock, ExternalLink, Spar
 import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useAppPlans } from '../../hooks/useAppPlans'
+import { supabase } from '../../lib/supabase'
 
 export default function EventOverview() {
   const { eventId } = useParams()
@@ -16,6 +17,10 @@ export default function EventOverview() {
   const [pwdLoading, setPwdLoading] = useState(false)
   const [adminInput, setAdminInput] = useState('')
   const [adminLoading, setAdminLoading] = useState(false)
+
+  // États de la génération d'archive globale ZIP (Exportation de l'album)
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportProgress, setExportProgress] = useState(0)
 
   // Fetch event details and photo count
   const { eventData, loading: eventLoading, updateEvent } = useEvent(eventId)
@@ -161,6 +166,63 @@ export default function EventOverview() {
     const currentAdmins = eventData.co_admins || []
     await updateEvent({ co_admins: currentAdmins.filter((a: string) => a !== adminToRemove) })
     setAdminLoading(false)
+  }
+
+  // Logique d'Exportation Globale de l'Album en Archive ZIP
+  const handleExportGlobalZip = async () => {
+    if (!photos || photos.length === 0) return
+    setIsExporting(true)
+    setExportProgress(0)
+
+    try {
+      // Importation dynamique de JSZip pour préserver le temps de chargement initial
+      const JSZip = (await import('jszip')).default
+      const zip = new JSZip()
+      const safeName = eventData?.name ? eventData.name.replace(/\s+/g, '_') : 'Album'
+      const timestamp = new Date().toISOString().split('T')[0]
+      const folderName = `Teutchap_${safeName}_${timestamp}`
+      const folder = zip.folder(folderName)
+
+      if (!folder) throw new Error("Impossible d'initialiser le répertoire ZIP")
+
+      let count = 0
+      for (const photo of photos) {
+        if (photo.url_original) {
+          const { data: blob, error } = await supabase.storage
+            .from('events_photos')
+            .download(photo.url_original)
+
+          if (!error && blob) {
+            folder.file(photo.url_original, blob)
+          } else {
+            // Fichier potentiellement en cache local ou de démonstration
+            folder.file(`info_${photo.id}.txt`, "Fichier source non localisé sur le serveur distant.")
+          }
+        }
+        count++
+        setExportProgress(count)
+      }
+
+      // Génération de l'archive binaire
+      const content = await zip.generateAsync({ type: 'blob' })
+      
+      // Déclenchement du flux de téléchargement natif
+      const url = URL.createObjectURL(content)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${folderName}.zip`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+    } catch (err) {
+      console.error("Erreur de génération ZIP :", err)
+      alert("Une erreur est survenue lors de la compilation de l'archive.")
+    } finally {
+      setIsExporting(false)
+      setExportProgress(0)
+    }
   }
 
   // Determine limits
@@ -532,6 +594,47 @@ export default function EventOverview() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Carte de Gestion de l'Exportation Globale de l'Album en ZIP */}
+              <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-4 space-y-3 text-left relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Download className="text-green-400" size={14} />
+                    <span className="text-xs font-bold text-gray-200">Exportation de l'Album</span>
+                  </div>
+                  <span className="text-[8px] font-black uppercase tracking-widest bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full">
+                    {photos ? photos.length : 0} souvenirs
+                  </span>
+                </div>
+
+                <p className="text-[10px] text-gray-400 font-medium leading-relaxed">
+                  Téléchargez l'intégralité des photos brutes haute définition en une seule archive ZIP.
+                </p>
+
+                {isExporting ? (
+                  <div className="space-y-2 pt-1">
+                    <div className="flex justify-between text-[9px] font-bold text-primary-light">
+                      <span>Compression en cours...</span>
+                      <span>{exportProgress} / {photos ? photos.length : 0}</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-primary to-green-400 transition-all duration-300"
+                        style={{ width: `${(exportProgress / Math.max(1, photos ? photos.length : 1)) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={handleExportGlobalZip}
+                    disabled={!photos || photos.length === 0}
+                    className="w-full bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white font-black text-[10px] uppercase tracking-widest py-2.5 rounded-xl transition-all active:scale-95 border border-white/10 flex items-center justify-center space-x-2 shadow-sm"
+                  >
+                    <Download size={12} className="text-green-400" />
+                    <span>Générer l'archive ZIP</span>
+                  </button>
+                )}
               </div>
 
               {/* Radiant Masterpiece Upgrade Prompt */}
