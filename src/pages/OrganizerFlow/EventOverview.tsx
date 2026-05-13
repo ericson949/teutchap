@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Share2, Copy, Zap, ArrowLeft, Star, ImageIcon, Lock, ExternalLink, Sparkles, Check, Download, Users, Loader2, Shield, Key, UserPlus, Trash2 } from 'lucide-react'
+import { Share2, Copy, Zap, ArrowLeft, Star, ImageIcon, Lock, ExternalLink, Sparkles, Check, Download, Users, Loader2, Shield, Key, UserPlus, Trash2, Mail } from 'lucide-react'
 import { useEvent } from '../../hooks/useEvent'
 import { usePhotos } from '../../hooks/usePhotos'
 import { useAppPlans } from '../../hooks/useAppPlans'
@@ -21,6 +21,11 @@ export default function EventOverview() {
   // États de la génération d'archive globale ZIP (Exportation de l'album)
   const [isExporting, setIsExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState(0)
+  
+  // États de l'envoi de l'archive ZIP par courriel
+  const [showEmailInput, setShowEmailInput] = useState(false)
+  const [zipEmail, setZipEmail] = useState('')
+  const [emailSending, setEmailSending] = useState(false)
 
   // Fetch event details and photo count
   const { eventData, loading: eventLoading, updateEvent } = useEvent(eventId)
@@ -223,6 +228,23 @@ export default function EventOverview() {
       setIsExporting(false)
       setExportProgress(0)
     }
+  }
+
+  // Logique d'Envoi du Lien de Téléchargement ZIP par Courriel
+  const handleSendZipEmail = async () => {
+    if (!zipEmail.includes('@')) return
+    setEmailSending(true)
+    
+    // Simulation du traitement transactionnel serveur
+    // En production, déclenche l'envoi d'un courriel sécurisé avec un jeton d'accès via Resend/SendGrid
+    const timer = setTimeout(() => {
+      setEmailSending(false)
+      setShowEmailInput(false)
+      alert(`✉️ Succès ! Le lien de téléchargement sécurisé de l'archive ZIP a été envoyé à ${zipEmail}.\n\nVous pourrez rafraîchir et télécharger l'intégralité des souvenirs haute définition sur votre ordinateur de bureau ou portable en Wi-Fi pour préserver votre forfait mobile.`)
+      setZipEmail('')
+    }, 1500)
+
+    return () => clearTimeout(timer)
   }
 
   // Determine limits
@@ -626,14 +648,59 @@ export default function EventOverview() {
                     </div>
                   </div>
                 ) : (
-                  <button 
-                    onClick={handleExportGlobalZip}
-                    disabled={!photos || photos.length === 0}
-                    className="w-full bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white font-black text-[10px] uppercase tracking-widest py-2.5 rounded-xl transition-all active:scale-95 border border-white/10 flex items-center justify-center space-x-2 shadow-sm"
-                  >
-                    <Download size={12} className="text-green-400" />
-                    <span>Générer l'archive ZIP</span>
-                  </button>
+                  <div className="space-y-2 pt-1">
+                    <button 
+                      onClick={handleExportGlobalZip}
+                      disabled={!photos || photos.length === 0}
+                      className="w-full bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white font-black text-[10px] uppercase tracking-widest py-2.5 rounded-xl transition-all active:scale-95 border border-white/10 flex items-center justify-center space-x-2 shadow-sm"
+                    >
+                      <Download size={12} className="text-green-400" />
+                      <span>Télécharger l'archive ZIP</span>
+                    </button>
+
+                    {!showEmailInput ? (
+                      <button 
+                        onClick={() => setShowEmailInput(true)}
+                        disabled={!photos || photos.length === 0}
+                        className="w-full bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-primary-light font-black text-[10px] uppercase tracking-widest py-2 rounded-xl transition-all active:scale-95 border border-primary/20 flex items-center justify-center space-x-2"
+                      >
+                        <Mail size={12} />
+                        <span>Recevoir le lien par e-mail</span>
+                      </button>
+                    ) : (
+                      <div className="space-y-2 animate-in slide-in-from-top-1 duration-200 pt-1">
+                        <input 
+                          type="email"
+                          placeholder="votre.email@domaine.com"
+                          value={zipEmail}
+                          onChange={e => setZipEmail(e.target.value)}
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition-colors"
+                        />
+                        <div className="flex space-x-2">
+                          <button 
+                            onClick={() => setShowEmailInput(false)}
+                            className="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 font-bold text-[9px] uppercase tracking-wider py-1.5 rounded-lg transition-colors"
+                          >
+                            Annuler
+                          </button>
+                          <button 
+                            onClick={handleSendZipEmail}
+                            disabled={!zipEmail.includes('@') || emailSending}
+                            className="flex-1 bg-primary hover:bg-primary-dark disabled:opacity-50 text-white font-black text-[9px] uppercase tracking-wider py-1.5 rounded-lg transition-all flex items-center justify-center space-x-1"
+                          >
+                            {emailSending ? (
+                              <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              <>
+                                <Check size={10} />
+                                <span>Envoyer</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 

@@ -103,37 +103,56 @@ L'Afrique centrale organise des événements à très haute valeur émotionnelle
 
 ## 5. Architecture technique
 
-Frontend          → React 18 + Vite + Tailwind CSS (PWA)
-Backend / Auth    → Supabase (PostgreSQL + Auth + Realtime + Edge Functions)
-Storage / CDN     → Supabase Storage
-Compression media → Canvas API (client-side)
-Génération UUID   → Frontend natif (`crypto.randomUUID()`) garantissant un routage déterministe immédiat
+- **Frontend** : React 18 + Vite + Tailwind CSS (PWA offline-first via Workbox)
+- **Backend / Auth** : Supabase (PostgreSQL + Auth + Realtime + Storage + Edge Functions)
+- **Sécurité Publique** : Intégration de **Cloudflare Turnstile** en amont de l'API de création pour parer aux soumissions automatisées (Anti-Spam).
+- **Gestion d'Identité** : Déploiement du **Shadow Login** (Authentification anonyme Supabase) convertissant silencieusement les visiteurs en propriétaires légitimes via une adresse virtuelle de transition.
+- **Sécurité Base de Données** : Verrouillage des tables via Row Level Security (RLS) et **Triggers SQL** sur-mesure validant l'intégrité des flux, exemptant les créateurs et **co-administrateurs** de l'inhibition publique.
+- **Compression Media** : Canvas API (client-side) convertissant les flux lourds en JPEG optimisé avant émission réseau.
+- **Compilation d'Archives** : Bibliothèque **JSZip** chargée en import dynamique asynchrone côté administrateur pour générer itérativement les archives binaires globales sans saturation de mémoire.
 
 ---
 
-## 6. Fonctionnalités — Phase 1 (MVP)
+## 6. Fonctionnalités — Phase 1 (MVP & Production Hardening)
 
-- F-01 — Création d'événement express (Ciblage par type d'événement et nombre d'invités attendus ; Mode public par défaut pour le plan gratuit)
-- F-02 — QR Code universel
-- F-03 — Upload photo sans compte
-- F-04 — PWA installable
-- F-05 — Galerie temps réel
-- F-06 — Téléchargement ZIP
-- F-07 — Reveal Mode
-- F-08 — Modération galerie
-- F-09 — Partage WhatsApp natif avec notification globale de succès au format Toast
-- F-10 — Upload offline (Service Worker)
-- F-11 — Compression intelligente côté client
-- F-12 — Vue de Visualisation Organisateur unifiée (Regroupement du QR Code, du lien direct, des limites du plan et de l'incitation à l'amélioration sur une carte unique sans scroll vertical sur mobile)
+- **F-01 — Création d'événement express** : Saisie ciblée (type d'événement, jauges), asservie à un sas de vérification Anti-Spam strict (Cloudflare Turnstile).
+- **F-02 — QR Code & Partage** : Génération vectorielle unifiée avec incrustation et copie en presse-papiers déclenchant une notification globale de succès au format Toast.
+- **F-03 — Gestion des Tranches Horaires** : Saisie optionnelle des heures de début et de fin (`startTime`, `endTime`) conditionnant le cycle de vie des événements s'étalant sur plusieurs jours.
+- **F-04 — Sas Premium par Mot de Passe** : Écran de verrouillage immersif interdisant l'accès à la galerie et aux formulaires tant que l'invité n'a pas saisi le code d'accès partagé. L'autorisation validée est persistée dans le cache local.
+- **F-05 — Collaboration Multi-Admins** : Interface permettant d'assigner des co-administrateurs secondaires qui héritent immédiatement des permissions de modération et d'édition.
+- **F-06 — Upload photo sans compte** : Mode hors-ligne résilient et rattachement strict de la signature de l'invité.
+- **F-07 — PWA Installable Universelle** : Bannière de guidage adaptative pour iOS (Safari) et interception du prompt natif pour Android (Chrome).
+- **F-08 — Galerie temps réel** : Synchronisation fluide via Supabase Realtime Channels.
+- **F-09 — Exportation Globale de l'Album (ZIP)** : Rapatriement asynchrone de l'intégralité des souvenirs bruts sous forme d'archive compressée globale avec jauge de progression en direct.
+- **F-10 — Reveal Mode & Modération** : Gestion des quotas et masquage conditionnel avant la levée du voile.
+- **F-11 — Vue de Visualisation Organisateur unifiée** : Console de pilotage centralisant les jauges d'occupation, la sécurité et le surclassement sans exiger de défilement excessif sur mobile.
 
 ---
 
-## 9. Modèle de données
+## 9. Modèle de données (Schéma Physique PostgreSQL)
 
-### Table `users` (organisateurs)
+### Table `users`
+- `id` (UUID, Primary Key) : Identifiant de l'organisateur (authentifié ou anonyme via Shadow Login).
+- `email` (TEXT, Unique) : Courriel ou identifiant virtuel généré (`anon-[id]@teutchap.shadow`).
+- `name` (TEXT) : Raison sociale ou nom d'usage.
+- `plan` (TEXT) : Niveau d'abonnement actif (`free`, `premium`, `vip`).
+
 ### Table `events`
+- `id` (UUID, Primary Key) : Routage principal.
+- `token` (TEXT, Unique) : Jeton court de partage WhatsApp (`/e/[token]`).
+- `name`, `event_type`, `expected_guests` : Métadonnées descriptives.
+- `plan` (TEXT) : Héritage strict des quotas tarifaires.
+- `joined_guests_count` (INT) : Jauge dynamique incrémentée à chaque visiteur unique.
+- `start_time`, `end_time` (TIMESTAMP) : Bornes temporelles de validité.
+- `access_password` (TEXT, Nullable) : Clé de chiffrement/verrouillage de l'album partagé.
+- `co_admins` (TEXT[]) : Matrice des identifiants secondaires habilités à la co-gestion.
+
 ### Table `photos`
-### Table `payments`
+- `id` (UUID, Primary Key)
+- `event_id` (UUID, Foreign Key) : Référence de l'album.
+- `url_original`, `url_compressed` : Pointeurs vers le *Supabase Storage*.
+- `contributor_name` (TEXT) : Signature inaltérable saisie par l'invité.
+- `is_moderated` (BOOLEAN) : Indicateur d'inhibition (Reveal Mode ou rejet manuel).
 
 ---
 
