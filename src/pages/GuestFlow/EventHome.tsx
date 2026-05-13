@@ -113,7 +113,7 @@ export default function EventHome() {
     autoModeration: eventData?.auto_moderation,
     token
   })
-  const { reactions, addReaction } = useReactions()
+  const { reactions, userReactions, addReaction } = useReactions()
 
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -177,17 +177,32 @@ export default function EventHome() {
         console.error("Erreur suppression photo en attente:", err)
       }
     } else {
+      // Masquage optimiste immédiat
       try {
-        const { error } = await supabase.from('photos').delete().eq('id', photo.id)
-        if (error) {
-          alert("Erreur lors de la suppression sur le serveur.")
-        } else {
-          const currentCount = parseInt(localStorage.getItem(`teutchap_uploads_count_${token}`) || '0', 10)
-          if (currentCount > 0) {
-            localStorage.setItem(`teutchap_uploads_count_${token}`, (currentCount - 1).toString())
-          }
-          // Déclencher un re-fetch si nécessaire, bien que le real-time ou le polling s'en charge
-          window.dispatchEvent(new Event('online'))
+        const deletedIds: string[] = JSON.parse(localStorage.getItem('teutchap_offline_delete_queue') || '[]')
+        if (!deletedIds.includes(photo.id)) {
+          deletedIds.push(photo.id)
+          localStorage.setItem('teutchap_offline_delete_queue', JSON.stringify(deletedIds))
+        }
+
+        const historyIds: string[] = JSON.parse(localStorage.getItem('teutchap_deleted_history') || '[]')
+        if (!historyIds.includes(photo.id)) {
+          historyIds.push(photo.id)
+          localStorage.setItem('teutchap_deleted_history', JSON.stringify(historyIds))
+        }
+        
+        const currentCount = parseInt(localStorage.getItem(`teutchap_uploads_count_${token}`) || '0', 10)
+        if (currentCount > 0) {
+          localStorage.setItem(`teutchap_uploads_count_${token}`, (currentCount - 1).toString())
+        }
+        
+        // Mettre à jour l'affichage instantanément
+        window.dispatchEvent(new Event('online'))
+
+        if (navigator.onLine) {
+          supabase.from('photos').delete().eq('id', photo.id).then(({ error }) => {
+            if (error) console.error("Erreur suppression serveur post-optimiste:", error)
+          })
         }
       } catch(err) {
         console.error("Erreur suppression photo serveur:", err)
@@ -1083,7 +1098,7 @@ export default function EventHome() {
                                   e.stopPropagation();
                                   addReaction(photo.id, emoji);
                                 }}
-                                className={`glass-dark hover:bg-white/20 px-2 py-0.5 rounded-full text-[10px] flex items-center space-x-0.5 transition-all active:scale-75 ${reactions[photo.id]?.[emoji] ? 'border-primary/40 bg-primary/10' : ''}`}
+                                className={`glass-dark hover:bg-white/20 px-2 py-0.5 rounded-full text-[10px] flex items-center space-x-0.5 transition-all active:scale-75 ${userReactions[photo.id] === emoji ? 'border-primary bg-primary/20 scale-105' : reactions[photo.id]?.[emoji] ? 'border-white/20 bg-white/5' : ''}`}
                               >
                                 <span>{emoji}</span>
                                 {reactions[photo.id]?.[emoji] && (

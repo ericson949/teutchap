@@ -47,11 +47,35 @@ export default function GlobalOfflineSyncManager() {
     if (isSyncing) return
     setIsSyncing(true)
     try {
-      const queue: any[] = await localforage.getItem('teutchap_offline_queue') || []
-      if (queue.length === 0) return
-
-      console.log(`🚀 Synchronisation globale de ${queue.length} souvenir(s) en attente...`)
       let successCount = 0
+
+      // 1. Synchronisation des suppressions en attente
+      const deleteQueue: string[] = JSON.parse(localStorage.getItem('teutchap_offline_delete_queue') || '[]')
+      if (deleteQueue.length > 0) {
+        console.log(`🗑️ Synchronisation globale de ${deleteQueue.length} suppression(s) en attente...`)
+        const remainingDeleteQueue: string[] = []
+        for (const photoId of deleteQueue) {
+          try {
+            const { error } = await supabase.from('photos').delete().eq('id', photoId)
+            if (error) {
+              remainingDeleteQueue.push(photoId)
+            } else {
+              successCount++
+            }
+          } catch(e) {
+            remainingDeleteQueue.push(photoId)
+          }
+        }
+        localStorage.setItem('teutchap_offline_delete_queue', JSON.stringify(remainingDeleteQueue))
+      }
+
+      // 2. Synchronisation des ajouts en attente
+      const queue: any[] = await localforage.getItem('teutchap_offline_queue') || []
+      if (queue.length === 0 && deleteQueue.length === 0) return
+
+      if (queue.length > 0) {
+        console.log(`🚀 Synchronisation globale de ${queue.length} souvenir(s) en attente...`)
+      }
       const remainingQueue: any[] = []
 
       for (const item of queue) {

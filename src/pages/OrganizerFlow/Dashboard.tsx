@@ -6,6 +6,7 @@ import localforage from 'localforage'
 import { useEvent } from '../../hooks/useEvent'
 import { useChallenges } from '../../hooks/useChallenges'
 import { usePhotos } from '../../hooks/usePhotos'
+import { useReactions } from '../../hooks/useReactions'
 import { useEventGuests } from '../../hooks/useEventGuests'
 import { useAuth } from '../../contexts/AuthContext'
 import HighlightReel from '../../components/HighlightReel'
@@ -21,6 +22,7 @@ export default function Dashboard() {
   const { eventData, loading: eventLoading, updateEvent, setEventData } = useEvent(eventId)
   const { challenges, addChallenge, deleteChallenge } = useChallenges(eventData?.id)
   const { photos } = usePhotos(eventData?.id)
+  const { reactions, userReactions, addReaction } = useReactions()
   const { guests } = useEventGuests(eventData?.id)
   
   const [showChallengeForm, setShowChallengeForm] = useState(false)
@@ -177,11 +179,23 @@ export default function Dashboard() {
       }
     } else {
       try {
-        const { error } = await supabase.from('photos').delete().eq('id', photo.id)
-        if (error) {
-          alert("Erreur lors de la suppression sur le serveur.")
-        } else {
-          window.dispatchEvent(new Event('online'))
+        const deletedIds: string[] = JSON.parse(localStorage.getItem('teutchap_offline_delete_queue') || '[]')
+        if (!deletedIds.includes(photo.id)) {
+          deletedIds.push(photo.id)
+          localStorage.setItem('teutchap_offline_delete_queue', JSON.stringify(deletedIds))
+        }
+
+        const historyIds: string[] = JSON.parse(localStorage.getItem('teutchap_deleted_history') || '[]')
+        if (!historyIds.includes(photo.id)) {
+          historyIds.push(photo.id)
+          localStorage.setItem('teutchap_deleted_history', JSON.stringify(historyIds))
+        }
+        window.dispatchEvent(new Event('online'))
+
+        if (navigator.onLine) {
+          supabase.from('photos').delete().eq('id', photo.id).then(({ error }) => {
+            if (error) console.error("Erreur suppression serveur post-optimiste orga:", error)
+          })
         }
       } catch(err) {
         console.error("Erreur suppression photo serveur orga:", err)
@@ -941,13 +955,36 @@ export default function Dashboard() {
                               <span className="text-[8px] font-black uppercase tracking-widest text-white">Photo bloquée par l'IA</span>
                            </div>
                         ) : (
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                             <div className="flex gap-1">
-                                {photo.ai_tags?.slice(0, 2).map((t: string) => (
-                                  <span key={t} className="text-[6px] font-black uppercase tracking-widest bg-white/20 px-1.5 py-0.5 rounded-md text-white">#{t}</span>
+                          <>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4 pb-12">
+                               <div className="flex gap-1">
+                                  {photo.ai_tags?.slice(0, 2).map((t: string) => (
+                                    <span key={t} className="text-[6px] font-black uppercase tracking-widest bg-white/20 px-1.5 py-0.5 rounded-md text-white">#{t}</span>
+                                  ))}
+                               </div>
+                            </div>
+
+                            {/* Reactions overlay */}
+                            <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/90 via-black/30 to-transparent pt-8 z-20">
+                              <div className="flex gap-1 justify-center">
+                                {['❤️', '🔥', '👏'].map(emoji => (
+                                  <button 
+                                    key={emoji}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addReaction(photo.id, emoji);
+                                    }}
+                                    className={`glass-dark hover:bg-white/20 px-2 py-0.5 rounded-full text-[10px] flex items-center space-x-0.5 transition-all active:scale-75 ${userReactions[photo.id] === emoji ? 'border-primary bg-primary/20 scale-105' : reactions[photo.id]?.[emoji] ? 'border-white/20 bg-white/5' : ''}`}
+                                  >
+                                    <span>{emoji}</span>
+                                    {reactions[photo.id]?.[emoji] && (
+                                      <span className="font-black text-white text-[8px]">{reactions[photo.id][emoji]}</span>
+                                    )}
+                                  </button>
                                 ))}
-                             </div>
-                          </div>
+                              </div>
+                            </div>
+                          </>
                         )}
                       </div>
                     ))}

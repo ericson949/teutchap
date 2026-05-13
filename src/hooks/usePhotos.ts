@@ -89,7 +89,14 @@ export function usePhotos(eventId: string | undefined, options: { challengeId?: 
       }
     }
 
-    setPhotos([...offlineVirtualPhotos, ...remotePhotos])
+    // Récupérer la file locale des suppressions en attente et l'historique permanent des suppressions
+    const pendingDeletedIds: string[] = JSON.parse(localStorage.getItem('teutchap_offline_delete_queue') || '[]')
+    const permanentDeletedIds: string[] = JSON.parse(localStorage.getItem('teutchap_deleted_history') || '[]')
+    const allDeletedIds = [...pendingDeletedIds, ...permanentDeletedIds]
+
+    const allPhotos = [...offlineVirtualPhotos, ...remotePhotos].filter(p => !allDeletedIds.includes(p.id))
+
+    setPhotos(allPhotos)
     setLoading(false)
   }
 
