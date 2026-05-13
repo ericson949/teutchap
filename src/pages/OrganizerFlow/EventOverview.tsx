@@ -74,7 +74,10 @@ export default function EventOverview() {
     }
 
     // Date de fin estimée : par défaut 24h après le début si non spécifiée
-    const endDt = getParsedDateTime(eventData?.end_date || baseDateStr, eventData?.end_time) || new Date(startDt.getTime() + 24 * 3600 * 1000)
+    let endDt = getParsedDateTime(eventData?.end_date, eventData?.end_time)
+    if (!endDt || isNaN(endDt.getTime()) || endDt.getTime() <= startDt.getTime()) {
+      endDt = new Date(startDt.getTime() + 24 * 3600 * 1000)
+    }
     if (endDt.getFullYear() > 2100 || endDt.getFullYear() < 2000) {
       endDt.setTime(startDt.getTime() + 24 * 3600 * 1000)
     }
