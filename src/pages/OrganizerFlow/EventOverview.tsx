@@ -652,6 +652,72 @@ export default function EventOverview() {
                 )}
               </div>
 
+              {/* LISTE PERMANENTE DES INVITÉS EN TEMPS RÉEL (Visibilité immédiate garantie) */}
+              <div className="w-full bg-white/[0.02] border border-white/10 rounded-2xl p-4 space-y-3 text-left overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-xs font-bold text-gray-200">Invités & Participants ({allDisplayGuests.length})</span>
+                  </div>
+                  <span className="text-[8px] font-black px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 uppercase tracking-widest">
+                    Live Sync
+                  </span>
+                </div>
+                
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                  {allDisplayGuests.length > 0 ? (
+                    allDisplayGuests.map((guestObj, i) => {
+                      const isAdmin = guestObj.role === 'co_admin' || (eventData?.co_admins || []).includes(guestObj.pseudo)
+                      return (
+                        <div
+                          key={i}
+                          className={`w-full flex items-center justify-between p-2 rounded-xl border text-left transition-all ${
+                            isAdmin 
+                              ? 'bg-accent/10 border-accent/30 text-white' 
+                              : 'bg-black/30 border-white/5 text-gray-400'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2 min-w-0">
+                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[9px] shrink-0 ${
+                              isAdmin ? 'bg-accent text-white' : 'bg-white/5 text-gray-500'
+                            }`}>
+                              {guestObj.pseudo.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <div className="flex items-center space-x-1.5">
+                                <span className="text-xs font-medium truncate text-gray-200">{guestObj.pseudo}</span>
+                                {isAdmin && <span className="text-[7px] bg-accent/20 text-accent font-black px-1 rounded uppercase tracking-widest">Co-Admin</span>}
+                              </div>
+                              <div className="flex items-center space-x-1 mt-0.5">
+                                <span className={`w-1.5 h-1.5 rounded-full ${guestObj.isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
+                                <span className="text-[8px] text-gray-500 font-normal">
+                                  {guestObj.isOnline ? 'En ligne' : 'Inscrit'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <button
+                            onClick={() => handleToggleAdminGuest(guestObj)}
+                            disabled={adminLoading}
+                            title={isAdmin ? "Révocation des droits d'administration" : "Promouvoir Co-Administrateur"}
+                            className={`p-1.5 rounded-lg border transition-all ${
+                              isAdmin 
+                                ? 'bg-accent/20 text-accent border-accent/30 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30' 
+                                : 'bg-white/5 text-gray-500 border-white/5 hover:text-accent hover:border-accent/30'
+                            }`}
+                          >
+                            <UserPlus size={12} />
+                          </button>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <p className="text-xs text-gray-500 italic py-3 text-center">Aucun participant enregistré en base</p>
+                  )}
+                </div>
+              </div>
+
               {/* Carte de Gestion des Co-Administrateurs (Sélecteur Multiple) */}
               <div className="w-full bg-white/[0.02] border border-white/10 rounded-2xl p-4 space-y-3 text-left overflow-hidden">
                 <div className="flex items-center justify-between">

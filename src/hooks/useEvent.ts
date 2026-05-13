@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
-// Génération ou récupération garantie d'un fingerprint persistant d'appareil
+// Génération ou récupération garantie d'un fingerprint persistant d'appareil au format strict UUIDv4
 export const getDeviceId = () => {
-  let id = localStorage.getItem('teutchap_device_id')
+  let id = localStorage.getItem('teutchap_device_uuid_v4')
   if (!id) {
-    id = 'dev_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36)
-    localStorage.setItem('teutchap_device_id', id)
+    try {
+      id = crypto.randomUUID()
+    } catch (e) {
+      id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8)
+        return v.toString(16)
+      })
+    }
+    localStorage.setItem('teutchap_device_uuid_v4', id)
   }
   return id
 }
@@ -107,7 +114,7 @@ export function useEvent(idOrToken: string | undefined, isToken: boolean = false
             })
 
             // Mise à jour silencieuse de last_active_at en base
-            if (userId && userId.includes('-')) {
+            if (userId) {
               supabase
                 .from('event_invite_user')
                 .update({ last_active_at: new Date().toISOString() })
@@ -175,15 +182,20 @@ export function useEvent(idOrToken: string | undefined, isToken: boolean = false
       let userId = authData?.user?.id
 
       if (!userId) {
-        const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously()
-        if (!anonError && anonData?.user?.id) {
-          userId = anonData.user.id
-        } else {
+        try {
+          const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously()
+          if (!anonError && anonData?.user?.id) {
+            userId = anonData.user.id
+          }
+        } catch (anonEx) {
+          // Mode anonyme potentiellement inactif sur l'instance Supabase
+        }
+        if (!userId) {
           userId = getDeviceId()
         }
       }
 
-      if (userId && userId.includes('-')) {
+      if (userId) {
         // Vérification préalable pour savoir si l'utilisateur est déjà membre de l'événement
         const { data: existingLink } = await supabase
           .from('event_invite_user')
@@ -192,37 +204,52 @@ export function useEvent(idOrToken: string | undefined, isToken: boolean = false
           .eq('user_id', userId)
           .maybeSingle()
 
-        const isNewGuest = !existingLink
-
         const shadowEmail = `anon-${userId}@teutchap.shadow`
-        await supabase.from('users').upsert([
-          {
-            id: userId,
-            email: shadowEmail,
-            name: pseudo,
-            plan: 'free'
-          }
-        ], { onConflict: 'id' })
+        
+        try {
+          await supabase.from('users').upsert([
+            {
+              id: userId,
+              email: shadowEmail,
+              name: pseudo,
+              plan: 'free'
+            }
+          ], { onConflict: 'id' })
+        } catch (upsertUserErr) {
+          console.warn("Avertissement mineur insertion users:", upsertUserErr)
+        }
 
         if (existingLink) {
           // Déjà membre : on actualise uniquement son timestamp d'activité pour préserver son rôle (ex: co_admin)
-          await supabase.from('event_invite_user')
-            .update({ last_active_at: new Date().toISOString() })
-            .eq('event_id', eventData.id)
-            .eq('user_id', userId)
+          try {
+            await supabase.from('event_invite_user')
+              .update({ last_active_at: new Date().toISOString() })
+              .eq('event_id', eventData.id)
+              .eq('user_id', userId)
+          } catch (updateLinkErr) {
+            console.warn("Avertissement mise à jour activité invité:", updateLinkErr)
+          }
         } else {
           // Nouveau membre : on crée le lien et on incrémente formellement le compteur
-          await supabase.from('event_invite_user').upsert([
-            {
-              event_id: eventData.id,
-              user_id: userId,
-              role: 'guest',
-              last_active_at: new Date().toISOString()
-            }
-          ], { onConflict: 'event_id,user_id' })
+          try {
+            await supabase.from('event_invite_user').upsert([
+              {
+                event_id: eventData.id,
+                user_id: userId,
+                role: 'guest',
+                last_active_at: new Date().toISOString()
+              }
+            ], { onConflict: 'event_id,user_id' })
+          } catch (insertLinkErr) {
+            console.warn("Avertissement création lien invité:", insertLinkErr)
+          }
 
-          const currentCount = eventData.joined_guests_count || 0
-          await updateEvent({ joined_guests_count: currentCount + 1 })
+          try {
+            const currentCount = eventData.joined_guests_count || 0
+            await updateEvent({ joined_guests_count: currentCount + 1 })
+          } catch (updateCountErr) {
+            console.warn("Avertissement incrémentation compteur:", updateCountErr)
+          }
         }
       }
 

@@ -33,3 +33,6 @@ ON event_invite_user FOR UPDATE USING (true);
 
 -- Purge du cache PostgREST
 NOTIFY pgrst, 'reload schema';
+
+-- Activation de la diffusion Realtime sur la table pour le rafraîchissement instantané du panel administraterateur
+ALTER PUBLICATION supabase_realtime ADD TABLE event_invite_user;

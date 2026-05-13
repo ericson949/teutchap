@@ -163,6 +163,18 @@ L'Afrique centrale organise des événements à très haute valeur émotionnelle
 - `last_active_at` (TIMESTAMPTZ) : Suivi des rafraîchissements de session.
 - **Contrainte Unique** : `UNIQUE(event_id, user_id)` autorisant l'appartenance à plusieurs événements avec des rôles distincts.
 
+### Table `reactions`
+- `id` (UUID, Primary Key)
+- `photo_id` (UUID, Foreign Key) : Référence en cascade vers la table `photos`.
+- `emoji` (TEXT) : Caractère ou code de l'émoji utilisé.
+- `device_fingerprint` (TEXT) : Signature anonyme du votant pour parer aux votes en double.
+- **Contrainte Unique** : `UNIQUE(photo_id, emoji, device_fingerprint)`.
+
+### Table `challenges`
+- `id` (UUID, Primary Key)
+- `event_id` (UUID, Foreign Key) : Référence de l'album partagé.
+- `title`, `description` (TEXT) : Enoncés textuels du défi.
+
 ---
 
 ## 10. Modèle économique
