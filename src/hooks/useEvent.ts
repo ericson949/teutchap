@@ -184,6 +184,16 @@ export function useEvent(idOrToken: string | undefined, isToken: boolean = false
       }
 
       if (userId && userId.includes('-')) {
+        // Vérification préalable pour savoir si l'utilisateur est déjà membre de l'événement
+        const { data: existingLink } = await supabase
+          .from('event_invite_user')
+          .select('id, role')
+          .eq('event_id', eventData.id)
+          .eq('user_id', userId)
+          .maybeSingle()
+
+        const isNewGuest = !existingLink
+
         const shadowEmail = `anon-${userId}@teutchap.shadow`
         await supabase.from('users').upsert([
           {
@@ -194,24 +204,32 @@ export function useEvent(idOrToken: string | undefined, isToken: boolean = false
           }
         ], { onConflict: 'id' })
 
-        await supabase.from('event_invite_user').upsert([
-          {
-            event_id: eventData.id,
-            user_id: userId,
-            role: 'guest',
-            last_active_at: new Date().toISOString()
-          }
-        ], { onConflict: 'event_id,user_id' })
+        if (existingLink) {
+          // Déjà membre : on actualise uniquement son timestamp d'activité pour préserver son rôle (ex: co_admin)
+          await supabase.from('event_invite_user')
+            .update({ last_active_at: new Date().toISOString() })
+            .eq('event_id', eventData.id)
+            .eq('user_id', userId)
+        } else {
+          // Nouveau membre : on crée le lien et on incrémente formellement le compteur
+          await supabase.from('event_invite_user').upsert([
+            {
+              event_id: eventData.id,
+              user_id: userId,
+              role: 'guest',
+              last_active_at: new Date().toISOString()
+            }
+          ], { onConflict: 'event_id,user_id' })
+
+          const currentCount = eventData.joined_guests_count || 0
+          await updateEvent({ joined_guests_count: currentCount + 1 })
+        }
       }
 
-      const currentCount = eventData.joined_guests_count || 0
-      await updateEvent({ joined_guests_count: currentCount + 1 })
       return true
     } catch (err) {
       console.error("Erreur d'enregistrement invité :", err)
-      const currentCount = eventData.joined_guests_count || 0
-      await updateEvent({ joined_guests_count: currentCount + 1 })
-      return true
+      return false
     }
   }
 

@@ -105,26 +105,11 @@ export function useEventGuests(eventId: string | undefined) {
   }, [eventId])
 
   // 3. Fusionner la liste DB avec l'état Presence en temps réel
-  // On s'assure d'inclure aussi les utilisateurs uniquement présents en Presence (ex: en cours d'onboarding)
+  // Seuls les invités formellement inscrits en base de données sont listés pour l'attribution de rôles
   const mergedGuests: EventGuest[] = guests.map(g => ({
     ...g,
     isOnline: !!onlineUsers[g.user_id]
   }))
-
-  // Ajouter les utilisateurs en ligne qui ne seraient pas encore persistés en base
-  Object.keys(onlineUsers).forEach(userId => {
-    if (!mergedGuests.some(g => g.user_id === userId)) {
-      const presenceData = onlineUsers[userId]
-      mergedGuests.push({
-        user_id: userId,
-        pseudo: presenceData.pseudo || 'Invité (En ligne)',
-        role: 'guest',
-        joined_at: presenceData.online_at || new Date().toISOString(),
-        last_active_at: presenceData.online_at || new Date().toISOString(),
-        isOnline: true
-      })
-    }
-  })
 
   // Mettre à jour le rôle (ex: promotion co-admin)
   const updateGuestRole = async (userId: string, newRole: string) => {

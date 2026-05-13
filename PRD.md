@@ -119,7 +119,7 @@ L'Afrique centrale organise des événements à très haute valeur émotionnelle
 - **F-02 — QR Code & Partage** : Génération vectorielle unifiée avec incrustation et copie en presse-papiers déclenchant une notification globale de succès au format Toast.
 - **F-03 — Gestion des Tranches Horaires** : Saisie optionnelle des heures de début et de fin (`startTime`, `endTime`) conditionnant le cycle de vie des événements s'étalant sur plusieurs jours.
 - **F-04 — Sas Premium par Mot de Passe** : Écran de verrouillage immersif interdisant l'accès à la galerie et aux formulaires tant que l'invité n'a pas saisi le code d'accès partagé. L'autorisation validée est persistée dans le cache local.
-- **F-05 — Collaboration Multi-Admins** : Interface permettant d'assigner des co-administrateurs secondaires qui héritent immédiatement des permissions de modération et d'édition.
+- **F-05 — Collaboration Multi-Admins & Gestion des Invités** : Console avancée de gestion des contributeurs reposant sur un modèle relationnel strict (`event_invite_user`). L'organisateur visualise l'état de connexion de chaque invité en direct (pastille verte "En ligne" / "Hors ligne" propulsée par **Supabase Presence**) et peut déléguer des droits de co-administration ou révoquer des accès à la volée. Un pont d'interopérabilité (Handoff WebView) garantit la préservation des sessions lors des bascules de navigateurs In-App vers le système natif.
 - **F-06 — Upload photo sans compte** : Mode hors-ligne résilient et rattachement strict de la signature de l'invité.
 - **F-07 — PWA Installable Universelle** : Bannière de guidage adaptative pour iOS (Safari) et interception du prompt natif pour Android (Chrome).
 - **F-08 — Galerie temps réel** : Synchronisation fluide via Supabase Realtime Channels.
@@ -153,6 +153,15 @@ L'Afrique centrale organise des événements à très haute valeur émotionnelle
 - `url_original`, `url_compressed` : Pointeurs vers le *Supabase Storage*.
 - `contributor_name` (TEXT) : Signature inaltérable saisie par l'invité.
 - `is_moderated` (BOOLEAN) : Indicateur d'inhibition (Reveal Mode ou rejet manuel).
+
+### Table `event_invite_user` (Table Pivot / Modèle de Présence)
+- `id` (UUID, Primary Key)
+- `event_id` (UUID, Foreign Key) : Lien de jointure vers la table `events`.
+- `user_id` (UUID, Foreign Key) : Lien de jointure vers le profil Shadow de l'invité dans `users`.
+- `role` (TEXT) : Niveau de droits d'accès (`guest`, `co_admin`).
+- `joined_at` (TIMESTAMPTZ) : Horodatage d'adhésion initiale.
+- `last_active_at` (TIMESTAMPTZ) : Suivi des rafraîchissements de session.
+- **Contrainte Unique** : `UNIQUE(event_id, user_id)` autorisant l'appartenance à plusieurs événements avec des rôles distincts.
 
 ---
 
