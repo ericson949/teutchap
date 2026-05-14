@@ -37,8 +37,8 @@ export default function EventHome() {
   }
 
   return (
-    <div className="min-h-screen bg-[#08060d] text-white flex flex-col relative overflow-x-hidden">
-      <BackgroundGlows />
+    <div className="min-h-screen bg-black text-white flex flex-col relative overflow-x-hidden font-sans">
+
       <GuestHeader eventName={eventData.name} guestPseudo={guestPseudo} onEditPseudo={(p: string) => setGuestPseudo(p)} token={token} />
 
       <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar relative z-10 pb-32">
@@ -68,63 +68,60 @@ export default function EventHome() {
 
 // Sub-components to keep EventHome under 300 lines
 const LoadingScreen = () => (
-  <div className="min-h-screen bg-[#08060d] flex flex-col items-center justify-center">
-    <Loader2 size={28} className="text-primary animate-spin" />
-    <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Chargement des souvenirs...</p>
+  <div className="min-h-screen bg-black flex flex-col items-center justify-center">
+    <Loader2 size={32} className="text-white/20 animate-spin" />
+    <p className="mt-6 text-xs font-medium uppercase tracking-[0.3em] text-white/40">Développement des souvenirs...</p>
   </div>
 )
 
 const NotFoundScreen = ({ onBack }: { onBack: () => void }) => (
-  <div className="min-h-screen bg-[#08060d] flex flex-col items-center justify-center p-8 text-center">
-    <AlertTriangle size={48} className="text-red-500 mb-4" />
-    <h2 className="text-xl font-black uppercase">Événement introuvable</h2>
-    <button onClick={onBack} className="mt-6 px-8 py-3 bg-primary rounded-xl text-xs font-black uppercase">Retour</button>
+  <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-center space-y-8">
+    <div className="space-y-2">
+      <h2 className="text-4xl md:text-5xl font-serif">Événement introuvable</h2>
+      <p className="text-white/40 text-sm max-w-xs mx-auto">Le lien que vous avez suivi semble être expiré ou incorrect.</p>
+    </div>
+    <button onClick={onBack} className="btn-pill btn-secondary text-xs uppercase tracking-widest">Retour à l'accueil</button>
   </div>
 )
 
 const PasswordScreen = ({ pwdInput, setPwdInput, pwdError, onVerify }: any) => (
-  <div className="min-h-screen bg-[#08060d] flex flex-col items-center justify-center p-8">
-    <form onSubmit={(e) => { e.preventDefault(); onVerify(); }} className="glass p-8 rounded-[2rem] w-full max-w-md space-y-6 border border-white/10 shadow-2xl">
-      <div className="text-center space-y-2">
-        <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto text-primary"><Lock size={24} /></div>
-        <h2 className="text-xl font-black uppercase tracking-tight">Accès Protégé</h2>
+  <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8">
+    <form onSubmit={(e) => { e.preventDefault(); onVerify(); }} className="cinematic-surface p-10 w-full max-w-md space-y-8">
+      <div className="text-center space-y-3">
+        <h2 className="text-3xl font-serif">Accès Protégé</h2>
+        <p className="text-white/40 text-sm">Veuillez entrer le code d'accès de l'événement.</p>
       </div>
-      <input type="password" value={pwdInput} onChange={(e) => setPwdInput(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-center text-2xl font-black tracking-[0.5em] outline-none focus:border-primary/50" placeholder="••••" autoFocus />
-      {pwdError && <p className="text-red-500 text-[10px] text-center font-bold uppercase">Code incorrect</p>}
-      <button type="submit" className="w-full bg-primary py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20">Déverrouiller</button>
+      <input type="password" value={pwdInput} onChange={(e) => setPwdInput(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-center text-4xl font-serif tracking-[0.5em] outline-none focus:border-white/30 transition-colors" placeholder="••••" autoFocus />
+      {pwdError && <p className="text-red-400 text-xs text-center font-medium">Code incorrect</p>}
+      <button type="submit" className="w-full btn-pill btn-primary text-xs uppercase tracking-widest">Déverrouiller</button>
     </form>
   </div>
 )
 
 const OnboardingScreen = ({ inputPseudo, setInputPseudo, onJoin }: any) => (
-  <div className="min-h-screen bg-[#08060d] flex flex-col items-center justify-center p-8">
-    <div className="glass p-8 rounded-[2rem] w-full max-w-md space-y-6 border border-white/10 shadow-2xl">
-      <div className="text-center space-y-2">
-        <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center mx-auto text-accent"><User size={24} /></div>
-        <h2 className="text-xl font-black uppercase tracking-tight">Bienvenue</h2>
+  <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8">
+    <div className="cinematic-surface p-10 w-full max-w-md space-y-8">
+      <div className="text-center space-y-3">
+        <h2 className="text-3xl font-serif">Bienvenue</h2>
+        <p className="text-white/40 text-sm">Comment souhaitez-vous apparaître ?</p>
       </div>
-      <input type="text" value={inputPseudo} onChange={(e) => setInputPseudo(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-center text-lg font-black outline-none focus:border-accent/50" placeholder="Votre pseudo" />
-      <button disabled={!inputPseudo.trim()} onClick={() => onJoin(inputPseudo.trim())} className="w-full bg-accent disabled:opacity-50 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-accent/20">Rejoindre</button>
+      <input type="text" value={inputPseudo} onChange={(e) => setInputPseudo(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-center text-xl font-serif outline-none focus:border-white/30 transition-colors" placeholder="Votre pseudo" />
+      <button disabled={!inputPseudo.trim()} onClick={() => onJoin(inputPseudo.trim())} className="w-full btn-pill btn-primary text-xs uppercase tracking-widest disabled:opacity-30">Rejoindre l'aventure</button>
     </div>
   </div>
 )
 
-const BackgroundGlows = () => (
-  <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 blur-[120px] rounded-full animate-pulse" />
-    <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full" />
-  </div>
-)
+// Removed local BackgroundGlows, using index.css global body gradients
 
 const GuestHeader = ({ eventName, guestPseudo, onEditPseudo, token }: any) => (
-  <header className="glass-dark border-b border-white/5 px-4 py-3 flex items-center justify-between sticky top-0 z-40 backdrop-blur-xl">
-    <div className="flex items-center space-x-2">
-      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-      <span className="text-[10px] font-black uppercase tracking-widest text-white truncate max-w-[150px]">{eventName}</span>
+  <header className="bg-black/80 border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-40 backdrop-blur-2xl">
+    <div className="flex items-center space-x-3">
+      <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
+      <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/80 truncate max-w-[150px]">{eventName}</span>
     </div>
-    <div className="flex items-center space-x-2">
-      <div className="bg-white/5 border border-white/10 px-3 py-1 rounded-full text-[9px] font-bold text-primary-light">👤 {guestPseudo}</div>
-      <button onClick={() => { const n = prompt("Modifier mon pseudo :", guestPseudo); if(n?.trim()) { onEditPseudo(n.trim()); localStorage.setItem(`teutchap_pseudo_${token}`, n.trim()); }}} className="text-[9px] text-gray-500 underline">Éditer</button>
+    <div className="flex items-center space-x-4">
+      <div className="text-[10px] font-medium text-white/50">{guestPseudo}</div>
+      <button onClick={() => { const n = prompt("Modifier mon pseudo :", guestPseudo); if(n?.trim()) { onEditPseudo(n.trim()); localStorage.setItem(`teutchap_pseudo_${token}`, n.trim()); }}} className="text-[10px] text-white/20 hover:text-white/40 transition-colors uppercase tracking-widest">Éditer</button>
     </div>
   </header>
 )

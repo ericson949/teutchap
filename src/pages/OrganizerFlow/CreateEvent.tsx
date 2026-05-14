@@ -11,27 +11,26 @@ export default function CreateEvent() {
   } = useCreateEventLogic()
 
   return (
-    <div className="min-h-screen bg-[#08060d] text-white flex flex-col items-center p-4 selection:bg-primary/30 relative overflow-x-hidden">
-      <BackgroundGlows />
+    <div className="min-h-screen bg-black text-white flex flex-col items-center p-4 selection:bg-white/10 relative overflow-x-hidden font-sans">
+
       
       <div className="w-full max-w-xl relative z-10 space-y-8 py-10 md:py-16">
         <header className="text-center space-y-4 animate-in fade-in slide-in-from-top-8 duration-1000">
-          <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-6 py-2.5 rounded-full backdrop-blur-xl">
-            <Zap size={14} className="text-primary fill-current" />
-            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-300">{activeTab === 'create' ? "Initialisation d'Album" : "Espace Invité"}</span>
+          <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-6 py-2.5 rounded-full backdrop-blur-xl mb-4">
+            <span className="text-[10px] font-medium uppercase tracking-[0.4em] text-white/40">{activeTab === 'create' ? "Nouveau projet" : "Accès Invité"}</span>
           </div>
-          <h1 className="text-[2.2rem] md:text-8xl font-black tracking-tighter leading-[1] md:leading-[0.85] flex flex-col items-center">
-            <span>{activeTab === 'create' ? 'Capturez' : 'Rejoignez'}</span>
-            <span className="text-gradient">{activeTab === 'create' ? "L'éternité" : 'La Réception'}</span>
+          <h1 className="text-6xl md:text-9xl font-serif tracking-tight leading-[1] flex flex-col items-center">
+            <span className="text-white/40">{activeTab === 'create' ? 'Capturez' : 'Rejoignez'}</span>
+            <span className="text-white">{activeTab === 'create' ? "L'éternité" : 'La Réception'}</span>
           </h1>
         </header>
 
-        <div className="flex bg-white/5 border border-white/10 p-1.5 rounded-full max-w-md mx-auto relative z-20">
-          <TabButton active={activeTab === 'create'} onClick={() => setActiveTab('create')} icon={<Sparkles size={14}/>} label="Créer un album" />
-          <TabButton active={activeTab === 'join'} onClick={() => setActiveTab('join')} icon={<LogIn size={14}/>} label="Rejoindre" />
+        <div className="flex bg-white/5 border border-white/10 p-1 rounded-full max-w-sm mx-auto relative z-20">
+          <TabButton active={activeTab === 'create'} onClick={() => setActiveTab('create')} label="Créer" />
+          <TabButton active={activeTab === 'join'} onClick={() => setActiveTab('join')} label="Rejoindre" />
         </div>
 
-        <div className="glass rounded-[2.5rem] p-6 md:p-12 shadow-2xl space-y-8 border border-white/5 relative overflow-hidden group">
+        <div className="cinematic-surface p-8 md:p-14 space-y-10 relative overflow-hidden group">
           {activeTab === 'create' ? (
             <form onSubmit={(e) => { e.preventDefault(); handleSubmit(navigate); }} className="space-y-6 relative z-10">
               <InputGroup label="Nom de l'événement" icon={<Hash size={18}/>} placeholder="Ex: Mariage de Sarah & Marc" value={formData.name} onChange={(v: string) => setFormData({...formData, name: v})} />
@@ -42,13 +41,13 @@ export default function CreateEvent() {
               </div>
 
               <div className="space-y-4">
-                 <InputGroup type="datetime-local" label="Date et heure" icon={<Calendar size={18}/>} value={formData.eventDateTime} onChange={(v: string) => setFormData({...formData, eventDateTime: v})} />
-                 <label className="flex items-center space-x-3 cursor-pointer group w-fit ml-2">
-                    <div onClick={() => setIsMultiDay(!isMultiDay)} className={`w-10 h-5 rounded-full transition-all relative ${isMultiDay ? 'bg-primary shadow-[0_0_15px_rgba(170,59,255,0.4)]' : 'bg-white/10'}`}>
-                      <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isMultiDay ? 'left-6' : 'left-1'}`} />
+                  <InputGroup type="datetime-local" label="Date et heure" icon={<Calendar size={18}/>} value={formData.eventDateTime} onChange={(v: string) => setFormData({...formData, eventDateTime: v})} />
+                  <label className="flex items-center space-x-4 cursor-pointer group w-fit ml-2">
+                    <div onClick={() => setIsMultiDay(!isMultiDay)} className={`w-11 h-6 rounded-full transition-all relative ${isMultiDay ? 'bg-white shadow-[0_0_15px_rgba(255,255,255,0.4)]' : 'bg-white/10'}`}>
+                      <div className={`absolute top-1 w-4 h-4 bg-black/80 rounded-full transition-all ${isMultiDay ? 'left-6' : 'left-1'}`} />
                     </div>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Multi-jours</span>
-                 </label>
+                    <span className="text-[10px] font-medium uppercase tracking-widest text-white/60">Multi-jours</span>
+                  </label>
               </div>
 
               {creationError && <ErrorMessage message={creationError} />}
@@ -56,8 +55,8 @@ export default function CreateEvent() {
             </form>
           ) : (
             <form onSubmit={(e) => { e.preventDefault(); navigate(`/e/${joinInput.toLowerCase()}`) }} className="space-y-8 relative z-10 text-center animate-in fade-in">
-              <div className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mx-auto text-primary"><LogIn size={28} /></div>
-              <h2 className="text-xl font-black">Accédez aux Souvenirs</h2>
+              <div className="w-16 h-16 bg-white/5 border border-white/10 rounded-full flex items-center justify-center mx-auto text-white/60"><LogIn size={28} /></div>
+              <h2 className="text-3xl font-serif text-white">Album Privé</h2>
               <InputGroup label="Code Album" icon={<LogIn size={18}/>} placeholder="Ex: lwidj0ck" value={joinInput} onChange={setJoinInput} />
               {joinError && <ErrorMessage message={joinError} />}
               <SubmitButton label="Rejoindre la réception" icon={<ArrowRight size={18}/>} />
@@ -69,29 +68,37 @@ export default function CreateEvent() {
   )
 }
 
-const TabButton = ({ active, onClick, icon, label }: any) => (
-  <button onClick={onClick} className={`flex-1 py-3.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-2 ${active ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}>
-    {icon} <span>{label}</span>
+const TabButton = ({ active, onClick, label }: any) => (
+  <button onClick={onClick} className={`flex-1 py-3 rounded-full text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-500 ${active ? 'bg-white text-black shadow-xl shadow-white/5' : 'text-white/30 hover:text-white/60'}`}>
+    <span>{label}</span>
   </button>
 )
 
 const InputGroup = ({ label, icon, value, onChange, placeholder, type="text" }: any) => (
-  <div className="space-y-3">
-    <label className="text-[9px] font-black uppercase tracking-widest text-gray-500 ml-2">{label}</label>
+  <div className="space-y-4">
+    <label className="text-[10px] font-semibold uppercase tracking-[0.25em] text-white/80 ml-4">{label}</label>
     <div className="relative">
-      <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600">{icon}</div>
-      <input type={type} required placeholder={placeholder} className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] pl-14 pr-8 py-5 text-sm font-bold outline-none focus:border-primary/50 text-white" value={value} onChange={e => onChange(e.target.value)} />
+      <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/50">{icon}</div>
+      <input 
+        type={type} 
+        required 
+        placeholder={placeholder} 
+        style={{ colorScheme: 'dark' }}
+        className="w-full bg-white/[0.08] border border-white/10 rounded-2xl pl-14 pr-8 py-6 text-base font-serif outline-none focus:border-white/40 transition-all text-white placeholder:text-white/40" 
+        value={value} 
+        onChange={e => onChange(e.target.value)} 
+      />
     </div>
   </div>
 )
 
 const SelectGroup = ({ label, icon, value, onChange, options }: any) => (
-  <div className="space-y-3">
-    <label className="text-[8px] font-black uppercase tracking-widest text-gray-500 ml-2 block truncate">{label}</label>
+  <div className="space-y-4">
+    <label className="text-[10px] font-semibold uppercase tracking-[0.25em] text-white/80 ml-4 block truncate">{label}</label>
     <div className="relative">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600">{icon}</div>
-      <select className="w-full bg-white/5 border border-white/10 rounded-2xl pl-10 pr-8 py-4 text-xs font-bold outline-none focus:border-primary/50 appearance-none text-white" value={value} onChange={e => onChange(e.target.value)}>
-        {options.map((o: any) => <option key={o.v} value={o.v} className="bg-[#0b0910]">{o.l}</option>)}
+      <div className="absolute left-5 top-1/2 -translate-y-1/2 text-white/50">{icon}</div>
+      <select className="w-full bg-white/[0.08] border border-white/10 rounded-2xl pl-12 pr-8 py-5 text-sm font-medium outline-none focus:border-white/40 transition-all appearance-none text-white" value={value} onChange={e => onChange(e.target.value)}>
+        {options.map((o: any) => <option key={o.v} value={o.v} className="bg-black text-white">{o.l}</option>)}
       </select>
     </div>
   </div>
@@ -104,15 +111,10 @@ const ErrorMessage = ({ message }: { message: string }) => (
   </div>
 )
 
-const SubmitButton = ({ loading, label, icon }: any) => (
-  <button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary-dark text-white font-black py-6 rounded-[1.5rem] shadow-[0_20px_50px_rgba(170,59,255,0.3)] flex items-center justify-center space-x-4 text-[10px] uppercase tracking-[0.25em] border-t border-white/20">
-    {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>{label} {icon}</>}
+const SubmitButton = ({ loading, label }: any) => (
+  <button type="submit" disabled={loading} className="w-full btn-pill btn-primary py-6 text-xs uppercase tracking-[0.4em] flex items-center justify-center disabled:opacity-30">
+    {loading ? <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" /> : label}
   </button>
 )
 
-const BackgroundGlows = () => (
-  <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-    <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-primary/10 blur-[150px] rounded-full" />
-    <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-accent/5 blur-[150px] rounded-full" />
-  </div>
-)
+// Removed BackgroundGlows - now handled globally in index.css
