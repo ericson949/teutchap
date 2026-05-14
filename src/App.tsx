@@ -11,6 +11,7 @@ import EventOverview from './pages/OrganizerFlow/EventOverview'
 import AdminDashboard from './pages/Admin/AdminDashboard'
 import PwaInstallBanner from './components/PwaInstallBanner'
 import GlobalOfflineSyncManager from './components/GlobalOfflineSyncManager'
+import ConfigErrorBanner from './components/ConfigErrorBanner'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
       <BrowserRouter>
         <PwaInstallBanner />
         <GlobalOfflineSyncManager />
+        <ConfigErrorBanner />
         <Routes>
           <Route path="/" element={<CreateEvent />} />
           <Route path="/admin" element={<AdminDashboard />} />

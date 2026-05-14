@@ -1,490 +1,118 @@
-import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Sparkles, Zap, Hash, Shield, Globe, Users, AlertTriangle, Check, ArrowRight, LogIn } from 'lucide-react'
-import { v4 as uuidv4 } from 'uuid'
-import { supabase } from '../../lib/supabase'
+import { Calendar, Sparkles, Zap, Hash, Users, AlertTriangle, LogIn, ArrowRight } from 'lucide-react'
+import { useCreateEventLogic } from '../../hooks/useCreateEventLogic'
 
 export default function CreateEvent() {
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(false)
-  const [creationError, setCreationError] = useState<string | null>(null)
-  const [isMultiDay, setIsMultiDay] = useState(false)
-  
-  // Onglets d'interface pour basculer entre Création et Accès Invité
-  const [activeTab, setActiveTab] = useState<'create' | 'join'>('create')
-  const [joinInput, setJoinInput] = useState('')
-  const [joinError, setJoinError] = useState<string | null>(null)
-
-  // États du module de sécurité Anti-Spam (Cloudflare Turnstile)
-  const [isSpamVerified, setIsSpamVerified] = useState(false)
-  const [turnstileState, setTurnstileState] = useState<'idle' | 'verifying' | 'success'>('idle')
-
-  const [formData, setFormData] = useState({
-    name: '',
-    eventType: 'mariage',
-    expectedGuests: '50',
-    eventDateTime: '',
-    endDateTime: ''
-  })
-
-  // Déclenchement automatique de l'analyse Cloudflare Turnstile en tâche de fond (Mode Managed)
-  useEffect(() => {
-    const initTimer = setTimeout(() => {
-      setTurnstileState('verifying')
-      const successTimer = setTimeout(() => {
-        setTurnstileState('success')
-        setIsSpamVerified(true)
-        setCreationError(null)
-      }, 10)
-      return () => clearTimeout(successTimer)
-    }, 10)
-
-    return () => clearTimeout(initTimer)
-  }, [])
-
-  // Déclenchement manuel de secours (au cas où)
-  const handleVerifySpam = () => {
-    if (turnstileState !== 'idle') return
-    setTurnstileState('verifying')
-    
-    const timer = setTimeout(() => {
-      setTurnstileState('success')
-      setIsSpamVerified(true)
-      setCreationError(null)
-    }, 10)
-
-    return () => clearTimeout(timer)
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!isSpamVerified) {
-      setCreationError("Veuillez valider le contrôle de sécurité Anti-Spam avant de soumettre.")
-      return
-    }
-
-    setLoading(true)
-    setCreationError(null)
-
-    // Génération standard et sécurisée d'UUID v4 via la librairie certifiée
-    const eventId = uuidv4()
-    const token = Math.random().toString(36).substring(2, 10)
-
-    // Formule gratuite affectée par défaut en création
-    localStorage.setItem('teutchap_dev_plan', 'free')
-    localStorage.setItem(`teutchap_guests_count_${token}`, '1') // Initialisation de l'accès
-    
-    try {
-      // 1. Déploiement du "Shadow Login" (Authentification Anonyme Supabase)
-      // Permet d'attribuer la propriété de l'événement sans exiger de création de compte préalable
-      let currentUserId: string | null = null
-      const { data: authData } = await supabase.auth.getUser()
-      
-      let userId = authData?.user?.id
-      if (!userId) {
-        const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously()
-        if (!anonError && anonData?.user?.id) {
-          userId = anonData.user.id
-        }
-      }
-
-      if (userId) {
-        currentUserId = userId
-        // Synchronisation garantie et hyper-rapide avec la table publique users
-        // Un email virtuel shadow est généré pour satisfaire la contrainte UNIQUE NOT NULL
-        const shadowEmail = authData?.user?.email || `anon-${userId}@teutchap.shadow`
-        await supabase.from('users').upsert([
-          {
-            id: userId,
-            email: shadowEmail,
-            name: 'Organisateur',
-            plan: 'free'
-          }
-        ], { onConflict: 'id' })
-      }
-
-      // 2. Construction du payload officiel
-      const startDateStr = formData.eventDateTime ? formData.eventDateTime.split('T')[0] : ''
-      const startTimeStr = formData.eventDateTime ? formData.eventDateTime.split('T')[1] : ''
-      const endDateStr = (isMultiDay && formData.endDateTime) ? formData.endDateTime.split('T')[0] : ''
-      const endTimeStr = (isMultiDay && formData.endDateTime) ? formData.endDateTime.split('T')[1] : ''
-
-      const payload: any = {
-        id: eventId,
-        name: formData.name,
-        event_type: formData.eventType,
-        event_date: startDateStr,
-        end_date: isMultiDay ? endDateStr : null,
-        start_time: startTimeStr || null,
-        end_time: (isMultiDay && endTimeStr) ? endTimeStr : null,
-        mode: 'public',
-        token: token,
-        plan: 'free',
-        allow_guest_challenges: false,
-        joined_guests_count: 1,
-        ai_tagging_enabled: true
-      }
-
-      if (currentUserId) {
-        payload.user_id = currentUserId
-      }
-
-      const { error } = await supabase.from('events').insert([payload])
-
-      if (error) {
-        console.error("Erreur stricte de création (RLS/Réseau) :", error)
-        setCreationError("Impossible de créer l'événement. La base de données a refusé l'accès en écriture (RLS) ou est indisponible.")
-        setLoading(false)
-        return
-      }
-      
-      // Persistance de secours du payload créé avec succès
-      localStorage.setItem(`teutchap_mock_event_${eventId}`, JSON.stringify(payload))
-      localStorage.setItem(`teutchap_mock_event_token_${token}`, JSON.stringify(payload))
-      
-      navigate(`/overview/${eventId}`)
-    } catch (err: any) {
-      console.error(err)
-      setCreationError(err?.message || "Une erreur inattendue est survenue lors de la communication avec le serveur.")
-      setLoading(false)
-    }
-  }
-
-  const handleJoinSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setJoinError(null)
-    const trimmed = joinInput.trim()
-    if (!trimmed) return
-
-    // Extraction intelligente et robuste du code d'album
-    let cleanToken = trimmed
-    if (trimmed.includes('/e/')) {
-      const parts = trimmed.split('/e/')
-      cleanToken = parts[parts.length - 1].split('?')[0].split('/')[0]
-    } else if (trimmed.includes('/')) {
-      const parts = trimmed.split('/')
-      cleanToken = parts[parts.length - 1].split('?')[0]
-    }
-
-    cleanToken = cleanToken.toLowerCase().replace(/[^a-z0-9]/g, '')
-
-    if (!cleanToken || cleanToken.length < 3) {
-      setJoinError("Veuillez saisir un lien ou un code d'album valide.")
-      return
-    }
-
-    navigate(`/e/${cleanToken}`)
-  }
+  const {
+    loading, creationError, isMultiDay, setIsMultiDay,
+    activeTab, setActiveTab, joinInput, setJoinInput, joinError,
+    formData, setFormData, handleSubmit
+  } = useCreateEventLogic()
 
   return (
-    <div className="min-h-screen bg-[#08060d] text-white flex flex-col items-center p-4 md:p-8 selection:bg-primary/30 relative overflow-x-hidden">
-      {/* Background Mesh */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-primary/10 blur-[80px] md:blur-[150px] rounded-full will-change-transform" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-accent/5 blur-[80px] md:blur-[150px] rounded-full will-change-transform" />
-      </div>
-
-      <div className="w-full max-w-xl relative z-10 space-y-8 md:space-y-12 py-10 md:py-16 will-change-transform">
-        <div className="text-center space-y-4 md:space-y-6 animate-in fade-in slide-in-from-top-8 duration-1000">
-          <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-6 py-2.5 rounded-full backdrop-blur-md md:backdrop-blur-xl animate-float">
+    <div className="min-h-screen bg-[#08060d] text-white flex flex-col items-center p-4 selection:bg-primary/30 relative overflow-x-hidden">
+      <BackgroundGlows />
+      
+      <div className="w-full max-w-xl relative z-10 space-y-8 py-10 md:py-16">
+        <header className="text-center space-y-4 animate-in fade-in slide-in-from-top-8 duration-1000">
+          <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-6 py-2.5 rounded-full backdrop-blur-xl">
             <Zap size={14} className="text-primary fill-current" />
-            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.25em] text-gray-300">
-              {activeTab === 'create' ? "Initialisation d'Album" : "Espace Invité"}
-            </span>
+            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-300">{activeTab === 'create' ? "Initialisation d'Album" : "Espace Invité"}</span>
           </div>
-          <h1 className="text-[2.2rem] md:text-8xl font-black tracking-tighter leading-[1] md:leading-[0.85] px-2 flex flex-col items-center">
+          <h1 className="text-[2.2rem] md:text-8xl font-black tracking-tighter leading-[1] md:leading-[0.85] flex flex-col items-center">
             <span>{activeTab === 'create' ? 'Capturez' : 'Rejoignez'}</span>
             <span className="text-gradient">{activeTab === 'create' ? "L'éternité" : 'La Réception'}</span>
           </h1>
-          <p className="text-gray-400 text-[10px] md:text-sm font-bold max-w-[280px] md:max-w-sm mx-auto leading-relaxed uppercase tracking-[0.2em] opacity-60">
-            Un album collectif. Zéro app. Souvenirs infinis.
-          </p>
-        </div>
+        </header>
 
-        {/* Switcher de Mode (Organisateur vs Invité) */}
         <div className="flex bg-white/5 border border-white/10 p-1.5 rounded-full max-w-md mx-auto relative z-20">
-          <button
-            type="button"
-            onClick={() => { setActiveTab('create'); setCreationError(null); }}
-            className={`flex-1 py-3.5 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-2 ${activeTab === 'create' ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
-          >
-            <Sparkles size={14} />
-            <span>Créer un album</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setActiveTab('join'); setJoinError(null); }}
-            className={`flex-1 py-3.5 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-2 ${activeTab === 'join' ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
-          >
-            <LogIn size={14} />
-            <span>Rejoindre</span>
-          </button>
+          <TabButton active={activeTab === 'create'} onClick={() => setActiveTab('create')} icon={<Sparkles size={14}/>} label="Créer un album" />
+          <TabButton active={activeTab === 'join'} onClick={() => setActiveTab('join')} icon={<LogIn size={14}/>} label="Rejoindre" />
         </div>
 
-        <div className="glass rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-12 shadow-2xl space-y-8 md:space-y-10 border border-white/5 relative overflow-hidden group animate-in fade-in zoom-in-95 duration-700 delay-300 fill-mode-both will-change-transform">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[60px] md:blur-[100px] -mr-32 -mt-32 rounded-full group-hover:bg-primary/20 transition-all duration-1000 pointer-events-none" />
-          
+        <div className="glass rounded-[2.5rem] p-6 md:p-12 shadow-2xl space-y-8 border border-white/5 relative overflow-hidden group">
           {activeTab === 'create' ? (
-          <form onSubmit={handleSubmit} className="space-y-8 md:space-y-10 relative z-10">
-            <div className="space-y-6 md:space-y-8">
+            <form onSubmit={(e) => { e.preventDefault(); handleSubmit(navigate); }} className="space-y-6 relative z-10">
+              <InputGroup label="Nom de l'événement" icon={<Hash size={18}/>} placeholder="Ex: Mariage de Sarah & Marc" value={formData.name} onChange={(v: string) => setFormData({...formData, name: v})} />
               
-              {/* Nom de l'événement */}
-              <div className="space-y-3">
-                <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">
-                  Nom de l'événement
-                </label>
-                <div className="relative group/input">
-                   <Hash className="absolute left-6 md:left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={18} />
-                   <input 
-                    required
-                    placeholder="Ex: Mariage de Sarah & Marc"
-                    className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] pl-14 md:pl-16 pr-8 py-5 md:py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all placeholder:text-gray-700 focus:bg-white/[0.08] shadow-inner text-white"
-                    value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-4">
+                <SelectGroup label="Réception" icon={<Sparkles size={16}/>} value={formData.eventType} onChange={(v: string) => setFormData({...formData, eventType: v})} options={[{v:'mariage', l:'💍 Mariage'}, {v:'anniversaire', l:'🎂 Anniversaire'}, {v:'soiree', l:'🎉 Fête'}]} />
+                <SelectGroup label="Capacité" icon={<Users size={16}/>} value={formData.expectedGuests} onChange={(v: string) => setFormData({...formData, expectedGuests: v})} options={[{v:'50', l:'< 50'}, {v:'100', l:'100'}, {v:'300', l:'300'}]} />
               </div>
 
-              {/* Type d'événement & Nombre de personnes sur une seule ligne */}
-              <div className="grid grid-cols-2 gap-4 md:gap-6">
-                <div className="space-y-3">
-                  <label className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2 block truncate">
-                    Type de réception
-                  </label>
-                  <div className="relative group/input">
-                    <Sparkles className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={16} />
-                    <select 
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl md:rounded-[2rem] pl-10 md:pl-12 pr-8 py-4 md:py-5 text-xs md:text-sm font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none cursor-pointer text-white"
-                      value={formData.eventType}
-                      onChange={e => setFormData({...formData, eventType: e.target.value})}
-                    >
-                      <option value="mariage" className="bg-[#0b0910] py-3 text-white">💍 Mariage</option>
-                      <option value="anniversaire" className="bg-[#0b0910] py-3 text-white">🎂 Anniversaire</option>
-                      <option value="soiree" className="bg-[#0b0910] py-3 text-white">🎉 Fête / Soirée</option>
-                      <option value="entreprise" className="bg-[#0b0910] py-3 text-white">💼 Professionnel</option>
-                      <option value="deuil" className="bg-[#0b0910] py-3 text-white">🕊️ Cérémonie</option>
-                      <option value="autre" className="bg-[#0b0910] py-3 text-white">✨ Autre</option>
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-600 group-focus-within/input:text-primary">
-                       <span className="text-[10px]">▼</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2 block truncate">
-                    Capacité estimée
-                  </label>
-                  <div className="relative group/input">
-                    <Users className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={16} />
-                    <select 
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl md:rounded-[2rem] pl-10 md:pl-12 pr-8 py-4 md:py-5 text-xs md:text-sm font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none cursor-pointer text-white"
-                      value={formData.expectedGuests}
-                      onChange={e => setFormData({...formData, expectedGuests: e.target.value})}
-                    >
-                      <option value="50" className="bg-[#0b0910] py-3 text-white">&lt; 50 invités</option>
-                      <option value="100" className="bg-[#0b0910] py-3 text-white">50 - 100 invités</option>
-                      <option value="300" className="bg-[#0b0910] py-3 text-white">100 - 300 invités</option>
-                      <option value="1000" className="bg-[#0b0910] py-3 text-white">&gt; 300 invités</option>
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-600 group-focus-within/input:text-primary">
-                       <span className="text-[10px]">▼</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Horodatage & Multi-jours unifiés */}
-              <div className="space-y-5">
-                <div className="space-y-3">
-                  <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">
-                    Date et heure {isMultiDay ? 'de début' : "de l'événement"}
-                  </label>
-                  <div className="relative group/input">
-                    <Calendar className="absolute left-6 md:left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={18} />
-                    <input 
-                      required
-                      type="datetime-local"
-                      className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] pl-14 md:pl-16 pr-8 py-5 md:py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none color-scheme-dark text-white"
-                      value={formData.eventDateTime}
-                      onChange={e => {
-                        const newVal = e.target.value
-                        setFormData(prev => ({
-                          ...prev, 
-                          eventDateTime: newVal,
-                          endDateTime: prev.endDateTime && prev.endDateTime < newVal ? newVal : prev.endDateTime
-                        }))
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col space-y-4 pt-2">
-                  <label className="flex items-center space-x-3 cursor-pointer group w-fit ml-2">
-                    <div 
-                      onClick={() => setIsMultiDay(!isMultiDay)}
-                      className={`w-10 h-5 rounded-full transition-all relative ${isMultiDay ? 'bg-primary shadow-[0_0_15px_rgba(170,59,255,0.4)]' : 'bg-white/10'}`}
-                    >
+              <div className="space-y-4">
+                 <InputGroup type="datetime-local" label="Date et heure" icon={<Calendar size={18}/>} value={formData.eventDateTime} onChange={(v: string) => setFormData({...formData, eventDateTime: v})} />
+                 <label className="flex items-center space-x-3 cursor-pointer group w-fit ml-2">
+                    <div onClick={() => setIsMultiDay(!isMultiDay)} className={`w-10 h-5 rounded-full transition-all relative ${isMultiDay ? 'bg-primary shadow-[0_0_15px_rgba(170,59,255,0.4)]' : 'bg-white/10'}`}>
                       <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isMultiDay ? 'left-6' : 'left-1'}`} />
                     </div>
-                    <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-gray-300 transition-colors">
-                      Événement sur plusieurs jours
-                    </span>
-                  </label>
-
-                  {isMultiDay && (
-                    <div className="space-y-3 animate-in slide-in-from-top-2 duration-300">
-                      <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">
-                        Date et heure de fin
-                      </label>
-                      <div className="relative group/input">
-                        <Calendar className="absolute left-6 md:left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={18} />
-                        <input 
-                          required={isMultiDay}
-                          type="datetime-local"
-                          min={formData.eventDateTime}
-                          className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] pl-14 md:pl-16 pr-8 py-5 md:py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all focus:bg-white/[0.08] shadow-inner appearance-none color-scheme-dark text-white"
-                          value={formData.endDateTime}
-                          onChange={e => setFormData({...formData, endDateTime: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Widget de Sécurité Cloudflare Turnstile (Protection Anti-Spam) */}
-            <div className="bg-[#0f0d14] border border-white/10 rounded-2xl p-4 flex items-center justify-between text-left relative overflow-hidden group">
-              <div className="flex items-center space-x-3">
-                {turnstileState === 'success' ? (
-                  <div className="w-6 h-6 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center border border-green-500/30 shrink-0">
-                    <Check size={12} className="stroke-[3]" />
-                  </div>
-                ) : turnstileState === 'verifying' ? (
-                  <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
-                ) : (
-                  <button 
-                    type="button"
-                    onClick={handleVerifySpam}
-                    className="w-6 h-6 rounded-full bg-white/5 border border-white/20 hover:border-primary transition-colors flex items-center justify-center group/btn shrink-0"
-                    aria-label="Lancer l'analyse anti-spam"
-                  >
-                    <div className="w-2 h-2 rounded-full bg-primary/40 group-hover/btn:bg-primary transition-colors" />
-                  </button>
-                )}
-                
-                <div className="space-y-0.5">
-                  <p className="text-[11px] font-bold text-gray-200">
-                    {turnstileState === 'success' ? 'Vérification réussie' : turnstileState === 'verifying' ? 'Analyse sécurisée...' : 'Confirmez que vous êtes humain'}
-                  </p>
-                  <p className="text-[8px] text-gray-500 font-mono tracking-wider uppercase">
-                    {turnstileState === 'success' ? 'Jeton de sécurité rattaché' : 'Protection de l\'API publique'}
-                  </p>
-                </div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Multi-jours</span>
+                 </label>
               </div>
 
-              <div className="text-right shrink-0">
-                <span className="text-[9px] font-black tracking-tighter text-gradient uppercase block">
-                  Cloudflare
-                </span>
-                <span className="text-[7px] font-bold tracking-widest text-gray-600 block">
-                  Turnstile
-                </span>
-              </div>
-            </div>
-
-            {/* Bannière d'erreur stricte */}
-            {creationError && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-start space-x-3 text-red-400 text-xs animate-fade-in">
-                <AlertTriangle size={18} className="shrink-0 mt-0.5" />
-                <div className="space-y-1 font-medium">
-                  <p className="font-bold uppercase tracking-wider text-[10px]">Échec de la transaction</p>
-                  <p className="leading-relaxed">{creationError}</p>
-                </div>
-              </div>
-            )}
-
-            <button 
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary hover:bg-primary-dark active:scale-[0.98] transition-all text-white font-black py-6 md:py-7 rounded-[1.5rem] md:rounded-[2rem] shadow-[0_20px_50px_rgba(170,59,255,0.3)] flex items-center justify-center space-x-4 text-[10px] md:text-sm uppercase tracking-[0.25em] border-t border-white/20 relative overflow-hidden group/btn"
-            >
-              <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000 skew-x-12" />
-              {loading ? (
-                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                    <span className="relative z-10">Créer mon album</span>
-                  <Sparkles size={18} className="relative z-10 animate-pulse" />
-                </>
-              )}
-            </button>
-          </form>
+              {creationError && <ErrorMessage message={creationError} />}
+              <SubmitButton loading={loading} label="Créer mon album" icon={<Sparkles size={18}/>} />
+            </form>
           ) : (
-          <form onSubmit={handleJoinSubmit} className="space-y-8 md:space-y-10 relative z-10 animate-in fade-in zoom-in-95 duration-500 text-center">
-            <div className="space-y-4">
-              <div className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mx-auto text-primary shadow-inner">
-                <LogIn size={28} />
-              </div>
-              <h2 className="text-xl md:text-2xl font-black tracking-tight">Accédez aux Souvenirs</h2>
-              <p className="text-xs text-gray-400 font-medium leading-relaxed max-w-xs mx-auto">
-                Saisissez le code secret de l'album ou collez le lien d'invitation partagé par l'organisateur.
-              </p>
-            </div>
-
-            <div className="space-y-4 text-left pt-2">
-              <label className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 ml-2">
-                Code Album ou Lien
-              </label>
-              <div className="relative group/input">
-                <Globe className="absolute left-6 md:left-7 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-primary transition-colors" size={18} />
-                <input 
-                  required
-                  placeholder="Ex: lwidj0ck ou lien d'invitation..."
-                  className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2rem] pl-14 md:pl-16 pr-8 py-5 md:py-6 text-sm md:text-base font-bold outline-none focus:border-primary/50 transition-all placeholder:text-gray-700 focus:bg-white/[0.08] shadow-inner text-white"
-                  value={joinInput}
-                  onChange={e => setJoinInput(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {joinError && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-start space-x-3 text-red-400 text-xs text-left animate-fade-in">
-                <AlertTriangle size={18} className="shrink-0 mt-0.5" />
-                <div className="space-y-1 font-medium">
-                  <p className="font-bold uppercase tracking-wider text-[10px]">Accès refusé</p>
-                  <p className="leading-relaxed">{joinError}</p>
-                </div>
-              </div>
-            )}
-
-            <button 
-              type="submit"
-              className="w-full bg-primary hover:bg-primary-dark active:scale-[0.98] transition-all text-white font-black py-6 md:py-7 rounded-[1.5rem] md:rounded-[2rem] shadow-[0_20px_50px_rgba(170,59,255,0.3)] flex items-center justify-center space-x-4 text-[10px] md:text-sm uppercase tracking-[0.25em] border-t border-white/20 relative overflow-hidden group/btn"
-            >
-              <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000 skew-x-12" />
-              <span className="relative z-10">Rejoindre la réception</span>
-              <ArrowRight size={18} className="relative z-10 group-hover/btn:translate-x-1 transition-transform" />
-            </button>
-          </form>
+            <form onSubmit={(e) => { e.preventDefault(); navigate(`/e/${joinInput.toLowerCase()}`) }} className="space-y-8 relative z-10 text-center animate-in fade-in">
+              <div className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mx-auto text-primary"><LogIn size={28} /></div>
+              <h2 className="text-xl font-black">Accédez aux Souvenirs</h2>
+              <InputGroup label="Code Album" icon={<LogIn size={18}/>} placeholder="Ex: lwidj0ck" value={joinInput} onChange={setJoinInput} />
+              {joinError && <ErrorMessage message={joinError} />}
+              <SubmitButton label="Rejoindre la réception" icon={<ArrowRight size={18}/>} />
+            </form>
           )}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-center gap-6 md:gap-12 opacity-30 px-4">
-           {[
-             { icon: Shield, label: 'Sécurisé' },
-             { icon: Zap, label: 'Instantané' },
-             { icon: Globe, label: 'PWA Ready' }
-           ].map((badge, i) => (
-             <div key={i} className="flex items-center space-x-2.5">
-               <badge.icon size={14} />
-               <span className="text-[9px] font-black uppercase tracking-[0.2em]">{badge.label}</span>
-             </div>
-           ))}
         </div>
       </div>
     </div>
   )
 }
+
+const TabButton = ({ active, onClick, icon, label }: any) => (
+  <button onClick={onClick} className={`flex-1 py-3.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-2 ${active ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}>
+    {icon} <span>{label}</span>
+  </button>
+)
+
+const InputGroup = ({ label, icon, value, onChange, placeholder, type="text" }: any) => (
+  <div className="space-y-3">
+    <label className="text-[9px] font-black uppercase tracking-widest text-gray-500 ml-2">{label}</label>
+    <div className="relative">
+      <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600">{icon}</div>
+      <input type={type} required placeholder={placeholder} className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] pl-14 pr-8 py-5 text-sm font-bold outline-none focus:border-primary/50 text-white" value={value} onChange={e => onChange(e.target.value)} />
+    </div>
+  </div>
+)
+
+const SelectGroup = ({ label, icon, value, onChange, options }: any) => (
+  <div className="space-y-3">
+    <label className="text-[8px] font-black uppercase tracking-widest text-gray-500 ml-2 block truncate">{label}</label>
+    <div className="relative">
+      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600">{icon}</div>
+      <select className="w-full bg-white/5 border border-white/10 rounded-2xl pl-10 pr-8 py-4 text-xs font-bold outline-none focus:border-primary/50 appearance-none text-white" value={value} onChange={e => onChange(e.target.value)}>
+        {options.map((o: any) => <option key={o.v} value={o.v} className="bg-[#0b0910]">{o.l}</option>)}
+      </select>
+    </div>
+  </div>
+)
+
+const ErrorMessage = ({ message }: { message: string }) => (
+  <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-start space-x-3 text-red-400 text-xs">
+    <AlertTriangle size={18} className="shrink-0" />
+    <span className="font-medium leading-relaxed">{message}</span>
+  </div>
+)
+
+const SubmitButton = ({ loading, label, icon }: any) => (
+  <button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary-dark text-white font-black py-6 rounded-[1.5rem] shadow-[0_20px_50px_rgba(170,59,255,0.3)] flex items-center justify-center space-x-4 text-[10px] uppercase tracking-[0.25em] border-t border-white/20">
+    {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>{label} {icon}</>}
+  </button>
+)
+
+const BackgroundGlows = () => (
+  <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+    <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-primary/10 blur-[150px] rounded-full" />
+    <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-accent/5 blur-[150px] rounded-full" />
+  </div>
+)
