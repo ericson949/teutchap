@@ -9,7 +9,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 export function useDashboardLogic(eventId: string | undefined) {
   const { user } = useAuth()
-  const { eventData, loading: eventLoading, updateEvent } = useEvent(eventId)
+  const { eventData, loading: eventLoading, isOwner, updateEvent } = useEvent(eventId)
   const { challenges, addChallenge, deleteChallenge } = useChallenges(eventData?.id)
   const { photos } = usePhotos(eventData?.id)
   const { reactions, addReaction } = useReactions()
@@ -56,10 +56,32 @@ export function useDashboardLogic(eventId: string | undefined) {
 
   const handleAdminUploadChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    if (!files || files.length === 0) return
+    if (!files || files.length === 0 || !eventData) return
     setIsAdminUploading(true)
-    // Upload implementation...
-    setIsAdminUploading(false)
+    
+    try {
+      for (const file of Array.from(files)) {
+        const fileName = `${eventData.token}_admin_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`
+        const { error: storageError } = await supabase.storage
+          .from('events_photos')
+          .upload(fileName, file)
+
+        if (storageError) throw storageError
+
+        await supabase.from('photos').insert([{
+          event_id: eventData.id,
+          url_original: fileName,
+          url_thumb: fileName,
+          uploader_name: 'Organisateur'
+        }])
+      }
+    } catch (err) {
+      console.error("Erreur upload admin:", err)
+      alert("Erreur lors de l'envoi des photos.")
+    } finally {
+      setIsAdminUploading(false)
+      if (adminFileInputRef.current) adminFileInputRef.current.value = ''
+    }
   }
 
   const handleDeletePhoto = async (photo: any, e: React.MouseEvent) => {
@@ -72,7 +94,7 @@ export function useDashboardLogic(eventId: string | undefined) {
   const engagement = photos.length > 0 ? Math.min(100, Math.round((totalReactions / (photos.length * 2)) * 100)) : 0
 
   return {
-    user, eventData, eventLoading, challenges, photos, reactions, guests,
+    user, eventData, eventLoading, isOwner, challenges, photos, reactions, guests,
     activeTab, setActiveTab,
     showChallengeForm, setShowChallengeForm,
     isAdminUploading, setIsAdminUploading, adminFileInputRef,

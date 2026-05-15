@@ -12,23 +12,6 @@ export function useChallenges(eventId: string | undefined) {
     }
     setLoading(true)
 
-    // Mode mock direct
-    if (eventId.startsWith('mock-id-')) {
-      const localChal = JSON.parse(localStorage.getItem(`teutchap_chals_${eventId}`) || 'null')
-      if (localChal) {
-        setChallenges(localChal)
-      } else {
-        const initial = [
-          { id: 'chal-1', title: "Photo avec les mariés / l'hôte", description: "Capturez un sourire partagé avec la star du jour !" },
-          { id: 'chal-2', title: "Le pire pas de danse", description: "Prenez en photo le mouvement le plus improbable sur la piste." }
-        ]
-        setChallenges(initial)
-        localStorage.setItem(`teutchap_chals_${eventId}`, JSON.stringify(initial))
-      }
-      setLoading(false)
-      return
-    }
-
     try {
       const { data, error } = await supabase
         .from('challenges')
@@ -38,6 +21,7 @@ export function useChallenges(eventId: string | undefined) {
       if (error) throw error
       if (data) {
         setChallenges(data)
+        localStorage.setItem(`teutchap_chals_${eventId}`, JSON.stringify(data))
       }
     } catch (err) {
       // Résilience locale en cas d'erreur / RLS
@@ -57,6 +41,20 @@ export function useChallenges(eventId: string | undefined) {
   }
 
   useEffect(() => {
+    if (!eventId) {
+      setLoading(false)
+      return
+    }
+
+    // 1. Immédiat via cache (Objectif 3ms)
+    const cached = localStorage.getItem(`teutchap_chals_${eventId}`)
+    if (cached) {
+      try {
+        setChallenges(JSON.parse(cached))
+        setLoading(false)
+      } catch (e) {}
+    }
+
     fetchChallenges()
   }, [eventId])
 
@@ -78,9 +76,6 @@ export function useChallenges(eventId: string | undefined) {
     // Sauvegarde en fallback
     localStorage.setItem(`teutchap_chals_${eventId}`, JSON.stringify(nextList))
 
-    if (eventId.startsWith('mock-id-')) {
-      return { data: newLocal, error: null }
-    }
 
     try {
       const { data, error } = await supabase
@@ -107,9 +102,7 @@ export function useChallenges(eventId: string | undefined) {
       localStorage.setItem(`teutchap_chals_${eventId}`, JSON.stringify(nextList))
     }
 
-    if (!eventId?.startsWith('mock-id-')) {
       await supabase.from('challenges').delete().eq('id', id)
-    }
     return { error: null }
   }
 

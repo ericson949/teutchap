@@ -17,7 +17,6 @@ export function usePhotos(eventId: string | undefined, options: { challengeId?: 
       const eventQueue = queue.filter(item => {
         if (eventId && item.eventId === eventId) return true
         if (options.token && item.token === options.token) return true
-        if (item.eventId?.startsWith('mock-id-')) return true
         return false
       })
       offlineVirtualPhotos = eventQueue.map(item => {
@@ -101,30 +100,34 @@ export function usePhotos(eventId: string | undefined, options: { challengeId?: 
   }
 
   useEffect(() => {
-    fetchPhotos()
-
-    // Rafraîchissement périodique pour intégrer les captures locales instantanément
-    const localInterval = setInterval(() => {
-      fetchPhotos()
-    }, 3000)
-
-    if (!eventId) {
-      return () => clearInterval(localInterval)
+    if (!eventId && !options.token) {
+      setLoading(false)
+      return
     }
 
-    // Real-time subscription
+    // 1. Charger immédiatement depuis le cache pour l'instantanéité (3ms goal)
+    const cacheKey = options.challengeId ? `teutchap_photos_cache_${eventId}_c_${options.challengeId}` : `teutchap_photos_cache_${eventId}`
+    const cached = localStorage.getItem(cacheKey)
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached)
+        setPhotos(parsed)
+        setLoading(false)
+      } catch (e) {}
+    }
+
+    fetchPhotos()
+
+    // Real-time subscription pour les mises à jour sans polling
     const channel = supabase
       .channel(`event_photos_${eventId}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'photos', filter: `event_id=eq.${eventId}` }, 
-        () => {
-          fetchPhotos() // Refresh list on any change
-        }
+        () => fetchPhotos()
       )
       .subscribe()
 
     return () => {
-      clearInterval(localInterval)
       supabase.removeChannel(channel)
     }
   }, [eventId, options.challengeId, options.autoModeration, options.token])

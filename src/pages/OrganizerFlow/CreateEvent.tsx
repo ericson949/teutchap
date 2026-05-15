@@ -5,9 +5,9 @@ import { useCreateEventLogic } from '../../hooks/useCreateEventLogic'
 export default function CreateEvent() {
   const navigate = useNavigate()
   const {
-    loading, creationError, isMultiDay, setIsMultiDay,
+    loading, joinLoading, creationError, isMultiDay, setIsMultiDay,
     activeTab, setActiveTab, joinInput, setJoinInput, joinError,
-    formData, setFormData, handleSubmit
+    formData, setFormData, handleSubmit, handleJoin
   } = useCreateEventLogic()
 
   return (
@@ -54,12 +54,15 @@ export default function CreateEvent() {
               <SubmitButton loading={loading} label="Créer mon album" icon={<Sparkles size={18}/>} />
             </form>
           ) : (
-            <form onSubmit={(e) => { e.preventDefault(); navigate(`/e/${joinInput.toLowerCase()}`) }} className="space-y-8 relative z-10 text-center animate-in fade-in">
+            <form onSubmit={(e) => { e.preventDefault(); handleJoin(navigate); }} className="space-y-8 relative z-10 text-center animate-in fade-in">
               <div className="w-16 h-16 bg-white/5 border border-white/10 rounded-full flex items-center justify-center mx-auto text-white/60"><LogIn size={28} /></div>
-              <h2 className="text-3xl font-serif text-white">Album Privé</h2>
+              <div className="space-y-2">
+                <h2 className="text-3xl font-serif text-white text-glow">Album Privé</h2>
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Entrez le code pour rejoindre</p>
+              </div>
               <InputGroup label="Code Album" icon={<LogIn size={18}/>} placeholder="Ex: lwidj0ck" value={joinInput} onChange={setJoinInput} />
               {joinError && <ErrorMessage message={joinError} />}
-              <SubmitButton label="Rejoindre la réception" icon={<ArrowRight size={18}/>} />
+              <SubmitButton loading={joinLoading} label="Rejoindre la réception" icon={<ArrowRight size={18}/>} />
             </form>
           )}
         </div>
@@ -78,13 +81,13 @@ const InputGroup = ({ label, icon, value, onChange, placeholder, type="text" }: 
   <div className="space-y-4">
     <label className="text-[10px] font-semibold uppercase tracking-[0.25em] text-white/80 ml-4">{label}</label>
     <div className="relative">
-      <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/50">{icon}</div>
+      <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none z-10">{icon}</div>
       <input 
         type={type} 
         required 
         placeholder={placeholder} 
         style={{ colorScheme: 'dark' }}
-        className="w-full bg-white/[0.08] border border-white/10 rounded-2xl pl-14 pr-8 py-6 text-base font-serif outline-none focus:border-white/40 transition-all text-white placeholder:text-white/40" 
+        className="w-full bg-white/[0.08] border border-white/10 rounded-2xl pl-14 pr-4 py-6 text-base font-serif outline-none focus:border-white/40 transition-all text-white placeholder:text-white/40 appearance-none min-w-0" 
         value={value} 
         onChange={e => onChange(e.target.value)} 
       />

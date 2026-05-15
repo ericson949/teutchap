@@ -11,7 +11,7 @@ export default function EventOverview() {
   const navigate = useNavigate()
   
   const {
-    eventData, eventLoading, photos, currentConfig, guests,
+    eventData, eventLoading, isOwner, photos, currentConfig, guests,
     copied, newPassword, setNewPassword, pwdLoading,
     stagedAdmins, setStagedAdmins, adminLoading,
     enablePasswordToggle, setEnablePasswordToggle, enableAdminsToggle, setEnableAdminsToggle,
@@ -20,28 +20,107 @@ export default function EventOverview() {
 
   if (eventLoading) return <LoadingScreen />
   if (!eventData) return <NotFoundScreen onBack={() => navigate('/')} />
+  if (!isOwner) return <AccessDeniedScreen />
 
   const eventUrl = `${window.location.origin}/e/${eventData.token}`
 
+  const downloadQRCode = () => {
+    const qrCanvas = document.querySelector('#overview-qr canvas') as HTMLCanvasElement
+    if (!qrCanvas) return
+    
+    // Create a new canvas for the final image with branding
+    const finalCanvas = document.createElement('canvas')
+    const ctx = finalCanvas.getContext('2d')
+    if (!ctx) return
+
+    const padding = 80
+    const textSectionHeight = 160
+    finalCanvas.width = qrCanvas.width + padding * 2
+    finalCanvas.height = qrCanvas.height + padding * 2 + textSectionHeight
+
+    // Draw background
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height)
+
+    // Draw Header Text (Large)
+    ctx.fillStyle = '#08060d'
+    ctx.textAlign = 'center'
+    
+    // Line 1: Partagez vos photos de [Name]
+    ctx.font = '900 32px Inter, sans-serif'
+    const title = `Partagez vos photos de ${eventData.name}`
+    ctx.fillText(title, finalCanvas.width / 2, padding + 40)
+    
+    // Line 2: ici
+    ctx.font = 'bold 48px Inter, sans-serif'
+    ctx.fillText('ICI', finalCanvas.width / 2, padding + 110)
+
+    // Draw QR Code (Centered below text)
+    ctx.drawImage(qrCanvas, padding, padding + textSectionHeight)
+
+    const pngFile = finalCanvas.toDataURL('image/png')
+    const downloadLink = document.createElement('a')
+    downloadLink.download = `Teutchap_${eventData.name.replace(/\s+/g, '_')}.png`
+    downloadLink.href = pngFile
+    downloadLink.click()
+  }
+
+  const shareWhatsApp = () => {
+    const text = `Rejoins l'album photo de l'événement "${eventData.name}" sur Teutchap ! 📸\n\nScanne le QR Code ou clique ici : ${eventUrl}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+  }
+
   return (
     <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30 relative overflow-x-hidden">
-      <BackgroundGlows />
       
-      <header className="glass-dark border-b border-white/5 px-4 py-3 flex justify-between items-center sticky top-0 z-40 backdrop-blur-2xl">
-        <div className="flex items-center space-x-3">
-          <button onClick={() => navigate('/portal')} className="p-2 glass border border-white/10 text-gray-400 rounded-xl"><ArrowLeft size={16} /></button>
+      <header className="glass-dark border-b border-white/5 px-6 py-4 flex justify-between items-center fixed top-0 left-0 right-0 z-50 backdrop-blur-3xl">
+        <div className="flex items-center space-x-4">
+          <button onClick={() => navigate('/portal')} className="p-3 glass border border-white/10 text-gray-400 rounded-2xl hover:text-white transition-colors"><ArrowLeft size={18} /></button>
           <div>
-            <h1 className="text-sm font-black text-gradient truncate max-w-[150px]">{eventData.name}</h1>
-            <span className="text-[8px] font-black uppercase tracking-widest text-green-400">● Actif</span>
+            <h1 className="text-base font-black text-gradient truncate max-w-[200px]">{eventData.name}</h1>
+            <div className="flex items-center space-x-2">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500">Album Live</span>
+              <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary/20 border border-primary/30 text-primary-light">{eventData.plan}</span>
+            </div>
           </div>
         </div>
-        <button onClick={() => navigate(`/dashboard/${eventId}`)} className="flex items-center space-x-1.5 glass border border-white/10 px-3 py-2 rounded-xl text-[10px] font-black uppercase">
-          <span>Console</span>
-          <ExternalLink size={12} className="text-primary" />
+        <button onClick={() => navigate(`/dashboard/${eventId}`)} className="flex items-center space-x-2 bg-white text-black px-5 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-95 shadow-xl shadow-white/5">
+          <span>Console Admin</span>
+          <ExternalLink size={14} />
         </button>
       </header>
 
-      <main className="max-w-5xl mx-auto p-4 md:p-8 space-y-6 relative z-10 w-full flex-1 flex flex-col justify-center">
+      <main className="max-w-5xl mx-auto p-4 md:p-8 pt-32 space-y-8 relative z-10 w-full flex-1 flex flex-col justify-center">
+        {eventData.plan === 'free' && (
+          <div className="animate-in fade-in slide-in-from-top-6 duration-700 glass-dark border border-white/10 rounded-[2.5rem] overflow-hidden group relative">
+            {/* Background Gradient Layer */}
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-accent/5 pointer-events-none" />
+            
+            <div className="p-6 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+              
+              <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6 text-center md:text-left relative z-10">
+                <div className="w-14 h-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-primary shadow-2xl">
+                  <Sparkles size={28} className="animate-pulse" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-lg font-black tracking-tight text-white">Libérez votre créativité.</h4>
+                  <p className="text-[11px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed max-w-sm">
+                    Vous êtes limité à 100 photos. <span className="text-primary-light">Passez au Premium</span> pour l'illimité, le mode Live et l'IA.
+                  </p>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => navigate(`/upgrade/${eventId}`)}
+                className="w-full md:w-auto bg-white text-black hover:bg-gray-200 active:scale-95 px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-[0_20px_40px_rgba(255,255,255,0.1)] relative z-10 whitespace-nowrap"
+              >
+                Passer au Premium
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="text-center space-y-2 hidden sm:block">
           <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full">
             <Sparkles size={12} className="text-primary" />
@@ -55,7 +134,7 @@ export default function EventOverview() {
             <OverviewQRSection 
               eventUrl={eventUrl} eventName={eventData.name} 
               copied={copied} copyLink={() => copyLink(eventUrl)} 
-              downloadQRCode={() => {}} shareWhatsApp={() => {}} 
+              downloadQRCode={downloadQRCode} shareWhatsApp={shareWhatsApp} 
             />
             
             <div className="space-y-6 md:border-l md:border-white/5 md:pl-8">
@@ -95,10 +174,19 @@ const NotFoundScreen = ({ onBack }: { onBack: () => void }) => (
     <button onClick={onBack} className="mt-6 px-8 py-3 bg-white/5 border border-white/10 rounded-xl text-xs font-black uppercase">Retour</button>
   </div>
 )
-
-const BackgroundGlows = () => (
-  <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-    <div className="absolute top-[-5%] left-[-10%] w-[50%] h-[50%] bg-primary/15 blur-[140px] rounded-full animate-pulse" />
-    <div className="absolute bottom-[-5%] right-[-10%] w-[50%] h-[50%] bg-accent/10 blur-[140px] rounded-full" />
+const AccessDeniedScreen = () => (
+  <div className="min-h-screen bg-[#08060d] flex flex-col items-center justify-center p-8 text-center space-y-6">
+    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center text-gray-500 border border-white/10">
+      <AlertTriangle size={32} />
+    </div>
+    <div className="space-y-2">
+      <h2 className="text-xl font-black uppercase tracking-widest text-white">Lien Introuvable</h2>
+      <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest max-w-xs leading-relaxed">
+        Ce lien semble être expiré ou invalide. Veuillez vérifier l'adresse ou retourner à l'accueil.
+      </p>
+    </div>
+    <button onClick={() => window.location.href = '/'} className="px-8 py-3 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all">Retour à l'accueil</button>
   </div>
 )
+
+import { AlertTriangle } from 'lucide-react'

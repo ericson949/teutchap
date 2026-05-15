@@ -27,11 +27,14 @@ export default function PremiumTabs({ tabs, activeTab, onChange, className, vari
       variant === 'bottom' ? "fixed bottom-0 left-0 right-0 p-4" : "sticky top-0 mb-6",
       className
     )}>
-      <div className={cn(
-        "max-w-md mx-auto flex items-center justify-around p-1.5 rounded-[2rem] border backdrop-blur-2xl shadow-2xl",
-        "bg-white/5 border-white/10",
-        variant === 'bottom' ? "h-16" : "h-14"
-      )}>
+      <div 
+        style={{ WebkitBackdropFilter: 'blur(20px)' }}
+        className={cn(
+          "max-w-md mx-auto flex items-center justify-around p-1.5 rounded-[2rem] border backdrop-blur-xl shadow-2xl",
+          "bg-white/5 border-white/10",
+          variant === 'bottom' ? "h-16" : "h-14"
+        )}
+      >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (

@@ -5,7 +5,7 @@ import { useAppPlans } from './useAppPlans'
 import { useEventGuests } from './useEventGuests'
 
 export function useEventOverviewLogic(eventId: string | undefined) {
-  const { eventData, loading: eventLoading, updateEvent } = useEvent(eventId)
+  const { eventData, loading: eventLoading, isOwner, updateEvent } = useEvent(eventId)
   const { photos } = usePhotos(eventData?.id)
   const { currentConfig } = useAppPlans(eventData?.plan)
   const { guests, updateGuestRole } = useEventGuests(eventData?.id)
@@ -62,13 +62,30 @@ export function useEventOverviewLogic(eventId: string | undefined) {
   }, [eventData])
 
   const copyLink = (text: string) => {
-    navigator.clipboard.writeText(text)
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text)
+    } else {
+      const textArea = document.createElement("textarea")
+      textArea.value = text
+      textArea.style.position = "fixed"
+      textArea.style.left = "-9999px"
+      textArea.style.top = "0"
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
+      try {
+        document.execCommand('copy')
+      } catch (err) {
+        console.error('Fallback copy failed', err)
+      }
+      document.body.removeChild(textArea)
+    }
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
   return {
-    eventData, eventLoading, photos, currentConfig, guests,
+    eventData, eventLoading, isOwner, photos, currentConfig, guests,
     copied, setCopied, newPassword, setNewPassword, pwdLoading,
     stagedAdmins, setStagedAdmins, adminLoading,
     enablePasswordToggle, setEnablePasswordToggle, enableAdminsToggle, setEnableAdminsToggle,

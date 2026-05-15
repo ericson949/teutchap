@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Image as ImageIcon, Hash, Settings as SettingsIcon, Save } from 'lucide-react'
+import { LayoutDashboard, Image as ImageIcon, Hash, Settings as SettingsIcon, Save, RefreshCw, Check } from 'lucide-react'
 import { useDashboardLogic } from '../../hooks/useDashboardLogic'
 import PremiumTabs from '../../components/PremiumTabs'
 import { OverviewTab } from './components/OverviewTab'
@@ -12,7 +12,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   
   const {
-    user, eventData, eventLoading, challenges, photos,
+    user, eventData, eventLoading, isOwner, challenges, photos,
     activeTab, setActiveTab, showChallengeForm, setShowChallengeForm,
     isAdminUploading, adminFileInputRef, timeRemaining, totalReactions,
     updateEvent, deleteChallenge, handleAdminUploadChange,
@@ -20,32 +20,67 @@ export default function Dashboard() {
   } = useDashboardLogic(eventId)
 
   const organizerTabs = [
-    { id: 'overview', label: 'Aperçu', icon: <LayoutDashboard size={18} /> },
-    { id: 'gallery', label: 'Galerie', icon: <ImageIcon size={18} /> },
-    { id: 'challenges', label: 'Défis', icon: <Hash size={18} /> },
-    { id: 'settings', label: 'Paramètres', icon: <SettingsIcon size={18} /> }
+    { id: 'overview', label: 'Aperçu', icon: <LayoutDashboard size={20} /> },
+    { id: 'gallery', label: 'Galerie', icon: <ImageIcon size={20} /> },
+    { id: 'challenges', label: 'Défis', icon: <Hash size={20} /> },
+    { id: 'settings', label: 'Params', icon: <SettingsIcon size={20} /> }
   ]
 
   if (eventLoading) return <LoadingScreen />
   if (!eventData) return <NotFoundScreen onBack={() => navigate('/')} />
+  if (!isOwner) return <AccessDeniedScreen />
 
   const eventUrl = `${window.location.origin}/e/${eventData.token}`
 
   return (
-    <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30 overflow-x-hidden">
-      <BackgroundGlows />
-      <OrganizerHeader user={user} eventData={eventData} />
+    <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30 overflow-x-hidden pb-24">
+      
+      {/* Minimalist Top Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 px-6 py-8 flex items-center justify-between pointer-events-none">
+        <button 
+          onClick={() => navigate(`/overview/${eventId}`)}
+          className="glass border border-white/10 p-4 rounded-2xl pointer-events-auto active:scale-90 transition-all hover:bg-white/5 shadow-xl group"
+        >
+          <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+        </button>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 pt-44 md:pt-48 pb-12 relative z-10">
-        {activeTab === 'overview' && <OverviewTab timeRemaining={timeRemaining} photos={photos} challenges={challenges} totalReactions={totalReactions} navigate={navigate} eventId={eventId} />}
-        {activeTab === 'gallery' && <GalleryTab photos={photos} isAdminUploading={isAdminUploading} adminFileInputRef={adminFileInputRef} handleAdminUploadChange={handleAdminUploadChange} handleDeletePhoto={handleDeletePhoto} />}
-        {activeTab === 'challenges' && <ChallengesTab challenges={challenges} showChallengeForm={showChallengeForm} setShowChallengeForm={setShowChallengeForm} newChallenge={{title: '', description: ''}} setNewChallenge={() => {}} handleSaveChallenge={() => {}} deleteChallenge={deleteChallenge} />}
-        {activeTab === 'settings' && <SettingsTab eventData={eventData} eventUrl={eventUrl} copyLink={() => {}} shareWhatsApp={() => {}} updateEvent={updateEvent} />}
+        {/* Sync Indicator (Centered) */}
+        <div className="absolute left-1/2 -translate-x-1/2 top-10 flex flex-col items-center pointer-events-auto">
+          {eventLoading ? (
+            <div className="p-2 bg-primary/10 border border-primary/20 rounded-full animate-pulse shadow-lg shadow-primary/20" title="Synchronisation en cours...">
+              <RefreshCw size={12} className="animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="p-2 bg-white/5 border border-white/10 rounded-full opacity-40 hover:opacity-100 transition-opacity" title="Données à jour">
+              <Check size={12} className="text-gray-400" />
+            </div>
+          )}
+        </div>
+        
+        <div className="text-right">
+          <h1 className="text-xs font-black uppercase tracking-[0.3em] text-white/40 mb-1">Console</h1>
+          <p className="text-sm font-black text-white truncate max-w-[150px]">{eventData.name}</p>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-5xl mx-auto w-full px-6 pt-32 pb-12 relative z-10">
+        <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
+          {activeTab === 'overview' && <OverviewTab timeRemaining={timeRemaining} photos={photos} challenges={challenges} totalReactions={totalReactions} navigate={navigate} eventId={eventId} />}
+          {activeTab === 'gallery' && <GalleryTab photos={photos} isAdminUploading={isAdminUploading} adminFileInputRef={adminFileInputRef} handleAdminUploadChange={handleAdminUploadChange} handleDeletePhoto={handleDeletePhoto} />}
+          {activeTab === 'challenges' && <ChallengesTab challenges={challenges} showChallengeForm={showChallengeForm} setShowChallengeForm={setShowChallengeForm} newChallenge={{title: '', description: ''}} setNewChallenge={() => {}} handleSaveChallenge={() => {}} deleteChallenge={deleteChallenge} />}
+          {activeTab === 'settings' && <SettingsTab eventData={eventData} eventUrl={eventUrl} copyLink={() => {}} shareWhatsApp={() => {}} updateEvent={updateEvent} />}
+        </div>
       </main>
 
-      <div className="fixed top-24 left-0 right-0 z-40 bg-[#08060d]/80 backdrop-blur-md border-b border-white/5 py-4 px-4">
-        <PremiumTabs tabs={organizerTabs} activeTab={activeTab} onChange={setActiveTab} className="max-w-6xl mx-auto" />
-      </div>
+      {/* Bottom Floating Navigation (Premium Tabs) */}
+      <PremiumTabs 
+        tabs={organizerTabs} 
+        activeTab={activeTab} 
+        onChange={setActiveTab} 
+        variant="bottom"
+        className="px-6 pb-8"
+      />
     </div>
   )
 }
@@ -61,30 +96,21 @@ const NotFoundScreen = ({ onBack }: { onBack: () => void }) => (
   </div>
 )
 
-const BackgroundGlows = () => (
-  <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-    <div className="absolute top-[0%] right-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[150px] rounded-full" />
-    <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-accent/5 blur-[150px] rounded-full" />
+
+const AccessDeniedScreen = () => (
+  <div className="min-h-screen bg-[#08060d] flex flex-col items-center justify-center p-8 text-center space-y-6">
+    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center text-gray-500 border border-white/10">
+      <AlertTriangle size={32} />
+    </div>
+    <div className="space-y-2">
+      <h2 className="text-xl font-black uppercase tracking-widest text-white">Lien Introuvable</h2>
+      <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest max-w-xs leading-relaxed">
+        Ce lien semble être expiré ou invalide. Veuillez vérifier l'adresse ou retourner à l'accueil.
+      </p>
+    </div>
+    <button onClick={() => window.location.href = '/'} className="px-8 py-3 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all">Retour à l'accueil</button>
   </div>
 )
 
-const OrganizerHeader = ({ user, eventData }: any) => (
-  <div className="fixed top-0 left-0 right-0 z-50 flex flex-col">
-    {!user && !eventData.user_id && (
-      <div className="bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 border-b border-white/10 p-3 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-4">
-          <p className="text-[10px] font-black uppercase tracking-widest flex items-center space-x-2"><Save size={12} className="text-primary"/><span>Sauvegardez cet événement</span></p>
-          <button className="bg-white text-black px-4 py-1.5 rounded-lg text-[9px] font-black uppercase">Connexion</button>
-        </div>
-      </div>
-    )}
-    <header className="glass-dark border-b border-white/5 px-4 md:px-8 py-4 backdrop-blur-xl">
-      <div className="max-w-6xl mx-auto flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="w-10 h-10 bg-primary/20 rounded-2xl flex items-center justify-center text-primary border border-primary/20"><LayoutDashboard size={20} /></div>
-          <div><h1 className="text-lg font-black tracking-tight uppercase leading-none">{eventData.name}</h1><p className="text-[9px] text-gray-500 font-bold uppercase tracking-[0.2em] mt-1">Espace Organisateur</p></div>
-        </div>
-      </div>
-    </header>
-  </div>
-)
+// Ensure icons used in the header are imported
+import { ArrowLeft, AlertTriangle } from 'lucide-react'
