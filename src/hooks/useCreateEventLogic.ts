@@ -20,13 +20,20 @@ export function useCreateEventLogic() {
     endDateTime: ''
   })
 
-  useEffect(() => {
-    const t = setTimeout(() => {
+  // Raccordement Cloudflare Turnstile réel
+  const handleTurnstileVerify = (token: string) => {
+    if (token) {
       setTurnstileState('success')
       setIsSpamVerified(true)
-    }, 500)
-    return () => clearTimeout(t)
-  }, [])
+      setCreationError(null)
+    }
+  }
+
+  const handleTurnstileExpired = () => {
+    setTurnstileState('idle')
+    setIsSpamVerified(false)
+  }
+
 
   const handleSubmit = async (navigate: any) => {
     if (!isSpamVerified) {
@@ -102,6 +109,8 @@ export function useCreateEventLogic() {
   return {
     loading, joinLoading, creationError, isMultiDay, setIsMultiDay,
     activeTab, setActiveTab, joinInput, setJoinInput, joinError,
-    turnstileState, formData, setFormData, handleSubmit, handleJoin
+    turnstileState, formData, setFormData, handleSubmit, handleJoin,
+    handleTurnstileVerify, handleTurnstileExpired
   }
 }
+

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, Sparkles, Zap, Hash, Users, AlertTriangle, LogIn, ArrowRight } from 'lucide-react'
 import { useCreateEventLogic } from '../../hooks/useCreateEventLogic'
@@ -7,8 +8,69 @@ export default function CreateEvent() {
   const {
     loading, joinLoading, creationError, isMultiDay, setIsMultiDay,
     activeTab, setActiveTab, joinInput, setJoinInput, joinError,
-    formData, setFormData, handleSubmit, handleJoin
+    formData, setFormData, handleSubmit, handleJoin,
+    handleTurnstileVerify, handleTurnstileExpired
   } = useCreateEventLogic()
+
+  useEffect(() => {
+    if (activeTab !== 'create') return
+
+    let widgetId: string | null = null
+
+    // Callbacks globaux pour Turnstile
+    ;(window as any).onTurnstileSuccess = (token: string) => {
+      handleTurnstileVerify(token)
+    }
+    ;(window as any).onTurnstileExpired = () => {
+      handleTurnstileExpired()
+    }
+    ;(window as any).onTurnstileError = () => {
+      handleTurnstileExpired()
+    }
+
+    const renderWidget = () => {
+      const turnstile = (window as any).turnstile
+      if (turnstile && document.getElementById('teutchap-turnstile-container')) {
+        try {
+          document.getElementById('teutchap-turnstile-container')!.innerHTML = ''
+          widgetId = turnstile.render('#teutchap-turnstile-container', {
+            sitekey: '3x00000000000000000000FF', // Clé de test de passage automatique Cloudflare
+            theme: 'dark',
+            callback: 'onTurnstileSuccess',
+            'expired-callback': 'onTurnstileExpired',
+            'error-callback': 'onTurnstileError',
+          })
+        } catch (e) {
+          console.error('Turnstile render error:', e)
+        }
+      }
+    }
+
+    // Lance le rendu dès que l'API Turnstile est disponible
+    if ((window as any).turnstile) {
+      renderWidget()
+    } else {
+      const interval = setInterval(() => {
+        if ((window as any).turnstile) {
+          renderWidget()
+          clearInterval(interval)
+        }
+      }, 100)
+      return () => clearInterval(interval)
+    }
+
+    return () => {
+      if (widgetId && (window as any).turnstile) {
+        try {
+          (window as any).turnstile.remove(widgetId)
+        } catch(e){}
+      }
+      delete (window as any).onTurnstileSuccess
+      delete (window as any).onTurnstileExpired
+      delete (window as any).onTurnstileError
+    }
+  }, [activeTab, handleTurnstileVerify, handleTurnstileExpired])
+
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center p-4 selection:bg-white/10 relative overflow-x-hidden font-sans">
@@ -50,9 +112,15 @@ export default function CreateEvent() {
                   </label>
               </div>
 
+              {/* Raccordement Réel Cloudflare Turnstile */}
+              <div className="flex justify-center py-2 relative z-20">
+                <div id="teutchap-turnstile-container" className="min-h-[65px] flex items-center justify-center" />
+              </div>
+
               {creationError && <ErrorMessage message={creationError} />}
               <SubmitButton loading={loading} label="Créer mon album" icon={<Sparkles size={18}/>} />
             </form>
+
           ) : (
             <form onSubmit={(e) => { e.preventDefault(); handleJoin(navigate); }} className="space-y-8 relative z-10 text-center animate-in fade-in">
               <div className="w-16 h-16 bg-white/5 border border-white/10 rounded-full flex items-center justify-center mx-auto text-white/60"><LogIn size={28} /></div>

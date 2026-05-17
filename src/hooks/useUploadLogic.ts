@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import localforage from 'localforage'
 
 export function useUploadLogic(token: string | undefined) {
   const [pendingPhotos, setPendingPhotos] = useState<any[]>([])
@@ -10,6 +11,8 @@ export function useUploadLogic(token: string | undefined) {
   const [selectedChallenge, setSelectedChallenge] = useState<string | null>(null)
   const [localUploadsCount] = useState<number>(0)
   const [guestPseudo, setGuestPseudo] = useState<string>('Invité')
+  const [shouldCompress, setShouldCompress] = useState(true)
+
 
   useEffect(() => {
     if (!token) return
@@ -28,9 +31,63 @@ export function useUploadLogic(token: string | undefined) {
   }, [token])
 
   const compressImage = async (file: File): Promise<Blob> => {
-    // Dans une version réelle, on utiliserait canvas ou une lib pour compresser
-    // Ici on garde le blob original pour la stabilité immédiate mais on pourrait ajouter du redimensionnement
-    return file
+    setIsCompressing(true)
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = (event) => {
+        const img = new Image()
+        img.src = event.target?.result as string
+        img.onload = () => {
+          const maxDim = 1920
+          let width = img.width
+          let height = img.height
+
+          // Conservation de l'aspect ratio
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width)
+              width = maxDim
+            } else {
+              width = Math.round((width * maxDim) / height)
+              height = maxDim
+            }
+          }
+
+          const canvas = document.createElement('canvas')
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            setIsCompressing(false)
+            resolve(file)
+            return
+          }
+
+          ctx.drawImage(img, 0, 0, width, height)
+          canvas.toBlob(
+            (blob) => {
+              setIsCompressing(false)
+              if (blob) {
+                resolve(blob)
+              } else {
+                resolve(file)
+              }
+            },
+            'image/jpeg',
+            0.75 // Qualité optimale pour le ratio poids/qualité en 3G/4G
+          )
+        }
+        img.onerror = () => {
+          setIsCompressing(false)
+          resolve(file)
+        }
+      }
+      reader.onerror = () => {
+        setIsCompressing(false)
+        resolve(file)
+      }
+    })
   }
 
   const handleUpload = async (navigate: any) => {
@@ -38,6 +95,32 @@ export function useUploadLogic(token: string | undefined) {
     
     setIsUploading(true)
     try {
+      // Gestion offline-first : file d'attente locale s'il n'y a pas de réseau
+      if (!navigator.onLine) {
+        const queue: any[] = await localforage.getItem('teutchap_offline_queue') || []
+        const newQueueItems = pendingPhotos.map(photo => ({
+          id: photo.id || crypto.randomUUID(),
+          token: token,
+          eventId: eventData.id,
+          blob: photo.blob,
+          contributorName: guestPseudo,
+          challengeId: selectedChallenge,
+          compressedSize: photo.compressedSize || photo.blob.size,
+          timestamp: new Date().toISOString()
+        }))
+        await localforage.setItem('teutchap_offline_queue', [...queue, ...newQueueItems])
+        
+        // Incrémentation optimiste locale pour l'engagement immédiat
+        const savedCountKey = `teutchap_guests_count_${token}`
+        const currentCount = parseInt(localStorage.getItem(savedCountKey) || '0', 10)
+        localStorage.setItem(savedCountKey, (currentCount + 1).toString())
+
+        setPendingPhotos([])
+        navigate(`/e/${token}`)
+        return
+      }
+
+      // Upload standard en ligne
       for (const photo of pendingPhotos) {
         const fileName = `${token}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`
         const { error: storageError } = await supabase.storage
@@ -71,6 +154,9 @@ export function useUploadLogic(token: string | undefined) {
     pendingPhotos, setPendingPhotos, isCompressing, setIsCompressing, isUploading,
     eventData, challenges, selectedChallenge, setSelectedChallenge,
     localUploadsCount, guestPseudo,
-    handleUpload, compressImage
+    handleUpload, compressImage,
+    shouldCompress, setShouldCompress
   }
 }
+
+

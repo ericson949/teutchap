@@ -10,7 +10,8 @@ export default function UploadPhoto() {
   const {
     pendingPhotos, setPendingPhotos, isCompressing, isUploading,
     challenges, selectedChallenge, setSelectedChallenge,
-    guestPseudo, handleUpload, compressImage
+    guestPseudo, handleUpload, compressImage,
+    shouldCompress, setShouldCompress
   } = useUploadLogic(token)
 
   const cameraRef = useRef<HTMLInputElement>(null)
@@ -20,11 +21,12 @@ export default function UploadPhoto() {
     const files = Array.from(e.target.files as FileList)
     const newPhotos = []
     for (const f of files) {
-        const blob = await compressImage(f)
+        const blob = shouldCompress ? await compressImage(f) : f
         newPhotos.push({ id: Math.random().toString(36), blob, url: URL.createObjectURL(blob), compressedSize: blob.size })
     }
     setPendingPhotos([...pendingPhotos, ...newPhotos])
   }
+
 
   return (
     <div className="min-h-screen bg-[#08060d] text-white flex flex-col">
@@ -38,12 +40,34 @@ export default function UploadPhoto() {
       </header>
 
       <main className="flex-1 p-4 space-y-6 max-w-xl mx-auto w-full relative z-10">
+        
+        {/* Toggle de compression éco-responsable */}
+        <div className="glass p-5 rounded-[2rem] border border-white/5 flex items-center justify-between space-x-4 animate-in fade-in slide-in-from-top-4 duration-500 relative overflow-hidden group">
+          <div className="absolute -right-12 -top-12 w-24 h-24 bg-primary/10 rounded-full blur-[30px] pointer-events-none group-hover:bg-primary/20 transition-all duration-700" />
+          
+          <div className="space-y-1 relative z-10">
+            <h4 className="text-[11px] font-black uppercase tracking-widest text-white">Optimisation HD</h4>
+            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider leading-tight">
+              {shouldCompress 
+                ? "Compression active (économise vos données mobiles)" 
+                : "Qualité originale (fichiers volumineux)"}
+            </p>
+          </div>
+          <button 
+            onClick={() => setShouldCompress(!shouldCompress)} 
+            className={`w-12 h-6 rounded-full transition-all relative shrink-0 ${shouldCompress ? 'bg-primary shadow-[0_0_15px_rgba(170,59,255,0.4)]' : 'bg-white/10'}`}
+          >
+            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${shouldCompress ? 'left-7' : 'left-1'}`} />
+          </button>
+        </div>
+
         {isCompressing ? <LoadingState /> : pendingPhotos.length === 0 ? (
           <UploadActionButtons 
             onCameraClick={() => cameraRef.current?.click()} 
             onGalleryClick={() => galleryRef.current?.click()} 
           />
         ) : (
+
           <div className="space-y-6 animate-in zoom-in-95 duration-300">
             <div className="grid grid-cols-2 gap-3">
               {pendingPhotos.map(p => (
