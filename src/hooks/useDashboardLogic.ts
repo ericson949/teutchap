@@ -6,10 +6,16 @@ import { usePhotos } from './usePhotos'
 import { useReactions } from './useReactions'
 import { useEventGuests } from './useEventGuests'
 import { useAuth } from '../contexts/AuthContext'
+import { compressImageUtil } from '../utils/image'
 
 export function useDashboardLogic(eventId: string | undefined) {
   const { user } = useAuth()
-  const { eventData, loading: eventLoading, isOwner, updateEvent } = useEvent(eventId)
+  const { eventData, loading: eventLoading, isOwner, updateEvent, deleteEvent } = useEvent(eventId)
+  const [selectedFilesForUpload, setSelectedFilesForUpload] = useState<File[]>([])
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [organizerCompress, setOrganizerCompress] = useState(true)
+
+
   const { challenges, addChallenge, deleteChallenge } = useChallenges(eventData?.id)
   const { photos } = usePhotos(eventData?.id)
   const { reactions, addReaction } = useReactions()
@@ -54,17 +60,26 @@ export function useDashboardLogic(eventId: string | undefined) {
     return () => clearInterval(itv)
   }, [eventData])
 
-  const handleAdminUploadChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAdminUploadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0 || !eventData) return
+    setSelectedFilesForUpload(Array.from(files))
+    setShowUploadModal(true)
+    if (adminFileInputRef.current) adminFileInputRef.current.value = ''
+  }
+
+  const confirmAdminUpload = async () => {
+    if (selectedFilesForUpload.length === 0 || !eventData) return
     setIsAdminUploading(true)
+    setShowUploadModal(false)
     
     try {
-      for (const file of Array.from(files)) {
+      for (const file of selectedFilesForUpload) {
+        const blob = organizerCompress ? await compressImageUtil(file) : file
         const fileName = `${eventData.token}_admin_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`
         const { error: storageError } = await supabase.storage
           .from('events_photos')
-          .upload(fileName, file)
+          .upload(fileName, blob)
 
         if (storageError) throw storageError
 
@@ -80,9 +95,15 @@ export function useDashboardLogic(eventId: string | undefined) {
       alert("Erreur lors de l'envoi des photos.")
     } finally {
       setIsAdminUploading(false)
-      if (adminFileInputRef.current) adminFileInputRef.current.value = ''
+      setSelectedFilesForUpload([])
     }
   }
+
+  const cancelAdminUpload = () => {
+    setSelectedFilesForUpload([])
+    setShowUploadModal(false)
+  }
+
 
   const handleDeletePhoto = async (photo: any, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -99,7 +120,11 @@ export function useDashboardLogic(eventId: string | undefined) {
     showChallengeForm, setShowChallengeForm,
     isAdminUploading, setIsAdminUploading, adminFileInputRef,
     timeRemaining, totalReactions, engagement,
-    updateEvent, addChallenge, deleteChallenge, addReaction,
-    handleAdminUploadChange, handleDeletePhoto
+    updateEvent, deleteEvent, addChallenge, deleteChallenge, addReaction,
+    handleAdminUploadChange, handleDeletePhoto,
+    selectedFilesForUpload, showUploadModal, setShowUploadModal,
+    organizerCompress, setOrganizerCompress, confirmAdminUpload, cancelAdminUpload
   }
 }
+
+

@@ -1,10 +1,40 @@
-import { useState } from 'react'
-import { Cloud, Trash2, Eye, Download, FolderArchive, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Cloud, Trash2, Eye, Download, FolderArchive, Loader2, Upload } from 'lucide-react'
 
-export const GalleryTab = ({ photos, isAdminUploading, adminFileInputRef, handleAdminUploadChange, handleDeletePhoto }: any) => {
+
+export const GalleryTab = ({ 
+  photos, 
+  isAdminUploading, 
+  adminFileInputRef, 
+  handleAdminUploadChange, 
+  handleDeletePhoto,
+  selectedFilesForUpload = [],
+  showUploadModal = false,
+  setShowUploadModal,
+  organizerCompress = true,
+  setOrganizerCompress,
+  confirmAdminUpload,
+  cancelAdminUpload
+}: any) => {
+
   const [isZipping, setIsZipping] = useState(false)
   const [zipProgress, setZipProgress] = useState(0)
   const [zipStatus, setZipStatus] = useState('')
+
+  const [previewUrls, setPreviewUrls] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!selectedFilesForUpload || selectedFilesForUpload.length === 0) {
+      setPreviewUrls([])
+      return
+    }
+    const urls = selectedFilesForUpload.map((f: File) => URL.createObjectURL(f))
+    setPreviewUrls(urls)
+    return () => {
+      urls.forEach((u: string) => URL.revokeObjectURL(u))
+    }
+  }, [selectedFilesForUpload])
+
 
   const handleDownloadZIP = async () => {
     if (photos.length === 0) return
@@ -154,7 +184,68 @@ export const GalleryTab = ({ photos, isAdminUploading, adminFileInputRef, handle
           </div>
         </div>
       )}
+
+      {/* Modale de Prévisualisation & Confirmation Admin */}
+      {showUploadModal && selectedFilesForUpload.length > 0 && (
+        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="glass rounded-[3rem] p-8 max-w-lg w-full border border-white/10 flex flex-col space-y-6 shadow-2xl relative overflow-hidden max-h-[90vh]">
+            <div className="absolute -top-12 -right-12 w-40 h-40 bg-primary/10 rounded-full blur-[50px] pointer-events-none" />
+            
+            <div className="space-y-1">
+              <h3 className="text-xl font-black uppercase tracking-widest text-white">Validation de l'envoi</h3>
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">
+                {selectedFilesForUpload.length} {selectedFilesForUpload.length > 1 ? 'photos sélectionnées' : 'photo sélectionnée'}
+              </p>
+            </div>
+
+            {/* Zone de prévisualisation des miniatures */}
+            <div className="grid grid-cols-3 gap-2 overflow-y-auto max-h-[220px] p-1 bg-black/30 rounded-2xl border border-white/5 scrollbar-thin">
+              {previewUrls.map((url: string, idx: number) => (
+                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-white/10">
+                  <img src={url} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+
+            {/* Toggle de compression HD */}
+            <div className="glass p-5 rounded-[2rem] border border-white/5 flex items-center justify-between space-x-4 relative overflow-hidden group">
+              <div className="space-y-1 relative z-10">
+                <h4 className="text-[11px] font-black uppercase tracking-widest text-white">Optimisation HD</h4>
+                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider leading-tight">
+                  {organizerCompress 
+                    ? "Activée (réduit la taille de 8 Mo à ~350 Ko par photo)" 
+                    : "Qualité originale (fichier lourd et long à téléverser)"}
+                </p>
+              </div>
+              <button 
+                onClick={() => setOrganizerCompress(!organizerCompress)} 
+                className={`w-12 h-6 rounded-full transition-all relative shrink-0 ${organizerCompress ? 'bg-primary shadow-[0_0_15px_rgba(170,59,255,0.4)]' : 'bg-white/10'}`}
+              >
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${organizerCompress ? 'left-7' : 'left-1'}`} />
+              </button>
+            </div>
+
+            {/* Boutons d'action */}
+            <div className="flex gap-3 pt-2">
+              <button 
+                onClick={cancelAdminUpload}
+                className="flex-1 py-4 border border-white/10 rounded-2xl font-black uppercase text-[10px] tracking-widest text-gray-400 hover:bg-white/5 transition-all"
+              >
+                Annuler
+              </button>
+              <button 
+                onClick={confirmAdminUpload}
+                className="flex-1 py-4 bg-white text-black rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-200 transition-all shadow-lg shadow-white/5 flex items-center justify-center space-x-2"
+              >
+                <Upload size={14} />
+                <span>Téléverser</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
 

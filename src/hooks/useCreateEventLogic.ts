@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { supabase } from '../lib/supabase'
 import { getDeviceId } from './useEvent'
@@ -21,18 +21,19 @@ export function useCreateEventLogic() {
   })
 
   // Raccordement Cloudflare Turnstile réel
-  const handleTurnstileVerify = (token: string) => {
+  const handleTurnstileVerify = useCallback((token: string) => {
     if (token) {
       setTurnstileState('success')
       setIsSpamVerified(true)
       setCreationError(null)
     }
-  }
+  }, [])
 
-  const handleTurnstileExpired = () => {
+  const handleTurnstileExpired = useCallback(() => {
     setTurnstileState('idle')
     setIsSpamVerified(false)
-  }
+  }, [])
+
 
 
   const handleSubmit = async (navigate: any) => {

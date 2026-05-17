@@ -1,6 +1,43 @@
-import { Shield, Copy, Share2 } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Shield, Copy, Share2, Trash2, Loader2, AlertOctagon } from 'lucide-react'
 
-export const SettingsTab = ({ eventData, eventUrl, copyLink, shareWhatsApp, updateEvent }: any) => {
+export const SettingsTab = ({ eventData, eventUrl, copyLink, shareWhatsApp, updateEvent, deleteEvent }: any) => {
+  const [isDeleting, setIsDeleting] = useState(false)
+  const navigate = useNavigate()
+
+  const handleDeleteClick = async () => {
+    // 1. Première alerte de sécurité standard
+    if (!confirm("⚠️ DANGER : Êtes-vous absolument sûr de vouloir supprimer définitivement cet événement ?")) return
+    
+    // 2. Deuxième barrière de validation (saisie du nom exact)
+    const confirmationText = prompt(
+      "Cette action supprimera toutes les images du cloud et toutes les données associées.\n\n" +
+      "Pour confirmer, veuillez saisir le nom exact de l'événement :"
+    )
+    
+    if (confirmationText !== eventData.name) {
+      alert("Le nom saisi ne correspond pas. La suppression a été annulée.")
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      const result = await deleteEvent()
+      if (result?.success) {
+        alert("L'événement et tous ses souvenirs ont été supprimés avec succès.")
+        navigate('/') // Redirection vers l'accueil Teutchap
+      } else {
+        throw result?.error || new Error("Une erreur inconnue est survenue")
+      }
+    } catch (err: any) {
+      console.error("Échec de suppression:", err)
+      alert("Erreur lors de la suppression de l'album : " + (err.message || err))
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -53,6 +90,43 @@ export const SettingsTab = ({ eventData, eventUrl, copyLink, shareWhatsApp, upda
           </div>
         </div>
       </div>
+
+      {/* Danger Zone */}
+      <div className="glass-dark border border-red-500/10 p-8 rounded-[2.5rem] space-y-6 shadow-2xl relative overflow-hidden group">
+        {/* Glow de fond rouge subtil */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 blur-[50px] rounded-full -mr-16 -mt-16 pointer-events-none group-hover:bg-red-500/10 transition-all duration-700" />
+        
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+          <div className="space-y-2">
+            <h3 className="text-xl font-black uppercase tracking-tight flex items-center space-x-3 text-red-500">
+              <AlertOctagon size={24} className="text-red-500 animate-pulse" />
+              <span>Zone de Danger</span>
+            </h3>
+            <p className="text-xs text-gray-500 font-bold uppercase tracking-wider leading-relaxed">
+              La suppression de cet album est définitive. Elle effacera immédiatement toutes les images stockées dans le cloud ainsi que toutes les entrées associées (photos, défis, réactions). Cette action est irréversible.
+            </p>
+          </div>
+          
+          <button 
+            onClick={handleDeleteClick}
+            disabled={isDeleting}
+            className="w-full md:w-auto px-8 py-5 bg-red-500/10 border border-red-500/20 text-red-500 font-black uppercase text-[10px] tracking-widest rounded-2xl hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center space-x-2 shrink-0 disabled:opacity-50"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Suppression...</span>
+              </>
+            ) : (
+              <>
+                <Trash2 size={16} />
+                <span>Supprimer l'album</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
+

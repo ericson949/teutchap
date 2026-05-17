@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import localforage from 'localforage'
+import { compressImageUtil } from '../utils/image'
 
 export function useUploadLogic(token: string | undefined) {
+
   const [pendingPhotos, setPendingPhotos] = useState<any[]>([])
   const [isCompressing, setIsCompressing] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -32,63 +34,14 @@ export function useUploadLogic(token: string | undefined) {
 
   const compressImage = async (file: File): Promise<Blob> => {
     setIsCompressing(true)
-    return new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.readAsDataURL(file)
-      reader.onload = (event) => {
-        const img = new Image()
-        img.src = event.target?.result as string
-        img.onload = () => {
-          const maxDim = 1920
-          let width = img.width
-          let height = img.height
-
-          // Conservation de l'aspect ratio
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width)
-              width = maxDim
-            } else {
-              width = Math.round((width * maxDim) / height)
-              height = maxDim
-            }
-          }
-
-          const canvas = document.createElement('canvas')
-          canvas.width = width
-          canvas.height = height
-          const ctx = canvas.getContext('2d')
-          if (!ctx) {
-            setIsCompressing(false)
-            resolve(file)
-            return
-          }
-
-          ctx.drawImage(img, 0, 0, width, height)
-          canvas.toBlob(
-            (blob) => {
-              setIsCompressing(false)
-              if (blob) {
-                resolve(blob)
-              } else {
-                resolve(file)
-              }
-            },
-            'image/jpeg',
-            0.75 // Qualité optimale pour le ratio poids/qualité en 3G/4G
-          )
-        }
-        img.onerror = () => {
-          setIsCompressing(false)
-          resolve(file)
-        }
-      }
-      reader.onerror = () => {
-        setIsCompressing(false)
-        resolve(file)
-      }
-    })
+    try {
+      const blob = await compressImageUtil(file)
+      return blob
+    } finally {
+      setIsCompressing(false)
+    }
   }
+
 
   const handleUpload = async (navigate: any) => {
     if (pendingPhotos.length === 0 || !eventData) return

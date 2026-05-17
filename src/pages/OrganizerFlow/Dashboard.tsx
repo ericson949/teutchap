@@ -15,9 +15,13 @@ export default function Dashboard() {
     user, eventData, eventLoading, isOwner, challenges, photos,
     activeTab, setActiveTab, showChallengeForm, setShowChallengeForm,
     isAdminUploading, adminFileInputRef, timeRemaining, totalReactions,
-    updateEvent, deleteChallenge, handleAdminUploadChange,
-    handleDeletePhoto
+    updateEvent, deleteEvent, deleteChallenge, handleAdminUploadChange,
+    handleDeletePhoto,
+    selectedFilesForUpload, showUploadModal, setShowUploadModal,
+    organizerCompress, setOrganizerCompress, confirmAdminUpload, cancelAdminUpload
   } = useDashboardLogic(eventId)
+
+
 
   const organizerTabs = [
     { id: 'overview', label: 'Aperçu', icon: <LayoutDashboard size={20} /> },
@@ -67,9 +71,26 @@ export default function Dashboard() {
       <main className="flex-1 max-w-5xl mx-auto w-full px-6 pt-32 pb-12 relative z-10">
         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
           {activeTab === 'overview' && <OverviewTab timeRemaining={timeRemaining} photos={photos} challenges={challenges} totalReactions={totalReactions} navigate={navigate} eventId={eventId} />}
-          {activeTab === 'gallery' && <GalleryTab photos={photos} isAdminUploading={isAdminUploading} adminFileInputRef={adminFileInputRef} handleAdminUploadChange={handleAdminUploadChange} handleDeletePhoto={handleDeletePhoto} />}
+          {activeTab === 'gallery' && (
+            <GalleryTab 
+              photos={photos} 
+              isAdminUploading={isAdminUploading} 
+              adminFileInputRef={adminFileInputRef} 
+              handleAdminUploadChange={handleAdminUploadChange} 
+              handleDeletePhoto={handleDeletePhoto}
+              selectedFilesForUpload={selectedFilesForUpload}
+              showUploadModal={showUploadModal}
+              setShowUploadModal={setShowUploadModal}
+              organizerCompress={organizerCompress}
+              setOrganizerCompress={setOrganizerCompress}
+              confirmAdminUpload={confirmAdminUpload}
+              cancelAdminUpload={cancelAdminUpload}
+            />
+          )}
+
           {activeTab === 'challenges' && <ChallengesTab challenges={challenges} showChallengeForm={showChallengeForm} setShowChallengeForm={setShowChallengeForm} newChallenge={{title: '', description: ''}} setNewChallenge={() => {}} handleSaveChallenge={() => {}} deleteChallenge={deleteChallenge} />}
-          {activeTab === 'settings' && <SettingsTab eventData={eventData} eventUrl={eventUrl} copyLink={() => {}} shareWhatsApp={() => {}} updateEvent={updateEvent} />}
+          {activeTab === 'settings' && <SettingsTab eventData={eventData} eventUrl={eventUrl} copyLink={() => {}} shareWhatsApp={() => {}} updateEvent={updateEvent} deleteEvent={deleteEvent} />}
+
         </div>
       </main>
 

@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Loader2, X, Upload, Zap } from 'lucide-react'
 import { useUploadLogic } from '../../hooks/useUploadLogic'
@@ -13,6 +13,9 @@ export default function UploadPhoto() {
     guestPseudo, handleUpload, compressImage,
     shouldCompress, setShouldCompress
   } = useUploadLogic(token)
+
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+
 
   const cameraRef = useRef<HTMLInputElement>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
@@ -92,11 +95,70 @@ export default function UploadPhoto() {
               </div>
             )}
 
-            <button onClick={() => handleUpload(navigate)} disabled={isUploading} className="w-full bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-2xl shadow-lg flex items-center justify-center space-x-3 border-t border-white/20 disabled:opacity-50">
+            <button onClick={() => setShowConfirmModal(true)} disabled={isUploading} className="w-full bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-2xl shadow-lg flex items-center justify-center space-x-3 border-t border-white/20 disabled:opacity-50">
               {isUploading ? <><Loader2 size={20} className="animate-spin" /><span>Envoi...</span></> : <><Upload size={20} /><span>Publier les souvenirs signés</span></>}
             </button>
           </div>
         )}
+
+        {/* Modale de prévisualisation et confirmation finale client */}
+        {showConfirmModal && pendingPhotos.length > 0 && (
+          <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
+            <div className="glass rounded-[3rem] p-8 max-w-sm w-full border border-white/10 flex flex-col space-y-6 shadow-2xl relative overflow-hidden">
+              <div className="absolute -top-12 -right-12 w-40 h-40 bg-primary/10 rounded-full blur-[50px] pointer-events-none" />
+              
+              <div className="space-y-1 text-center">
+                <h3 className="text-lg font-serif text-white">Prêt à publier ?</h3>
+                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">
+                  {pendingPhotos.length} {pendingPhotos.length > 1 ? 'photos prêtes à l\'envoi' : 'photo prête à l\'envoi'}
+                </p>
+              </div>
+
+              {/* Résumé des options sélectionnées */}
+              <div className="space-y-3 bg-white/5 p-4 rounded-2xl border border-white/5 text-[10px] uppercase font-bold tracking-wider text-gray-400">
+                <div className="flex justify-between">
+                  <span>Optimisation HD :</span>
+                  <span className="text-white">{shouldCompress ? "Oui (Léger)" : "Non (Qualité originale)"}</span>
+                </div>
+                {selectedChallenge && (
+                  <div className="flex justify-between">
+                    <span>Défi associé :</span>
+                    <span className="text-primary truncate max-w-[150px]">
+                      {challenges.find(c => c.id === selectedChallenge)?.title || "Oui"}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-white/5 pt-2">
+                  <span>Poids total estimé :</span>
+                  <span className="text-white">
+                    {(pendingPhotos.reduce((sum, p) => sum + p.compressedSize, 0) / 1024).toFixed(0)} KB
+                  </span>
+                </div>
+              </div>
+
+              {/* Boutons de confirmation */}
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowConfirmModal(false)}
+                  className="flex-1 py-4 border border-white/10 rounded-2xl font-black uppercase text-[10px] tracking-widest text-gray-400 hover:bg-white/5 transition-all"
+                >
+                  Annuler
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowConfirmModal(false);
+                    handleUpload(navigate);
+                  }}
+                  className="flex-1 py-4 bg-white text-black rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-200 transition-all shadow-lg flex items-center justify-center space-x-2"
+                >
+                  <Upload size={14} />
+                  <span>Publier</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFileChange} />
         <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden" onChange={onFileChange} />
       </main>

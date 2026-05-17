@@ -256,6 +256,50 @@ export function useEvent(idOrToken: string | undefined, isToken: boolean = false
     }
   }
 
+  const deleteEvent = async () => {
+    if (!eventData?.id) return { error: new Error("Aucune donnée d'événement") }
+    
+    try {
+      // 1. Récupération de tous les fichiers de l'album pour les supprimer du stockage cloud
+      const { data: photosList } = await supabase
+        .from('photos')
+        .select('url_original, url_thumb')
+        .eq('event_id', eventData.id)
+
+      if (photosList && photosList.length > 0) {
+        const filesToRemove: string[] = []
+        photosList.forEach(p => {
+          if (p.url_original) filesToRemove.push(p.url_original)
+          if (p.url_thumb && p.url_thumb !== p.url_original) filesToRemove.push(p.url_thumb)
+        })
+
+        if (filesToRemove.length > 0) {
+          await supabase.storage.from('events_photos').remove(filesToRemove)
+        }
+      }
+
+      // 2. Suppression de la ligne événement (cascade SQL sur les tables photos, challenges, reactions)
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', eventData.id)
+
+      if (error) throw error
+
+      // 3. Purge du cache local associé
+      localStorage.removeItem(`teutchap_pwd_verified_${eventData.token}`)
+      localStorage.removeItem(`teutchap_pseudo_${eventData.token}`)
+      localStorage.removeItem(`teutchap_guests_count_${eventData.token}`)
+      localStorage.removeItem(`teutchap_photos_cache_${eventData.id}`)
+      
+      return { success: true, error: null }
+    } catch (err) {
+      console.error("Erreur lors de la suppression de l'événement:", err)
+      return { success: false, error: err }
+    }
+  }
+
+
   const incrementGuestCount = async () => {
     if (!eventData) return false
     const currentCount = eventData.joined_guests_count || 0
@@ -358,10 +402,12 @@ export function useEvent(idOrToken: string | undefined, isToken: boolean = false
     error, 
     isOwner,
     updateEvent, 
+    deleteEvent,
     setEventData,
     incrementGuestCount,
     joinEventAsGuest,
     deviceId: getDeviceId()
   }
 }
+
 
