@@ -140,7 +140,7 @@ export default function AdminDashboard() {
 
         {/* Analytics Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-           {/* Activity Chart (Mock) */}
+           {/* Activité de la Plateforme */}
            <div className="lg:col-span-2 glass rounded-[2.5rem] p-8 border-white/5 space-y-8">
               <div className="flex items-center justify-between">
                 <div>

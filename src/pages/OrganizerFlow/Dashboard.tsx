@@ -1,1106 +1,139 @@
-import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { QRCodeSVG } from 'qrcode.react'
-import { Share2, Image as ImageIcon, Copy, X, Zap, Hash, Check, Shield, Sparkles, Clock, LogIn, Save, Hourglass, Eye, Cloud, Trash2 } from 'lucide-react'
-import localforage from 'localforage'
-import { useEvent } from '../../hooks/useEvent'
-import { useChallenges } from '../../hooks/useChallenges'
-import { usePhotos } from '../../hooks/usePhotos'
-import { useReactions } from '../../hooks/useReactions'
-import { useEventGuests } from '../../hooks/useEventGuests'
-import { useAuth } from '../../contexts/AuthContext'
-import HighlightReel from '../../components/HighlightReel'
-import AuthModal from '../../components/AuthModal'
-import { supabase } from '../../lib/supabase'
+import { LayoutDashboard, Image as ImageIcon, Hash, Settings as SettingsIcon, Save, RefreshCw, Check } from 'lucide-react'
+import { useDashboardLogic } from '../../hooks/useDashboardLogic'
+import PremiumTabs from '../../components/PremiumTabs'
+import { OverviewTab } from './components/OverviewTab'
+import { GalleryTab } from './components/GalleryTab'
+import { ChallengesTab } from './components/ChallengesTab'
+import { SettingsTab } from './components/SettingsTab'
 
 export default function Dashboard() {
   const { eventId } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
   
-  // Custom Hooks
-  const { eventData, loading: eventLoading, updateEvent, setEventData } = useEvent(eventId)
-  const { challenges, addChallenge, deleteChallenge } = useChallenges(eventData?.id)
-  const { photos } = usePhotos(eventData?.id)
-  const { reactions, userReactions, addReaction } = useReactions()
-  const { guests } = useEventGuests(eventData?.id)
-  
-  const [showChallengeForm, setShowChallengeForm] = useState(false)
-  const [newChallenge, setNewChallenge] = useState({ title: '', description: '' })
-  const [showHighlights, setShowHighlights] = useState(false)
-  const [showAuthModal, setShowAuthModal] = useState(false)
-  const [filterOfflineOnly, setFilterOfflineOnly] = useState(false)
-  const adminFileInputRef = useRef<HTMLInputElement>(null)
-  const [isAdminUploading, setIsAdminUploading] = useState(false)
+  const {
+    user, eventData, eventLoading, isOwner, challenges, photos,
+    activeTab, setActiveTab, showChallengeForm, setShowChallengeForm,
+    isAdminUploading, adminFileInputRef, timeRemaining, totalReactions,
+    updateEvent, deleteEvent, deleteChallenge, handleAdminUploadChange,
+    handleDeletePhoto,
+    selectedFilesForUpload, showUploadModal, setShowUploadModal,
+    organizerCompress, setOrganizerCompress, confirmAdminUpload, cancelAdminUpload
+  } = useDashboardLogic(eventId)
 
-  // --- CHRONOMÈTRE INTELLIGENT MULTI-PHASES (NIVEAU SUPÉRIEUR) ---
-  const [timeRemaining, setTimeRemaining] = useState<{
-    label: string;
-    days: number;
-    hours: number;
-    minutes: number;
-    seconds: number;
-    phase: 'before_start' | 'active' | 'before_reveal' | 'finished';
-  }>({
-    label: 'Calcul du cycle...',
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-    phase: 'before_start'
-  })
 
-  useEffect(() => {
-    const getParsedDateTime = (dateStr?: string, timeStr?: string) => {
-      if (!dateStr) return null
-      const base = new Date(dateStr)
-      if (isNaN(base.getTime())) return null
-      if (timeStr) {
-        const [hours, mins] = timeStr.split(':').map(Number)
-        if (!isNaN(hours)) base.setHours(hours)
-        if (!isNaN(mins)) base.setMinutes(mins)
-      }
-      return base
-    }
 
-    // Utiliser event_date, ou à défaut created_at, ou à défaut la date actuelle
-    const baseDateStr = eventData?.event_date || eventData?.created_at || new Date().toISOString()
-    const startDt = getParsedDateTime(baseDateStr, eventData?.start_time) || new Date()
-    
-    // Garde-fou de normalisation si la base renvoie un format inattendu interprété au-delà de l'an 2100
-    if (startDt.getFullYear() > 2100 || startDt.getFullYear() < 2000) {
-      startDt.setTime(Date.now())
-    }
+  const organizerTabs = [
+    { id: 'overview', label: 'Aperçu', icon: <LayoutDashboard size={20} /> },
+    { id: 'gallery', label: 'Galerie', icon: <ImageIcon size={20} /> },
+    { id: 'challenges', label: 'Défis', icon: <Hash size={20} /> },
+    { id: 'settings', label: 'Params', icon: <SettingsIcon size={20} /> }
+  ]
 
-    let endDt = getParsedDateTime(eventData?.end_date, eventData?.end_time)
-    if (!endDt || isNaN(endDt.getTime()) || endDt.getTime() <= startDt.getTime()) {
-      endDt = new Date(startDt.getTime() + 24 * 3600 * 1000)
-    }
-    if (endDt.getFullYear() > 2100 || endDt.getFullYear() < 2000) {
-      endDt.setTime(startDt.getTime() + 24 * 3600 * 1000)
-    }
-
-    const revealDt = new Date(endDt.getTime() + 12 * 3600 * 1000)
-
-    const updateTimer = () => {
-      const now = new Date().getTime()
-      const start = startDt.getTime()
-      const end = endDt.getTime()
-      const reveal = revealDt.getTime()
-
-      let target = start
-      let labelStr = "Avant le début de l'événement"
-      let currentPhase: 'before_start' | 'active' | 'before_reveal' | 'finished' = 'before_start'
-
-      if (now < start) {
-        target = start
-        labelStr = "Avant le début de l'événement"
-        currentPhase = 'before_start'
-      } else if (now >= start && now < end) {
-        target = end
-        labelStr = "Temps restant avant la fin"
-        currentPhase = 'active'
-      } else if (now >= end && now < reveal) {
-        target = reveal
-        labelStr = "Avant le Reveal de l'album"
-        currentPhase = 'before_reveal'
-      } else {
-        setTimeRemaining({
-          label: "Album finalisé et révélé",
-          days: 0,
-          hours: 0,
-          minutes: 0,
-          seconds: 0,
-          phase: 'finished'
-        })
-        return
-      }
-
-      const diff = Math.max(0, target - now)
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
-
-      setTimeRemaining({
-        label: labelStr,
-        days,
-        hours,
-        minutes,
-        seconds,
-        phase: currentPhase
-      })
-    }
-
-    updateTimer()
-    const interval = setInterval(updateTimer, 1000)
-    return () => clearInterval(interval)
-  }, [eventData?.event_date, eventData?.start_time, eventData?.end_date, eventData?.end_time])
-
-  // Auto-claim event if user logs in and event is anonymous
-  useEffect(() => {
-    if (user && eventData && !eventData.user_id) {
-      claimEvent()
-    }
-  }, [user, eventData])
-
-  const claimEvent = async () => {
-    if (!user || !eventData) return
-    const { error } = await supabase
-      .from('events')
-      .update({ user_id: user.id })
-      .eq('id', eventData.id)
-    
-    if (!error) {
-      setEventData({ ...eventData, user_id: user.id })
-    }
-  }
-
-  const handleSaveChallenge = async () => {
-    if (!newChallenge.title) return
-    const response = await addChallenge(newChallenge.title, newChallenge.description)
-    if (response?.data) {
-      setShowChallengeForm(false)
-      setNewChallenge({ title: '', description: '' })
-    }
-  }
-
-  const handleDeletePhoto = async (photo: any, e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!confirm("En tant qu'organisateur, voulez-vous vraiment supprimer définitivement cette photo de l'événement ?")) return
-
-    if (photo.is_offline_pending) {
-      // Cas peu probable chez l'organisateur sauf s'il a lui-même pris la photo en mode déconnecté
-      try {
-        const queue: any[] = await localforage.getItem('teutchap_offline_queue') || []
-        const filtered = queue.filter(item => item.id !== photo.id)
-        await localforage.setItem('teutchap_offline_queue', filtered)
-        window.dispatchEvent(new Event('online'))
-      } catch(err) {
-        console.error("Erreur suppression photo en attente orga:", err)
-      }
-    } else {
-      try {
-        const deletedIds: string[] = JSON.parse(localStorage.getItem('teutchap_offline_delete_queue') || '[]')
-        if (!deletedIds.includes(photo.id)) {
-          deletedIds.push(photo.id)
-          localStorage.setItem('teutchap_offline_delete_queue', JSON.stringify(deletedIds))
-        }
-
-        const historyIds: string[] = JSON.parse(localStorage.getItem('teutchap_deleted_history') || '[]')
-        if (!historyIds.includes(photo.id)) {
-          historyIds.push(photo.id)
-          localStorage.setItem('teutchap_deleted_history', JSON.stringify(historyIds))
-        }
-        window.dispatchEvent(new Event('online'))
-
-        if (navigator.onLine) {
-          supabase.from('photos').delete().eq('id', photo.id).then(({ error }) => {
-            if (error) console.error("Erreur suppression serveur post-optimiste orga:", error)
-          })
-        }
-      } catch(err) {
-        console.error("Erreur suppression photo serveur orga:", err)
-      }
-    }
-  }
-
-  const handleAdminUploadChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-
-    setIsAdminUploading(true)
-    const token = eventData.token
-    const targetEventId = eventData.id
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      try {
-        // Simple client-side scaling/compression or direct upload
-        const fileName = `${token}_admin_${Date.now()}_${Math.random().toString(36).substring(2,7)}.jpg`
-        const { error: uploadError } = await supabase.storage
-          .from('events_photos')
-          .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: false,
-            contentType: file.type || 'image/jpeg'
-          })
-
-        if (!uploadError) {
-          await supabase.from('photos').insert([
-            {
-              event_id: targetEventId,
-              url_original: fileName,
-              url_thumb: fileName,
-              file_size_bytes: file.size,
-              is_moderated: false,
-              uploader_name: 'Organisateur',
-              contributor_name: 'Organisateur'
-            }
-          ])
-        } else {
-          console.error("Erreur upload storage orga:", uploadError)
-        }
-      } catch (err) {
-        console.error("Erreur de traitement upload admin:", err)
-      }
-    }
-
-    setIsAdminUploading(false)
-    if (adminFileInputRef.current) {
-      adminFileInputRef.current.value = ''
-    }
-  }
-
-  const toggleRevealMode = () => {
-    // Reveal in 5 minutes for demo
-    const revealTime = eventData.reveal_time ? null : new Date(Date.now() + 5 * 60000).toISOString()
-    updateEvent({ reveal_time: revealTime })
-  }
-
-  if (eventLoading) return <div className="p-8 text-center text-white bg-[#08060d] min-h-screen flex items-center justify-center font-black uppercase tracking-[0.3em]">Chargement...</div>
-
-  if (!eventData) {
-    return (
-      <div className="p-8 text-center text-white bg-[#08060d] min-h-screen flex flex-col items-center justify-center space-y-4">
-        <div className="text-red-500 font-black uppercase tracking-widest text-lg animate-pulse">Album Introuvable ou Supprimé</div>
-        <p className="text-xs text-gray-400 max-w-sm">Cet événement n'existe plus dans la base de données. Il a probablement été réinitialisé ou effacé.</p>
-        <button onClick={() => navigate('/')} className="px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary font-bold rounded-xl text-xs uppercase tracking-wider border border-primary/30">Retour à l'accueil</button>
-      </div>
-    )
-  }
+  if (eventLoading) return <LoadingScreen />
+  if (!eventData) return <NotFoundScreen onBack={() => navigate('/')} />
+  if (!isOwner) return <AccessDeniedScreen />
 
   const eventUrl = `${window.location.origin}/e/${eventData.token}`
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(eventUrl)
-    alert('Lien copié !')
-  }
-
-  const shareWhatsApp = () => {
-    const text = `Partagez vos photos de ${eventData.name} !\n\nCliquez ici : ${eventUrl}`
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
-  }
-
-  // Get top photos for highlight reel (e.g., top 5 by reactions)
-  const highlightPhotos = [...photos].sort((a, b) => (b.reaction_count || 0) - (a.reaction_count || 0)).slice(0, 5)
-
-  // --- DERIVATION DES DONNÉES RÉELLES (PURGE DES MOCKS) ---
-  
-  // 1. Répartition horaire réelle calculée sur l'horodatage de création des photos
-  const getHourlyActivity = () => {
-    const counts = new Array(7).fill(0)
-    if (!photos || photos.length === 0) return { heights: counts, hoursLabel: counts.map((_, i) => `${12 + i}h`) }
-    
-    const now = new Date()
-    const currentHour = now.getHours()
-    
-    photos.forEach(p => {
-      if (!p.created_at) return
-      const dt = new Date(p.created_at)
-      const hr = dt.getHours()
-      const diff = currentHour - hr
-      if (diff >= 0 && diff < 7) {
-        counts[6 - diff]++
-      } else if (diff < 0 && (diff + 24) < 7) {
-        counts[6 - (diff + 24)]++
-      }
-    })
-    
-    const max = Math.max(...counts, 1)
-    const heights = counts.map(c => Math.round((c / max) * 100))
-    const hoursLabel = counts.map((_, idx) => {
-      const h = (currentHour - 6 + idx + 24) % 24
-      return `${h}h`
-    })
-    
-    return { heights, hoursLabel }
-  }
-
-  const { heights: hourlyHeights, hoursLabel } = getHourlyActivity()
-
-  // 2. Taux d'engagement IA basé sur les vraies réactions et tags générés
-  const totalReactions = photos.reduce((sum, p) => sum + (p.reaction_count || 0), 0)
-  const totalTagged = photos.filter(p => p.ai_tags && p.ai_tags.length > 0).length
-  const calculatedEngagement = photos.length > 0 
-    ? Math.min(100, Math.round(((totalReactions + totalTagged * 2) / (photos.length * 3)) * 100))
-    : 0
-
-  // 3. Top Contributeurs déduits à partir des posteurs réels
-  const getTopContributors = () => {
-    if (!photos || photos.length === 0) return []
-    const map: { [key: string]: number } = {}
-    photos.forEach(p => {
-      const author = p.guest_name || p.author_name || 'Invité Anonyme'
-      map[author] = (map[author] || 0) + 1
-    })
-    return Object.entries(map)
-      .map(([name, count]) => ({
-        name,
-        count,
-        avatar: name === 'Invité Anonyme' ? 'IA' : name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 3)
-  }
-  const topContributors = getTopContributors()
-
-  // 4. Liste finale unifiée des participants en temps réel
-  const extractedNames = Array.from(new Set(photos.map(p => p.guest_name || p.author_name).filter(Boolean)))
-  const existingAdmins = eventData?.co_admins || []
-  const relationalGuestIds = new Set(guests.map(g => g.pseudo))
-  const legacyGuests = extractedNames.filter(name => !relationalGuestIds.has(name)).map(name => ({
-    user_id: 'legacy_' + name,
-    pseudo: name,
-    role: existingAdmins.includes(name) ? 'co_admin' : 'guest',
-    joined_at: new Date().toISOString(),
-    last_active_at: new Date().toISOString(),
-    isOnline: false
-  }))
-  const allDisplayGuests = [...guests, ...legacyGuests]
-
   return (
-    <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30 overflow-x-hidden">
-      {/* Background Glows */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[0%] right-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[80px] md:blur-[150px] rounded-full will-change-transform" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-accent/5 blur-[80px] md:blur-[150px] rounded-full will-change-transform" />
-      </div>
+    <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30 overflow-x-hidden pb-24">
+      
+      {/* Minimalist Top Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 px-6 py-8 flex items-center justify-between pointer-events-none">
+        <button 
+          onClick={() => navigate(`/overview/${eventId}`)}
+          className="glass border border-white/10 p-4 rounded-2xl pointer-events-auto active:scale-90 transition-all hover:bg-white/5 shadow-xl group"
+        >
+          <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+        </button>
 
-      {/* Conteneur d'En-têtes Solidaire Fixé (Bannière Auth + Barre de Titre) pour garantir l'ancrage sans superposition */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex flex-col will-change-transform">
-        {/* Lazy Auth Banner */}
-        {!user && !eventData.user_id && (
-          <div className="bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 border-b border-white/10 p-3 backdrop-blur-md md:backdrop-blur-xl">
-            <div className="max-w-6xl mx-auto flex items-center justify-between">
-              <div className="flex items-center space-x-3 px-4">
-                 <div className="bg-primary/20 p-2 rounded-lg text-primary animate-pulse">
-                    <Save size={14} />
-                 </div>
-                 <p className="text-[10px] md:text-xs font-black uppercase tracking-widest">
-                    Sauvegardez cet événement pour ne jamais perdre l'accès
-                 </p>
-              </div>
-              <button 
-                onClick={() => setShowAuthModal(true)}
-                className="bg-white text-black px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-95 whitespace-nowrap mr-4"
-              >
-                S'inscrire / Connexion
-              </button>
-            </div>
-          </div>
-        )}
-
-        <header className="glass-dark border-b border-white/5 px-8 py-5 flex justify-between items-center backdrop-blur-md md:backdrop-blur-2xl">
-          <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-              <Hash size={24} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-black tracking-tight text-gradient">{eventData.name}</h1>
-              <div className="flex items-center space-x-2">
-                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
-                  eventData.plan === 'free' ? 'border-white/10 text-gray-500' : 'border-primary/30 bg-primary/10 text-primary'
-                }`}>
-                  Plan {eventData.plan || 'Free'}
-                </span>
-                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-tighter">Console Organisateur</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            {eventData.plan !== 'premium' && (
-              <button 
-                onClick={() => navigate(`/dashboard/${eventId}/upgrade`)}
-                className="hidden md:flex items-center space-x-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-lg shadow-primary/20"
-              >
-                <Zap size={14} className="fill-current" />
-                <span>UPGRADE</span>
-              </button>
-            )}
-
-            {/* Bouton de bascule vers la Vue Simplifiée */}
-            <button 
-              onClick={() => navigate(`/overview/${eventId}`)}
-              className="flex items-center space-x-1.5 glass border border-white/10 hover:border-accent/30 hover:bg-white/5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-300 hover:text-white transition-all active:scale-95"
-              title="Passer en vue simplifiée"
-            >
-              <Eye size={14} className="text-accent" />
-              <span className="hidden sm:inline">Vue Simplifiée</span>
-            </button>
-
-            <button 
-              onClick={() => user ? navigate('/portal') : setShowAuthModal(true)}
-              className="p-2.5 glass border border-white/10 text-gray-400 hover:text-white rounded-xl transition-all"
-            >
-              <LogIn size={18} />
-            </button>
-          </div>
-        </header>
-      </div>
-
-      <main className="max-w-6xl mx-auto p-4 md:p-10 space-y-8 md:space-y-12 relative z-10 mt-[140px]">
-        
-        {/* Carte Chronomètre Multi-Phases Dynamique */}
-        <div className="bg-white/[0.02] border border-white/10 rounded-[2rem] p-6 shadow-2xl backdrop-blur-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-accent/10 blur-[60px] rounded-full pointer-events-none transition-transform group-hover:scale-125" />
-          
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/5 pb-4 gap-3 sm:gap-0">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-accent/10 border border-accent/20 rounded-2xl text-accent">
-                {timeRemaining.phase === 'finished' ? (
-                  <Check size={20} className="text-green-400 stroke-[3]" />
-                ) : timeRemaining.phase === 'active' ? (
-                  <Hourglass size={20} className="animate-spin" />
-                ) : (
-                  <Clock size={20} className="animate-pulse" />
-                )}
-              </div>
-              <div>
-                <span className="text-[9px] font-black uppercase tracking-widest text-accent block">Cycle Événementiel Intelligent</span>
-                <h3 className="text-sm md:text-base font-bold text-gray-200">{timeRemaining.label}</h3>
-              </div>
-            </div>
-
-            <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border w-fit ${
-              timeRemaining.phase === 'finished' ? 'bg-green-500/10 text-green-400 border-green-500/30' :
-              timeRemaining.phase === 'active' ? 'bg-accent/10 text-accent border-accent/30 animate-pulse' :
-              'bg-primary/10 text-primary-light border-primary/30'
-            }`}>
-              {timeRemaining.phase === 'finished' ? 'Clôturé' :
-               timeRemaining.phase === 'active' ? 'En Cours' :
-               timeRemaining.phase === 'before_reveal' ? 'Attente Reveal' : 'Programmé'}
-            </span>
-          </div>
-
-          {/* Bloc Compteurs avec Tabular-Nums */}
-          {timeRemaining.phase !== 'finished' ? (
-            <div className="grid grid-cols-4 gap-3 pt-4 text-center max-w-2xl mx-auto">
-              <div className="bg-black/40 border border-white/5 rounded-2xl py-3 flex flex-col justify-center">
-                <span className="text-2xl md:text-3xl font-black tabular-nums text-white leading-none">{timeRemaining.days}</span>
-                <span className="text-[8px] font-extrabold uppercase tracking-widest text-gray-500 mt-1">Jours</span>
-              </div>
-              <div className="bg-black/40 border border-white/5 rounded-2xl py-3 flex flex-col justify-center">
-                <span className="text-2xl md:text-3xl font-black tabular-nums text-white leading-none">{String(timeRemaining.hours).padStart(2, '0')}</span>
-                <span className="text-[8px] font-extrabold uppercase tracking-widest text-gray-500 mt-1">Heures</span>
-              </div>
-              <div className="bg-black/40 border border-white/5 rounded-2xl py-3 flex flex-col justify-center">
-                <span className="text-2xl md:text-3xl font-black tabular-nums text-white leading-none">{String(timeRemaining.minutes).padStart(2, '0')}</span>
-                <span className="text-[8px] font-extrabold uppercase tracking-widest text-gray-500 mt-1">Min</span>
-              </div>
-              <div className="bg-black/40 border border-white/5 rounded-2xl py-3 flex flex-col justify-center">
-                <span className="text-2xl md:text-3xl font-black tabular-nums text-gradient leading-none animate-pulse">{String(timeRemaining.seconds).padStart(2, '0')}</span>
-                <span className="text-[8px] font-extrabold uppercase tracking-widest text-accent mt-1">Sec</span>
-              </div>
+        {/* Sync Indicator (Centered) */}
+        <div className="absolute left-1/2 -translate-x-1/2 top-10 flex flex-col items-center pointer-events-auto">
+          {eventLoading ? (
+            <div className="p-2 bg-primary/10 border border-primary/20 rounded-full animate-pulse shadow-lg shadow-primary/20" title="Synchronisation en cours...">
+              <RefreshCw size={12} className="animate-spin text-primary" />
             </div>
           ) : (
-            <p className="text-xs text-gray-400 italic text-center py-4 font-medium">
-              ✨ Les souvenirs sont immortalisés et accessibles par tous les invités.
-            </p>
+            <div className="p-2 bg-white/5 border border-white/10 rounded-full opacity-40 hover:opacity-100 transition-opacity" title="Données à jour">
+              <Check size={12} className="text-gray-400" />
+            </div>
+          )}
+        </div>
+        
+        <div className="text-right">
+          <h1 className="text-xs font-black uppercase tracking-[0.3em] text-white/40 mb-1">Console</h1>
+          <p className="text-sm font-black text-white truncate max-w-[150px]">{eventData.name}</p>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-5xl mx-auto w-full px-6 pt-32 pb-12 relative z-10">
+        <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
+          {activeTab === 'overview' && <OverviewTab timeRemaining={timeRemaining} photos={photos} challenges={challenges} totalReactions={totalReactions} navigate={navigate} eventId={eventId} />}
+          {activeTab === 'gallery' && (
+            <GalleryTab 
+              photos={photos} 
+              challenges={challenges}
+              isAdminUploading={isAdminUploading} 
+              adminFileInputRef={adminFileInputRef} 
+              handleAdminUploadChange={handleAdminUploadChange} 
+              handleDeletePhoto={handleDeletePhoto}
+
+              selectedFilesForUpload={selectedFilesForUpload}
+              showUploadModal={showUploadModal}
+              setShowUploadModal={setShowUploadModal}
+              organizerCompress={organizerCompress}
+              setOrganizerCompress={setOrganizerCompress}
+              confirmAdminUpload={confirmAdminUpload}
+              cancelAdminUpload={cancelAdminUpload}
+            />
           )}
 
-          {/* Scénarios d'usages additionnels */}
-          <div className="pt-3 mt-2 border-t border-white/5">
-            <p className="text-[10px] text-gray-500 leading-tight">
-              💡 <span className="font-semibold text-gray-400">Cas d'usage :</span> Idéal pour coordonner un <span className="text-primary-light">lancement surprise</span>, un <span className="text-accent">mariage</span> (décompte jusqu'au vin d'honneur) ou un <span className="text-pink-400">séminaire</span> avec clôture automatique des contributions.
-            </p>
-          </div>
+          {activeTab === 'challenges' && <ChallengesTab challenges={challenges} showChallengeForm={showChallengeForm} setShowChallengeForm={setShowChallengeForm} newChallenge={{title: '', description: ''}} setNewChallenge={() => {}} handleSaveChallenge={() => {}} deleteChallenge={deleteChallenge} />}
+          {activeTab === 'settings' && <SettingsTab eventData={eventData} eventUrl={eventUrl} copyLink={() => {}} shareWhatsApp={() => {}} updateEvent={updateEvent} deleteEvent={deleteEvent} />}
+
         </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {[
-            { label: 'Photos', value: photos.length, icon: ImageIcon, color: 'text-primary' },
-            { label: 'Défis', value: challenges.length, icon: Hash, color: 'text-accent' },
-            { label: 'Réactions', value: totalReactions, icon: Zap, color: 'text-yellow-400' },
-            { label: 'Statut', value: timeRemaining.phase === 'finished' ? 'Clôturé' : 'Actif', icon: Check, color: 'text-green-400' }
-          ].map((stat, i) => (
-            <div key={i} className="glass rounded-[2rem] p-6 border border-white/5 shadow-2xl group hover:border-primary/20 transition-all duration-500 hover:-translate-y-1">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-2 rounded-xl bg-white/5 ${stat.color} group-hover:scale-110 transition-transform`}>
-                  <stat.icon size={18} />
-                </div>
-                <div className="flex space-x-1">
-                  <div className="w-1 h-1 bg-white/20 rounded-full" />
-                  <div className="w-1 h-1 bg-white/20 rounded-full" />
-                </div>
-              </div>
-              <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1 opacity-60">{stat.label}</p>
-              <p className="text-4xl font-black tracking-tighter tabular-nums">{stat.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* QR Code Section */}
-        <section className="glass rounded-[2.5rem] border border-white/5 p-6 md:p-12 flex flex-col lg:flex-row gap-8 lg:gap-16 items-center shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 blur-[120px] -mr-40 -mt-40 rounded-full opacity-50 group-hover:opacity-80 transition-opacity" />
-          
-          <div className="flex flex-col items-center space-y-4">
-            <div id="event-qr" className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.5)] flex-shrink-0 relative z-10 transition-all duration-700 group-hover:scale-[1.03] group-hover:rotate-1">
-              <QRCodeSVG value={eventUrl} size={200} level="H" includeMargin={false} className="w-48 h-48 md:w-56 md:h-56" />
-              <div className="mt-6 flex items-center justify-center space-x-2 text-black/40">
-                 <div className="w-2 h-2 bg-black/10 rounded-full" />
-                 <span className="text-[8px] font-black uppercase tracking-[0.2em]">Teutchap Original Code</span>
-              </div>
-            </div>
-            <button 
-              onClick={() => {
-                const svg = document.querySelector('#event-qr svg') as SVGGraphicsElement;
-                if (!svg) return;
-                const svgData = new XMLSerializer().serializeToString(svg);
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                const img = new Image();
-                img.onload = () => {
-                  canvas.width = img.width + 100;
-                  canvas.height = img.height + 150;
-                  if (ctx) {
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 50, 50);
-                    ctx.fillStyle = 'black';
-                    ctx.font = 'bold 20px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(eventData.name, canvas.width/2, canvas.height - 40);
-                    const link = document.createElement('a');
-                    link.download = `QR_Teutchap_${eventData.name}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                  }
-                };
-                img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
-              }}
-              className="text-[9px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition-colors flex items-center space-x-2"
-            >
-              <Save size={14} />
-              <span>Télécharger l'image</span>
-            </button>
-          </div>
-          
-          <div className="flex flex-col space-y-8 max-w-lg w-full relative z-10 text-center lg:text-left">
-            <div className="space-y-4">
-              <h2 className="text-4xl md:text-5xl font-black tracking-tighter leading-[0.9] md:leading-[0.9]">
-                Propulsez <br/>
-                <span className="text-gradient">L'Engagement</span>
-              </h2>
-              <p className="text-gray-400 text-sm md:text-base font-medium leading-relaxed max-w-sm mx-auto lg:mx-0">
-                Partagez ce QR code ou le lien unique. Vos invités contribuent sans application à installer.
-              </p>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="flex-1 glass border border-white/10 rounded-2xl px-5 py-4 text-[10px] md:text-xs font-mono text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap bg-black/20">
-                  {eventUrl}
-                </div>
-                <button onClick={copyLink} className="p-4 glass border border-white/10 hover:bg-white/10 text-primary rounded-2xl transition-all active:scale-90 shadow-xl">
-                  <Copy size={20} />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <button 
-                  onClick={() => window.open(`/e/${eventData.token}`, '_blank')}
-                  className="flex items-center justify-center space-x-2 bg-primary hover:bg-primary-light text-white py-4 rounded-[1.2rem] font-black text-[9px] md:text-[11px] uppercase tracking-wider transition-all shadow-xl shadow-primary/20 active:scale-95"
-                  title="Ouvrir l'espace d'envoi et de signature"
-                >
-                  <Cloud size={16} />
-                  <span>Contribuer</span>
-                </button>
-                <button onClick={shareWhatsApp} className="flex items-center justify-center space-x-2 bg-[#25D366] hover:bg-[#1EBE5A] text-white py-4 rounded-[1.2rem] font-black text-[9px] md:text-[11px] uppercase tracking-wider transition-all shadow-xl shadow-[#25D366]/20 active:scale-95">
-                  <Share2 size={16} />
-                  <span>WhatsApp</span>
-                </button>
-                <button 
-                  onClick={() => window.open(`/e/${eventData.token}/live`, '_blank')}
-                  className="flex items-center justify-center space-x-2 bg-white text-black hover:bg-gray-100 py-4 rounded-[1.2rem] font-black text-[9px] md:text-[11px] uppercase tracking-wider transition-all shadow-2xl active:scale-95"
-                >
-                  <ImageIcon size={16} />
-                  <span>Mur Live</span>
-                </button>
-              </div>
-
-              <button 
-                onClick={() => photos.length > 0 ? setShowHighlights(true) : alert('Il faut des photos pour générer les highlights')}
-                className="w-full flex items-center justify-center space-x-3 bg-gradient-to-r from-primary to-accent text-white py-5 rounded-[1.5rem] font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all shadow-2xl shadow-primary/30 active:scale-95 group overflow-hidden relative"
-              >
-                <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-12" />
-                <Sparkles size={18} className="animate-pulse" />
-                <span className="relative z-10">Générer Highlights IA</span>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
-          {/* AI & Automation Section */}
-          <section className="glass rounded-[2.5rem] border border-white/5 p-8 md:p-10 shadow-2xl space-y-10 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-48 h-48 bg-accent/5 blur-[80px] -ml-24 -mt-24 rounded-full" />
-            
-            <div className="flex items-center justify-between relative z-10">
-              <div>
-                <h2 className="text-2xl font-black tracking-tight">IA & Sécurité</h2>
-                <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">Automatisation intelligente</p>
-              </div>
-              <div className="p-3 bg-white/5 rounded-2xl text-accent">
-                <Shield size={24} />
-              </div>
-            </div>
-
-            <div className="space-y-4 relative z-10">
-              <div className="glass border border-white/5 p-6 rounded-3xl flex items-center justify-between group hover:border-primary/20 transition-all bg-white/[0.01]">
-                <div className="flex items-center space-x-5">
-                  <div className="bg-primary/10 p-3 rounded-2xl text-primary group-hover:scale-110 transition-transform">
-                    <Shield size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-sm tracking-tight">Modération Auto</h3>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter mt-0.5">Filtrage en temps réel</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => updateEvent({ auto_moderation: !eventData.auto_moderation })}
-                  className={`w-14 h-7 rounded-full transition-all relative shadow-inner ${eventData.auto_moderation ? 'bg-primary' : 'bg-white/10'}`}
-                >
-                  <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${eventData.auto_moderation ? 'left-8' : 'left-1'}`} />
-                </button>
-              </div>
-
-              <div className="glass border border-white/5 p-6 rounded-3xl flex items-center justify-between group hover:border-accent/20 transition-all bg-white/[0.01]">
-                <div className="flex items-center space-x-5">
-                  <div className="bg-accent/10 p-3 rounded-2xl text-accent group-hover:scale-110 transition-transform">
-                    <Zap size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-sm tracking-tight">Tagging IA</h3>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter mt-0.5">Indexation automatique</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => updateEvent({ ai_tagging_enabled: !eventData.ai_tagging_enabled })}
-                  className={`w-14 h-7 rounded-full transition-all relative shadow-inner ${eventData.ai_tagging_enabled ? 'bg-accent' : 'bg-white/10'}`}
-                >
-                  <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${eventData.ai_tagging_enabled ? 'left-8' : 'left-1'}`} />
-                </button>
-              </div>
-
-              {eventData.plan === 'premium' && (
-                <div className="glass border border-primary/30 p-6 rounded-3xl flex items-center justify-between group hover:border-primary transition-all bg-primary/5">
-                  <div className="flex items-center space-x-5">
-                    <div className="bg-primary/20 p-3 rounded-2xl text-primary group-hover:scale-110 transition-transform">
-                      <Clock size={20} />
-                    </div>
-                    <div>
-                      <h3 className="font-black text-sm tracking-tight">Reveal Mode</h3>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">Flouter jusqu'à minuit</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={toggleRevealMode}
-                    className={`w-14 h-7 rounded-full transition-all relative shadow-inner ${eventData.reveal_time ? 'bg-primary' : 'bg-white/10'}`}
-                  >
-                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${eventData.reveal_time ? 'left-8' : 'left-1'}`} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Challenges Section */}
-          <section className="glass rounded-[2.5rem] border border-white/5 p-8 md:p-10 shadow-2xl relative">
-            <div className="flex items-center justify-between mb-10">
-              <div>
-                <h2 className="text-2xl font-black tracking-tight">Défis Photo</h2>
-                <p className="text-gray-500 text-[10px] mt-1 font-bold uppercase tracking-widest">Animez la galerie</p>
-              </div>
-              <button 
-                onClick={() => setShowChallengeForm(true)}
-                className="bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-primary/20"
-              >
-                + Créer
-              </button>
-            </div>
-
-            {challenges.length === 0 ? (
-              <div className="text-center py-16 px-6 glass rounded-[2.5rem] border-dashed border-white/10 flex flex-col items-center justify-center space-y-4">
-                <Hash size={32} className="text-gray-700" />
-                <div>
-                  <p className="text-gray-400 text-sm font-bold">Aucun défi actif</p>
-                  <p className="text-gray-600 text-[9px] mt-1 uppercase font-black tracking-[0.2em]">Lancez le premier défi !</p>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3">
-                {challenges.map((c: any) => (
-                  <div key={c.id} className="flex items-center justify-between p-5 glass border border-white/5 rounded-3xl group hover:border-primary/20 transition-all hover:translate-x-1 duration-300">
-                    <div className="flex items-center space-x-4">
-                      <div className="bg-white/5 p-2 rounded-lg text-gray-500">
-                        <Hash size={14} />
-                      </div>
-                      <div>
-                        <h3 className="font-black text-sm tracking-tight">{c.title}</h3>
-                        <p className="text-[10px] text-gray-500 font-medium">{c.description || 'Challenge communautaire'}</p>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => deleteChallenge(c.id)}
-                      className="text-gray-700 hover:text-red-500 transition-colors p-2 active:scale-90"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {showChallengeForm && (
-              <div className="absolute inset-0 z-20 bg-[#08060d]/95 backdrop-blur-xl p-8 rounded-[2.5rem] animate-in fade-in zoom-in-95 duration-300 flex flex-col justify-center">
-                <h3 className="text-xl font-black uppercase tracking-widest mb-8 text-gradient">Nouveau Défi</h3>
-                <div className="space-y-4">
-                  <input 
-                    placeholder="Titre (ex: Le plus beau sourire)"
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold outline-none focus:border-primary/50 transition-all placeholder:text-gray-700"
-                    value={newChallenge.title}
-                    onChange={e => setNewChallenge({...newChallenge, title: e.target.value})}
-                  />
-                  <textarea 
-                    placeholder="Description..."
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold outline-none focus:border-primary/50 transition-all h-32 placeholder:text-gray-700 resize-none"
-                    value={newChallenge.description}
-                    onChange={e => setNewChallenge({...newChallenge, description: e.target.value})}
-                  />
-                  <div className="flex space-x-4 pt-4">
-                    <button 
-                      onClick={handleSaveChallenge}
-                      className="flex-[2] bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl shadow-xl shadow-primary/30 active:scale-95 transition-all"
-                    >
-                      Lancer
-                    </button>
-                    <button 
-                      onClick={() => setShowChallengeForm(false)}
-                      className="flex-1 glass border border-white/10 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl active:scale-95 transition-all"
-                    >
-                      Annuler
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
-        </div>
-
-        {/* Analytics Section */}
-        <section className="space-y-8">
-           <div className="flex items-center space-x-4">
-              <div className="w-10 h-1 bg-primary rounded-full" />
-              <h2 className="text-3xl font-black tracking-tighter">Insights & Performance</h2>
-           </div>
-
-           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Trend Chart */}
-              <div className="lg:col-span-2 glass rounded-[2.5rem] p-8 md:p-10 border border-white/5 shadow-2xl relative overflow-hidden">
-                 <div className="flex items-center justify-between mb-8">
-                    <div>
-                       <h3 className="text-xl font-black tracking-tight">Activité Live</h3>
-                       <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Photos par heure</p>
-                    </div>
-                    <div className="flex items-center space-x-4 text-[10px] font-black uppercase tracking-widest text-gray-500">
-                       <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-primary rounded-full" />
-                          <span>Aujourd'hui</span>
-                       </div>
-                    </div>
-                 </div>
-
-                 <div className="h-48 w-full relative flex items-end justify-between px-2">
-                    <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-                       <path 
-                          d="M0,150 Q100,50 200,120 T400,80 T600,140 T800,60 T1000,100" 
-                          fill="none" 
-                          stroke="url(#gradient)" 
-                          strokeWidth="4" 
-                          strokeLinecap="round"
-                          className="animate-dash"
-                       />
-                       <defs>
-                          <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                             <stop offset="0%" stopColor="var(--primary)" />
-                             <stop offset="100%" stopColor="var(--accent)" />
-                          </linearGradient>
-                       </defs>
-                    </svg>
-                    {hourlyHeights.map((h, i) => (
-                       <div key={i} className="relative z-10 w-full flex flex-col items-center group">
-                          <div 
-                             className="w-1 bg-white/5 rounded-t-full transition-all duration-1000 group-hover:bg-primary/40" 
-                             style={{ height: `${h}%` }} 
-                          />
-                          <span className="text-[8px] font-black text-gray-600 mt-3">{hoursLabel[i]}</span>
-                       </div>
-                    ))}
-                 </div>
-              </div>
-
-              {/* Engagement & Top Contributors */}
-              <div className="space-y-6">
-                 <div className="glass rounded-[2rem] p-8 border border-white/5 shadow-2xl">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-gray-500 mb-6">Engagement IA</h3>
-                    <div className="flex items-end justify-between">
-                       <div className="space-y-1">
-                          <p className="text-4xl font-black tracking-tighter">{calculatedEngagement}%</p>
-                          <p className="text-[9px] font-bold text-primary uppercase tracking-widest">
-                            {photos.length > 0 ? 'Actif & Indexé' : 'En attente de flux'}
-                          </p>
-                       </div>
-                       <div className="w-24 h-12">
-                          <svg viewBox="0 0 100 40" className="w-full h-full">
-                             <path d="M0,35 L20,25 L40,30 L60,10 L80,20 L100,5" fill="none" stroke="var(--primary)" strokeWidth="3" />
-                          </svg>
-                       </div>
-                    </div>
-                 </div>
-
-                 <div className="glass rounded-[2rem] p-8 border border-white/5 shadow-2xl space-y-6">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-gray-500">Top Contributeurs</h3>
-                    <div className="space-y-4">
-                       {topContributors.length > 0 ? (
-                         topContributors.map((user, i) => (
-                           <div key={i} className="flex items-center justify-between group">
-                              <div className="flex items-center space-x-3">
-                                 <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-black text-primary">
-                                    {user.avatar}
-                                 </div>
-                                 <span className="text-xs font-black tracking-tight group-hover:text-primary transition-colors">{user.name}</span>
-                              </div>
-                              <span className="text-[10px] font-black text-gray-500">{user.count} photo{user.count > 1 ? 's' : ''}</span>
-                           </div>
-                         ))
-                       ) : (
-                         <p className="text-[10px] text-gray-600 italic text-center py-2 font-medium">
-                           Les premiers contributeurs apparaîtront dès le partage de photos.
-                         </p>
-                       )}
-                    </div>
-                 </div>
-
-                 {/* Participants Live Sync */}
-                 <div className="glass rounded-[2rem] p-8 border border-white/5 shadow-2xl space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-black uppercase tracking-widest text-gray-500">Participants ({allDisplayGuests.length})</h3>
-                      <span className="flex items-center space-x-1.5 text-[8px] font-black bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full uppercase tracking-widest">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                        <span>Live Sync</span>
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                      {allDisplayGuests.length > 0 ? (
-                        allDisplayGuests.map((guestObj, i) => {
-                          const isModo = guestObj.role === 'co_admin' || (eventData?.co_admins || []).includes(guestObj.pseudo)
-                          return (
-                            <div key={i} className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/5">
-                              <div className="flex items-center space-x-2.5 min-w-0">
-                                <div className="w-7 h-7 rounded-lg bg-accent/10 text-accent font-bold text-[10px] flex items-center justify-center shrink-0 border border-accent/20">
-                                  {guestObj.pseudo.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                  <div className="flex items-center space-x-1.5">
-                                    <span className="text-xs font-bold text-gray-200 truncate">{guestObj.pseudo}</span>
-                                    {isModo && <span className="text-[7px] bg-accent/20 text-accent font-black px-1 rounded uppercase tracking-widest">Modo</span>}
-                                  </div>
-                                  <span className="text-[9px] text-gray-500 font-medium">
-                                    {guestObj.isOnline ? '🟢 Connecté à l\'instant' : 'Inscrit'}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        })
-                      ) : (
-                        <p className="text-[10px] text-gray-600 italic text-center py-3 font-medium">
-                          Aucun participant synchronisé en base.
-                        </p>
-                      )}
-                    </div>
-                 </div>
-              </div>
-           </div>
-        </section>
-
-        {/* Gallery Preview Section */}
-        <section className="space-y-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <h2 className="text-3xl font-black tracking-tighter">Flux en Direct</h2>
-              <p className="text-[11px] text-gray-500 font-black uppercase tracking-widest mt-1 opacity-60">Photos partagées par vos invités</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <input 
-                ref={adminFileInputRef} 
-                type="file" 
-                accept="image/*" 
-                multiple 
-                className="hidden" 
-                onChange={handleAdminUploadChange} 
-              />
-              <button
-                disabled={isAdminUploading}
-                onClick={() => adminFileInputRef.current?.click()}
-                className="flex items-center space-x-2 bg-primary hover:bg-primary-light text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95 border border-primary/20 disabled:opacity-50"
-              >
-                {isAdminUploading ? (
-                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Cloud size={14} />
-                )}
-                <span>{isAdminUploading ? 'Envoi...' : 'Ajouter des photos'}</span>
-              </button>
-              <div className="flex items-center space-x-3 text-[9px] font-black uppercase tracking-[0.2em] text-primary bg-primary/5 px-4 py-2 rounded-full border border-primary/10">
-                <div className="w-2 h-2 bg-primary rounded-full animate-ping" />
-                <span>Mises à jour automatiques</span>
-              </div>
-            </div>
-          </div>
-
-          {(() => {
-            const pendingPhotos = photos.filter((p: any) => p.is_offline_pending)
-            const displayedPhotos = filterOfflineOnly ? pendingPhotos : photos
-
-            return (
-              <>
-                {pendingPhotos.length > 0 && (
-                  <div className="glass-dark border border-amber-500/30 p-4 rounded-3xl bg-amber-500/5 flex items-center justify-between mb-6 shadow-xl">
-                    <div className="flex items-center space-x-4 min-w-0">
-                      <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-400 shrink-0">
-                        <Cloud size={24} className="animate-bounce" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-black text-amber-200 truncate">
-                          {pendingPhotos.length} photo(s) en attente de réseau partagée(s) en local
-                        </p>
-                        <p className="text-[10px] text-amber-400/80 truncate mt-0.5">
-                          Elles seront synchronisées automatiquement en tâche de fond au retour de la connexion.
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setFilterOfflineOnly(!filterOfflineOnly)}
-                      className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border shrink-0 ml-3 ${
-                        filterOfflineOnly 
-                          ? 'bg-amber-500 text-black border-amber-400 shadow-xl' 
-                          : 'glass border-amber-500/20 text-amber-300 hover:bg-amber-500/10'
-                      }`}
-                    >
-                      {filterOfflineOnly ? 'Voir l\'album entier' : 'Inspecter l\'attente'}
-                    </button>
-                  </div>
-                )}
-
-                {displayedPhotos.length === 0 ? (
-                  <div className="glass border border-white/5 border-dashed rounded-[3rem] p-24 flex flex-col items-center justify-center text-gray-600 bg-white/[0.01] group">
-                    <div className="bg-white/5 p-8 rounded-full mb-8 group-hover:scale-110 transition-transform duration-500">
-                      <ImageIcon size={56} className="opacity-10" />
-                    </div>
-                    <p className="font-black tracking-tight text-xl text-gray-500">
-                      {filterOfflineOnly ? 'Aucune photo en file d\'attente' : 'L\'album est encore vide'}
-                    </p>
-                    <p className="text-[10px] mt-3 uppercase tracking-[0.2em] font-bold opacity-40 text-center max-w-xs leading-loose">
-                      {filterOfflineOnly ? 'Toutes les photos locales ont été synchronisées avec succès.' : 'Les photos de vos convives apparaîtront ici instantanément.'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-                    {displayedPhotos.map((photo: any, idx: number) => (
-                      <div 
-                        key={photo.id} 
-                        className="relative aspect-[3/4] rounded-[1.5rem] md:rounded-[2rem] overflow-hidden glass border border-white/10 group shadow-xl transition-all duration-500 hover:-translate-y-2"
-                        style={{ animationDelay: `${idx * 100}ms` }}
-                      >
-                        <img 
-                          src={photo.url_thumb?.startsWith('blob:') || photo.url_thumb?.startsWith('data:') ? photo.url_thumb : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`} 
-                          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                          loading="lazy"
-                        />
-                        
-                        <div className={`absolute top-3 right-3 flex items-center space-x-1 z-30 transition-opacity ${photo.is_offline_pending ? 'opacity-100' : 'opacity-80 hover:opacity-100'}`}>
-                          {photo.is_offline_pending && (
-                            <div className="bg-amber-500/90 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center space-x-1 text-black border border-amber-300 shadow-lg animate-pulse">
-                              <Cloud size={10} className="stroke-[3]" />
-                              <span className="text-[7px] font-black uppercase tracking-widest text-black">Attente</span>
-                            </div>
-                          )}
-                          <button
-                            onClick={(e) => handleDeletePhoto(photo, e)}
-                            title="Supprimer la photo"
-                            className="bg-red-500/80 hover:bg-red-600 text-white p-1 rounded-full transition-all shadow-md active:scale-90"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                        
-                        {photo.is_flagged ? (
-                           <div className="absolute inset-0 bg-red-900/60 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center">
-                              <Shield size={24} className="text-white mb-2" />
-                              <span className="text-[8px] font-black uppercase tracking-widest text-white">Photo bloquée par l'IA</span>
-                           </div>
-                        ) : (
-                          <>
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4 pb-12">
-                               <div className="flex gap-1">
-                                  {photo.ai_tags?.slice(0, 2).map((t: string) => (
-                                    <span key={t} className="text-[6px] font-black uppercase tracking-widest bg-white/20 px-1.5 py-0.5 rounded-md text-white">#{t}</span>
-                                  ))}
-                               </div>
-                            </div>
-
-                            {/* Reactions overlay */}
-                            <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/90 via-black/30 to-transparent pt-8 z-20">
-                              <div className="flex gap-1 justify-center">
-                                {['❤️', '🔥', '👏'].map(emoji => (
-                                  <button 
-                                    key={emoji}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      addReaction(photo.id, emoji);
-                                    }}
-                                    className={`glass-dark hover:bg-white/20 px-2 py-0.5 rounded-full text-[10px] flex items-center space-x-0.5 transition-all active:scale-75 ${userReactions[photo.id] === emoji ? 'border-primary bg-primary/20 scale-105' : reactions[photo.id]?.[emoji] ? 'border-white/20 bg-white/5' : ''}`}
-                                  >
-                                    <span>{emoji}</span>
-                                    {reactions[photo.id]?.[emoji] && (
-                                      <span className="font-black text-white text-[8px]">{reactions[photo.id][emoji]}</span>
-                                    )}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )
-          })()}
-        </section>
       </main>
 
-      {/* Render Highlight Reel Modal */}
-      {showHighlights && (
-        <HighlightReel 
-          photos={highlightPhotos} 
-          onClose={() => setShowHighlights(false)} 
-        />
-      )}
-
-      {/* Auth Modal */}
-      <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={() => {
-          // Logic after successful auth can go here
-        }}
+      {/* Bottom Floating Navigation (Premium Tabs) */}
+      <PremiumTabs 
+        tabs={organizerTabs} 
+        activeTab={activeTab} 
+        onChange={setActiveTab} 
+        variant="bottom"
+        className="px-6 pb-8"
       />
     </div>
   )
 }
+
+const LoadingScreen = () => (
+  <div className="min-h-screen bg-[#08060d] flex items-center justify-center font-black uppercase tracking-widest text-gray-500">Chargement...</div>
+)
+
+const NotFoundScreen = ({ onBack }: { onBack: () => void }) => (
+  <div className="min-h-screen bg-[#08060d] flex flex-col items-center justify-center space-y-4">
+    <div className="text-red-500 font-black uppercase tracking-widest text-lg animate-pulse">Album Introuvable</div>
+    <button onClick={onBack} className="px-4 py-2 bg-primary/20 text-primary font-bold rounded-xl text-xs uppercase border border-primary/30">Retour</button>
+  </div>
+)
+
+
+const AccessDeniedScreen = () => (
+  <div className="min-h-screen bg-[#08060d] flex flex-col items-center justify-center p-8 text-center space-y-6">
+    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center text-gray-500 border border-white/10">
+      <AlertTriangle size={32} />
+    </div>
+    <div className="space-y-2">
+      <h2 className="text-xl font-black uppercase tracking-widest text-white">Lien Introuvable</h2>
+      <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest max-w-xs leading-relaxed">
+        Ce lien semble être expiré ou invalide. Veuillez vérifier l'adresse ou retourner à l'accueil.
+      </p>
+    </div>
+    <button onClick={() => window.location.href = '/'} className="px-8 py-3 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all">Retour à l'accueil</button>
+  </div>
+)
+
+// Ensure icons used in the header are imported
+import { ArrowLeft, AlertTriangle } from 'lucide-react'

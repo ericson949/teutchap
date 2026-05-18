@@ -31,7 +31,7 @@ const syncOfflinePhotos = async () => {
           // Add to DB
           await supabase.from('photos').insert([
             {
-              event_id: 'mock-event-id', 
+              event_id: item.eventId, 
               url_original: fileName,
               url_thumb: fileName,
               file_size_bytes: item.blob.size

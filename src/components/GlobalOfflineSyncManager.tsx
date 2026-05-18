@@ -84,14 +84,14 @@ export default function GlobalOfflineSyncManager() {
           const token = item.token
           let resolvedEventId = item.eventId
 
-          // Si l'eventId est manquant ou est un mock, tenter de le résoudre
-          if (!resolvedEventId || resolvedEventId.startsWith('mock-id-')) {
+          // Si l'eventId est manquant, tenter de le résoudre via le cache
+          if (!resolvedEventId) {
             const cached = localStorage.getItem(`teutchap_event_cache_${token}`)
             if (cached) {
               try { resolvedEventId = JSON.parse(cached).id } catch(e){}
             }
           }
-          if (!resolvedEventId || resolvedEventId.startsWith('mock-id-')) {
+          if (!resolvedEventId) {
             try {
               const { data } = await supabase.from('events').select('id').eq('token', token).single()
               if (data?.id) {
@@ -101,7 +101,7 @@ export default function GlobalOfflineSyncManager() {
             } catch(e){}
           }
 
-          if (resolvedEventId && !resolvedEventId.startsWith('mock-id-')) {
+          if (resolvedEventId) {
             const fileName = `${token}_${Date.now()}_${Math.random().toString(36).substring(2,7)}.jpg`
             const { error: uploadError } = await supabase.storage
               .from('events_photos')

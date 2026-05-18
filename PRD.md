@@ -110,6 +110,8 @@ L'Afrique centrale organise des événements à très haute valeur émotionnelle
 - **Sécurité Base de Données** : Verrouillage des tables via Row Level Security (RLS) et **Triggers SQL** sur-mesure validant l'intégrité des flux, exemptant les créateurs et **co-administrateurs** de l'inhibition publique.
 - **Compression Media** : Canvas API (client-side) convertissant les flux lourds en JPEG optimisé avant émission réseau.
 - **Compilation d'Archives** : Bibliothèque **JSZip** chargée en import dynamique asynchrone côté administrateur pour générer itérativement les archives binaires globales sans saturation de mémoire.
+- **Portails Translucides (`createPortal`)** : Encapsulation des tiroirs et modales de détails via `react-dom` ciblant `document.body`, brisant les contraintes d'empilement (`stacking context`) pour éviter tout dépassement ou interférence avec les en-têtes fixes.
+- **Lueur Ambiante Cinématique (`Ambient Glow`)** : Rendu d'arrière-plan utilisant l'image source floutée à l'extrême (`blur-3xl opacity-30`) pour projeter un halo lumineux enveloppant et dynamique sur grand écran.
 
 ---
 
@@ -126,6 +128,8 @@ L'Afrique centrale organise des événements à très haute valeur émotionnelle
 - **F-09 — Exportation Globale de l'Album (ZIP)** : Rapatriement asynchrone de l'intégralité des souvenirs bruts sous forme d'archive compressée globale avec jauge de progression en direct.
 - **F-10 — Reveal Mode & Modération** : Gestion des quotas et masquage conditionnel avant la levée du voile.
 - **F-11 — Vue de Visualisation Organisateur unifiée** : Console de pilotage centralisant les jauges d'occupation, la sécurité et le surclassement sans exiger de défilement excessif sur mobile.
+- **F-12 — Galerie Premium & Lightbox Ambient-Glow** : Fiche d'informations transparente (`glassmorphic`) révélant les émojis de réaction, l'auteur et les défis liés, couplée à un zoom plein écran immersif avec lueur ambiante cinématique. Fermeture multi-canal fluide par clic universel ou bouton `X` dédié.
+- **F-13 — Prévention des Suppressions Accidentelles** : Élimination complète des calques d'actions intrusifs au survol des cellules de la grille. Les clics sur la galerie ouvrent directement la Fiche de Détail, centralisant la suppression d'images dans un flux d'administration explicite et protégé pour parer aux doubles tapes tactiles involontaires.
 
 ---
 
