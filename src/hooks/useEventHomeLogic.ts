@@ -15,7 +15,7 @@ export function useEventHomeLogic(token: string | undefined) {
   const [selectedChallenge] = useState<string | null>(null)
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false)
   const [offlineQueueCount, setOfflineQueueCount] = useState(0)
-  const [activeTab, setActiveTab] = useState('swipe')
+  const [activeTab, setActiveTab] = useState('gallery')
   
   const [guestPseudo, setGuestPseudo] = useState('')
   const [inputPseudo, setInputPseudo] = useState('')

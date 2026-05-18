@@ -18,9 +18,9 @@ export const GuestBottomNav: React.FC<GuestBottomNavProps> = ({ tabs, activeTab,
         {/* Floating Capture Button */}
         <button 
           onClick={onCaptureClick}
-          className="mb-4 w-16 h-16 bg-primary hover:bg-primary-dark active:scale-95 transition-all text-white rounded-full shadow-[0_0_40px_rgba(var(--primary-rgb),0.4)] flex items-center justify-center border-4 border-[#08060d] z-10"
+          className="mb-4 w-16 h-16 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 active:scale-95 transition-all text-white rounded-full shadow-[0_0_25px_rgba(59,130,246,0.5)] flex items-center justify-center border-4 border-[#08060d] z-10 cursor-pointer"
         >
-          <Camera size={28} />
+          <Camera size={26} className="text-white fill-none stroke-[2.5]" />
         </button>
 
         {/* Premium Bottom Navigation */}
