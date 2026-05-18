@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import localforage from 'localforage'
 import { supabase } from '../lib/supabase'
 
+// Cache en mémoire pour éviter de fuiter les createObjectURL à chaque rafraîchissement
+const offlineUrlCache: Record<string, string> = {}
+
 export function usePhotos(eventId: string | undefined, options: { challengeId?: string | null, autoModeration?: boolean, token?: string } = {}) {
   const [photos, setPhotos] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -17,13 +20,17 @@ export function usePhotos(eventId: string | undefined, options: { challengeId?: 
       const eventQueue = queue.filter(item => {
         if (eventId && item.eventId === eventId) return true
         if (options.token && item.token === options.token) return true
-        if (item.eventId?.startsWith('mock-id-')) return true
+        if (item.eventId?.startsWith('mock-id-') && item.token === options.token) return true
         return false
       })
       offlineVirtualPhotos = eventQueue.map(item => {
-        let objectUrl = item.previewUrl || ''
-        if (!objectUrl && item.blob) {
-          try { objectUrl = URL.createObjectURL(item.blob) } catch(e){}
+        let objectUrl = offlineUrlCache[item.id]
+        if (!objectUrl) {
+           objectUrl = item.previewUrl || ''
+           if ((!objectUrl || objectUrl.startsWith('blob:')) && item.blob) {
+             try { objectUrl = URL.createObjectURL(item.blob) } catch(e){}
+           }
+           offlineUrlCache[item.id] = objectUrl
         }
         return {
           id: item.id || crypto.randomUUID(),
