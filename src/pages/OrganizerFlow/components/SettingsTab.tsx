@@ -114,6 +114,19 @@ export const SettingsTab = ({ eventData, eventUrl, copyLink, shareWhatsApp, upda
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${eventData.auto_moderation ? 'left-7 bg-black' : 'left-1 bg-white/40'}`} />
               </button>
             </div>
+
+            <div className="flex items-center justify-between p-5 bg-white/[0.03] border border-white/[0.05] rounded-[24px]">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white">Défis par les Invités</p>
+                <p className="text-[9px] text-white/40 font-medium uppercase tracking-[0.1em] mt-1">Autorise les invités à proposer des défis</p>
+              </div>
+              <button 
+                onClick={() => updateEvent({ allow_guest_challenges: !eventData.allow_guest_challenges })}
+                className={`w-12 h-6 rounded-full transition-all relative border ${eventData.allow_guest_challenges ? 'bg-white border-white' : 'bg-transparent border-white/20'}`}
+              >
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${eventData.allow_guest_challenges ? 'left-7 bg-black' : 'left-1 bg-white/40'}`} />
+              </button>
+            </div>
           </div>
         </motion.div>
       </div>

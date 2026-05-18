@@ -71,6 +71,7 @@ export default function EventHome() {
               showChallengeForm={showChallengeForm} setShowChallengeForm={setShowChallengeForm}
               handleCreateChallengeSubmit={(e) => { e.preventDefault(); addChallenge(newChalTitle, ''); setNewChalTitle(''); setShowChallengeForm(false); }}
               newChalTitle={newChalTitle} setNewChalTitle={setNewChalTitle}
+              allowGuestChallenges={eventData?.allow_guest_challenges}
             />
           )}
         </div>

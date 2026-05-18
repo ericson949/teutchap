@@ -340,7 +340,13 @@ export default function EventOverview() {
                 handleToggleStagedAdmin={(p:string) => setStagedAdmins(prev => prev.includes(p) ? prev.filter(x=>x!==p) : [...prev, p])}
                 adminLoading={adminLoading} handleSaveAdmins={handleSaveAdmins}
               />
-              <OverviewCapacitySection currentPhotos={photos.length} maxPhotos={currentConfig.max_photos} onUpgrade={() => navigate(`/dashboard/${eventId}/upgrade`)} />
+              <OverviewCapacitySection 
+                currentPhotos={photos.length} 
+                maxPhotos={currentConfig.max_photos} 
+                currentGuests={guests?.length || 0}
+                maxGuests={currentConfig.max_guests}
+                onUpgrade={() => navigate(`/dashboard/${eventId}/upgrade`)} 
+              />
             </div>
           </div>
         </div>

@@ -203,6 +203,8 @@ export function OverviewTab({
             <OverviewCapacitySection 
               currentPhotos={photos.length} 
               maxPhotos={currentConfig.max_photos} 
+              currentGuests={guests?.length || 0}
+              maxGuests={currentConfig.max_guests}
               onUpgrade={onUpgrade}
             />
           )}
