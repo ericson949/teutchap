@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
-import { Cloud, Trash2, Download, FolderArchive, Loader2, Upload, X, User, Heart, Zap, Sparkles, ArrowLeft, Image as ImageIcon } from 'lucide-react'
+import { Cloud, Trash2, Download, FolderArchive, Loader2, Upload, X, User, Heart, Sparkles, ArrowLeft, Image as ImageIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { supabase } from '../../../lib/supabase'
@@ -14,7 +13,6 @@ export const GalleryTab = ({
   handleDeletePhoto,
   selectedFilesForUpload = [],
   showUploadModal = false,
-  setShowUploadModal,
   organizerCompress = false,
   setOrganizerCompress,
   confirmAdminUpload,
@@ -120,7 +118,12 @@ export const GalleryTab = ({
   }
 
   return (
-    <div className="space-y-8 pb-32">
+    <div className="relative space-y-8 pb-32 font-sans">
+      {/* Premium background mesh blobs */}
+      <div className="absolute top-[10%] left-[5%] w-72 h-72 bg-blue-600/10 rounded-full blur-[100px] -z-20 pointer-events-none animate-pulse-slow" />
+      <div className="absolute top-[50%] right-[5%] w-80 h-80 bg-blue-600/10 rounded-full blur-[120px] -z-20 pointer-events-none animate-pulse-slow" style={{ animationDelay: '2s' }} />
+      <div className="absolute bottom-[10%] left-[20%] w-96 h-96 bg-blue-600/5 rounded-full blur-[130px] -z-20 pointer-events-none animate-pulse-slow" style={{ animationDelay: '4s' }} />
+
       {/* Header */}
       <motion.div 
         initial={{ opacity: 0, y: -10 }}
@@ -140,7 +143,7 @@ export const GalleryTab = ({
             <button 
               onClick={handleDownloadZIP}
               disabled={isZipping}
-              className="flex-1 md:flex-none bg-white/5 border border-white/10 text-white px-6 py-4 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-white/10 transition-all flex items-center justify-center space-x-3 active:scale-95"
+              className="flex-1 md:flex-none bg-blue-500/10 border border-blue-500/20 text-blue-300 px-6 py-4 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-blue-500/20 transition-all flex items-center justify-center space-x-3 active:scale-95"
             >
               <Download size={16} />
               <span>Télécharger l'album</span>
@@ -150,7 +153,7 @@ export const GalleryTab = ({
           <button 
             disabled={isAdminUploading}
             onClick={() => adminFileInputRef.current?.click()}
-            className="flex-1 md:flex-none bg-white text-black px-8 py-4 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-white/90 transition-all flex items-center justify-center space-x-3 active:scale-95"
+            className="flex-1 md:flex-none bg-blue-500/10 border border-blue-500/20 text-blue-300 px-8 py-4 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-blue-500/20 transition-all flex items-center justify-center space-x-3 active:scale-95"
           >
             <Cloud size={16} />
             <span>{isAdminUploading ? 'Envoi...' : 'Ajouter'}</span>
@@ -293,7 +296,7 @@ export const GalleryTab = ({
                 </button>
                 <button 
                   onClick={confirmAdminUpload}
-                  className="flex-1 py-4 bg-white text-black hover:bg-white/90 rounded-full font-bold uppercase text-[9px] tracking-[0.2em] transition-all flex items-center justify-center space-x-2"
+                  className="flex-1 py-4 bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20 rounded-full font-bold uppercase text-[9px] tracking-[0.2em] transition-all flex items-center justify-center space-x-2 active:scale-95"
                 >
                   <Upload size={14} />
                   <span>Confirmer</span>

@@ -12,6 +12,7 @@ interface GuestGalleryViewProps {
   userReactions: any
   reactions: any
   addReaction: (id: string, emoji: string) => void
+  challenges?: any[]
 }
 
 export const GuestGalleryView: React.FC<GuestGalleryViewProps> = ({ photos, userReactions, reactions, addReaction, challenges = [] }) => {
@@ -51,7 +52,7 @@ export const GuestGalleryView: React.FC<GuestGalleryViewProps> = ({ photos, user
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {photos.map((photo) => {
-            const photoChallenge = challenges.find(c => c.id === photo.challenge_id)
+            const photoChallenge = challenges.find((c: any) => c.id === photo.challenge_id)
             return (
               <div 
                 key={photo.id} 
@@ -164,7 +165,7 @@ export const GuestGalleryView: React.FC<GuestGalleryViewProps> = ({ photos, user
                 {selectedPhoto.challenge_id ? (
                   <div className="inline-flex items-center space-x-1.5 bg-primary/20 text-primary-light px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider border border-primary/25 shadow-lg shadow-primary/10">
                     <Sparkles size={10} className="text-primary fill-current" />
-                    <span>{challenges.find(c => c.id === selectedPhoto.challenge_id)?.title}</span>
+                    <span>{challenges.find((c: any) => c.id === selectedPhoto.challenge_id)?.title}</span>
                   </div>
                 ) : (
                   <p className="text-[9px] font-black uppercase tracking-widest text-gray-600 italic leading-none">Aucun défi associé</p>
@@ -184,7 +185,7 @@ export const GuestGalleryView: React.FC<GuestGalleryViewProps> = ({ photos, user
                           Détacher
                         </button>
                       )}
-                      {challenges.map(c => {
+                      {challenges.map((c: any) => {
                         if (c.id === selectedPhoto.challenge_id) return null
                         return (
                           <button 

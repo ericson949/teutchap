@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Image as ImageIcon, Hash, Settings as SettingsIcon, Save, RefreshCw, Check } from 'lucide-react'
+import { LayoutDashboard, Image as ImageIcon, Hash, Settings as SettingsIcon, RefreshCw, Check } from 'lucide-react'
 import { useDashboardLogic } from '../../hooks/useDashboardLogic'
 import PremiumTabs from '../../components/PremiumTabs'
 import { OverviewTab } from './components/OverviewTab'
@@ -12,7 +12,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   
   const {
-    user, eventData, eventLoading, isOwner, challenges, photos,
+    eventData, eventLoading, isOwner, challenges, photos,
     activeTab, setActiveTab, showChallengeForm, setShowChallengeForm,
     isAdminUploading, adminFileInputRef, timeRemaining, totalReactions,
     updateEvent, deleteEvent, deleteChallenge, handleAdminUploadChange,
@@ -30,33 +30,227 @@ export default function Dashboard() {
     const qrCanvas = document.querySelector('#overview-qr canvas') as HTMLCanvasElement
     if (!qrCanvas) return
     
+    // Create a new canvas for the final image with branding
     const finalCanvas = document.createElement('canvas')
     const ctx = finalCanvas.getContext('2d')
     if (!ctx) return
 
-    const padding = 80
-    const textSectionHeight = 160
-    finalCanvas.width = qrCanvas.width + padding * 2
-    finalCanvas.height = qrCanvas.height + padding * 2 + textSectionHeight
+    // Set high-res portrait dimensions (suitable for poster/chevalet)
+    finalCanvas.width = 800
+    finalCanvas.height = 1200
 
-    ctx.fillStyle = '#FFFFFF'
+    // Draw background with sleek dark gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, finalCanvas.height)
+    grad.addColorStop(0, '#0c0a17')
+    grad.addColorStop(0.5, '#0e0b1f')
+    grad.addColorStop(1, '#050409')
+    ctx.fillStyle = grad
     ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height)
 
-    ctx.fillStyle = '#08060d'
+    // Glow blob top-left (Violet)
+    const blob1 = ctx.createRadialGradient(100, 200, 50, 100, 200, 300)
+    blob1.addColorStop(0, 'rgba(139, 92, 246, 0.15)')
+    blob1.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    ctx.fillStyle = blob1
+    ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height)
+
+    // Glow blob bottom-right (Cyan)
+    const blob2 = ctx.createRadialGradient(700, 900, 50, 700, 900, 350)
+    blob2.addColorStop(0, 'rgba(6, 182, 212, 0.12)')
+    blob2.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    ctx.fillStyle = blob2
+    ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height)
+
+    // Poster borders
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(30, 30, finalCanvas.width - 60, finalCanvas.height - 60)
+
+    ctx.strokeStyle = 'rgba(99, 102, 241, 0.15)'
+    ctx.lineWidth = 1
+    ctx.strokeRect(42, 42, finalCanvas.width - 84, finalCanvas.height - 84)
+
+    // 1. Header chip
+    ctx.fillStyle = 'rgba(99, 102, 241, 0.08)'
+    ctx.beginPath()
+    ctx.roundRect(finalCanvas.width / 2 - 140, 80, 280, 36, 18)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(99, 102, 241, 0.2)'
+    ctx.lineWidth = 1
+    ctx.stroke()
+
+    ctx.fillStyle = '#a5b4fc'
+    ctx.font = 'bold 10px Inter, sans-serif'
     ctx.textAlign = 'center'
-    
-    ctx.font = '900 32px Inter, sans-serif'
-    const title = `Partagez vos photos de ${eventData.name}`
-    ctx.fillText(title, finalCanvas.width / 2, padding + 40)
-    
-    ctx.font = 'bold 48px Inter, sans-serif'
-    ctx.fillText('ICI', finalCanvas.width / 2, padding + 110)
+    ctx.textBaseline = 'middle'
+    ctx.letterSpacing = '2px'
+    ctx.fillText('✨ PARTAGE EN DIRECT', finalCanvas.width / 2, 98)
+    ctx.letterSpacing = 'normal' // Reset
 
-    ctx.drawImage(qrCanvas, padding, padding + textSectionHeight)
+    // 2. Event Name
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '800 24px Playfair Display, Georgia, serif'
+    ctx.fillText(eventData.name, finalCanvas.width / 2, 170)
 
+    // Accent line under event name
+    const lineGrad = ctx.createLinearGradient(finalCanvas.width / 2 - 100, 0, finalCanvas.width / 2 + 100, 0)
+    lineGrad.addColorStop(0, 'rgba(99, 102, 241, 0)')
+    lineGrad.addColorStop(0.5, 'rgba(99, 102, 241, 0.6)')
+    lineGrad.addColorStop(1, 'rgba(99, 102, 241, 0)')
+    ctx.fillStyle = lineGrad
+    ctx.fillRect(finalCanvas.width / 2 - 100, 192, 200, 2)
+
+    // 3. Catchy copywriting title
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '900 40px Inter, sans-serif'
+    ctx.fillText("PARTICIPEZ À L'ALBUM !", finalCanvas.width / 2, 250)
+
+    // 4. Subtitle
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
+    ctx.font = '500 16px Inter, sans-serif'
+    ctx.fillText("Scannez pour ajouter vos photos à l'album Teutchap en direct.", finalCanvas.width / 2, 290)
+
+    // 5. QR Code Card background
+    const qrSize = 320
+    const qrX = finalCanvas.width / 2 - qrSize / 2
+    const qrY = 360
+
+    // Radial shadow behind card
+    const qrShadow = ctx.createRadialGradient(finalCanvas.width / 2, qrY + qrSize / 2, 30, finalCanvas.width / 2, qrY + qrSize / 2, 240)
+    qrShadow.addColorStop(0, 'rgba(99, 102, 241, 0.12)')
+    qrShadow.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    ctx.fillStyle = qrShadow
+    ctx.fillRect(qrX - 80, qrY - 80, qrSize + 160, qrSize + 160)
+
+    // Rounded glass frame
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)'
+    ctx.beginPath()
+    ctx.roundRect(qrX - 25, qrY - 25, qrSize + 50, qrSize + 50, 32)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+
+    // 6. Draw glowing white QR Code
+    const qrOffscreen = document.createElement('canvas')
+    qrOffscreen.width = qrCanvas.width
+    qrOffscreen.height = qrCanvas.height
+    const oCtx = qrOffscreen.getContext('2d')
+    if (oCtx) {
+      oCtx.drawImage(qrCanvas, 0, 0)
+      const imgData = oCtx.getImageData(0, 0, qrOffscreen.width, qrOffscreen.height)
+      const data = imgData.data
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i]
+        const g = data[i+1]
+        const b = data[i+2]
+        const brightness = (r + g + b) / 3
+        if (brightness < 120) {
+          // Keep QR code block as bright white
+          data[i] = 255
+          data[i+1] = 255
+          data[i+2] = 255
+          data[i+3] = 255
+        } else {
+          // Background transparent
+          data[i+3] = 0
+        }
+      }
+      oCtx.putImageData(imgData, 0, 0)
+      ctx.drawImage(qrOffscreen, qrX, qrY, qrSize, qrSize)
+    }
+
+    // 7. Center Logo badge inside QR (Pill shape to fit 'teutchap')
+    const logoWidth = 90
+    const logoHeight = 36
+    const logoX = finalCanvas.width / 2 - logoWidth / 2
+    const logoY = qrY + qrSize / 2 - logoHeight / 2
+    
+    // Smooth background badge
+    ctx.fillStyle = '#0c0a17'
+    ctx.beginPath()
+    ctx.roundRect(logoX, logoY, logoWidth, logoHeight, 10)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(99, 102, 241, 0.4)'
+    ctx.lineWidth = 2
+    ctx.stroke()
+
+    // Text logo "teutchap" inside
+    ctx.fillStyle = '#ffffff'
+    ctx.font = 'bold 12px Inter, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('teutchap', finalCanvas.width / 2, logoY + logoHeight / 2)
+    ctx.textBaseline = 'alphabetic' // Reset
+
+    // 8. Draw step-by-step instructions
+    const stepsY = 780
+    const colWidth = 220
+    const spacing = 20
+    const startX = finalCanvas.width / 2 - (colWidth * 3 + spacing * 2) / 2
+
+    const steps = [
+      { icon: '📱', title: '1. SCANNEZ', desc: 'Ouvrez votre appareil photo et flashez le QR code.' },
+      { icon: '📤', title: '2. PARTAGEZ', desc: 'Sélectionnez vos photos (aucune application à installer).' },
+      { icon: '✨', title: '3. ADMIREZ', desc: "Regardez l'album se remplir en temps réel !" }
+    ]
+
+    const wrapText = (context: any, text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
+      const words = text.split(' ')
+      let line = ''
+      let currentY = y
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' '
+        const metrics = context.measureText(testLine)
+        const testWidth = metrics.width
+        if (testWidth > maxWidth && n > 0) {
+          context.fillText(line, x + maxWidth / 2, currentY)
+          line = words[n] + ' '
+          currentY += lineHeight
+        } else {
+          line = testLine
+        }
+      }
+      context.fillText(line, x + maxWidth / 2, currentY)
+    }
+
+    steps.forEach((step, idx) => {
+      const x = startX + idx * (colWidth + spacing)
+      
+      // Step card
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.015)'
+      ctx.beginPath()
+      ctx.roundRect(x, stepsY, colWidth, 240, 20)
+      ctx.fill()
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)'
+      ctx.lineWidth = 1
+      ctx.stroke()
+
+      // Emoji Icon
+      ctx.font = '32px Inter, sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(step.icon, x + colWidth / 2, stepsY + 50)
+
+      // Title
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '900 13px Inter, sans-serif'
+      ctx.fillText(step.title, x + colWidth / 2, stepsY + 105)
+
+      // Description
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)'
+      ctx.font = '500 11px Inter, sans-serif'
+      wrapText(ctx, step.desc, x + 15, stepsY + 135, colWidth - 30, 16)
+    })
+
+    // 9. Footer
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'
+    ctx.font = '600 10px Inter, sans-serif'
+    ctx.fillText('Créé avec amour par Teutchap • teutchap.fr', finalCanvas.width / 2, finalCanvas.height - 70)
+
+    // Trigger download
     const pngFile = finalCanvas.toDataURL('image/png')
     const downloadLink = document.createElement('a')
-    downloadLink.download = `Teutchap_${eventData.name.replace(/\s+/g, '_')}.png`
+    downloadLink.download = `Teutchap_${eventData.name.replace(/\s+/g, '_')}_Flyer.png`
     downloadLink.href = pngFile
     downloadLink.click()
   }
@@ -83,35 +277,43 @@ export default function Dashboard() {
     <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30 overflow-x-hidden pb-24">
       
       {/* Minimalist Top Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 px-6 py-8 flex items-center justify-between pointer-events-none">
-        <button 
-          onClick={() => navigate(`/overview/${eventId}`)}
-          className="glass border border-white/10 p-4 rounded-2xl pointer-events-auto active:scale-90 transition-all hover:bg-white/5 shadow-xl group"
-        >
-          <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-        </button>
+      <header className="fixed top-0 left-0 right-0 z-50 px-6 h-24 flex items-center justify-between bg-gradient-to-b from-[#08060d]/80 to-transparent backdrop-blur-[2px] pointer-events-none border-b border-white/[0.02]">
+        <div className="flex items-center space-x-4 pointer-events-auto">
+          <button 
+            onClick={() => navigate(`/overview/${eventId}`)}
+            className="glass border border-white/10 w-11 h-11 flex items-center justify-center rounded-2xl active:scale-95 transition-all hover:bg-white/5 shadow-xl group"
+          >
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+          </button>
+          
+          <div className="flex flex-col">
+            <span className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-bold leading-none mb-1">
+              Console Organisateur
+            </span>
+            <span className="text-base font-serif text-white font-semibold truncate max-w-[140px] leading-none">
+              {eventData?.name}
+            </span>
+          </div>
+        </div>
 
-        {/* Sync Indicator (Centered) */}
-        <div className="absolute left-1/2 -translate-x-1/2 top-10 flex flex-col items-center pointer-events-auto">
+        {/* Sync Indicator (Aligned on the right, vertically centered) */}
+        <div className="pointer-events-auto">
           {eventLoading ? (
-            <div className="p-2 bg-primary/10 border border-primary/20 rounded-full animate-pulse shadow-lg shadow-primary/20" title="Synchronisation en cours...">
-              <RefreshCw size={12} className="animate-spin text-primary" />
+            <div className="flex items-center space-x-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full animate-pulse text-[9px] font-black uppercase tracking-wider text-white/60">
+              <RefreshCw size={8} className="animate-spin text-white" />
+              <span>Sync...</span>
             </div>
           ) : (
-            <div className="p-2 bg-white/5 border border-white/10 rounded-full opacity-40 hover:opacity-100 transition-opacity" title="Données à jour">
-              <Check size={12} className="text-gray-400" />
+            <div className="flex items-center space-x-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-black uppercase tracking-wider text-white/40">
+              <Check size={8} className="text-emerald-400" />
+              <span>À jour</span>
             </div>
           )}
-        </div>
-        
-        <div className="text-right">
-          <h1 className="text-xs font-black uppercase tracking-[0.3em] text-white/40 mb-1">Console</h1>
-          <p className="text-sm font-black text-white truncate max-w-[150px]">{eventData.name}</p>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-5xl mx-auto w-full px-6 pt-32 pb-12 relative z-10">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-6 pt-24 pb-12 relative z-10">
         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
           {activeTab === 'overview' && (
             <OverviewTab 
@@ -119,8 +321,6 @@ export default function Dashboard() {
               photos={photos} 
               challenges={challenges} 
               totalReactions={totalReactions} 
-              navigate={navigate} 
-              eventId={eventId} 
               eventUrl={eventUrl}
               eventData={eventData}
               copied={copied}
@@ -142,6 +342,7 @@ export default function Dashboard() {
               adminLoading={adminLoading}
               handleSaveAdmins={handleSaveAdmins}
               currentConfig={currentConfig}
+              onUpgrade={() => navigate(`/dashboard/${eventId}/upgrade`)}
             />
           )}
           {activeTab === 'gallery' && (

@@ -1,6 +1,6 @@
-import { Database } from 'lucide-react'
+import { Database, Zap } from 'lucide-react'
 
-export const OverviewCapacitySection = ({ currentPhotos, maxPhotos }: { currentPhotos: number, maxPhotos: number }) => {
+export const OverviewCapacitySection = ({ currentPhotos, maxPhotos, onUpgrade }: { currentPhotos: number, maxPhotos: number, onUpgrade: () => void }) => {
   const percentage = Math.min(100, Math.round((currentPhotos / maxPhotos) * 100))
   const isHighCapacity = percentage >= 85
 
@@ -8,8 +8,8 @@ export const OverviewCapacitySection = ({ currentPhotos, maxPhotos }: { currentP
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="rounded-full bg-white/[0.08] p-2 border border-white/[0.05]">
-            <Database size={16} className={isHighCapacity ? 'text-red-400' : 'text-white/80'} />
+          <div className="rounded-full bg-blue-500/10 p-2 border border-blue-500/20 text-blue-400">
+            <Database size={16} className={isHighCapacity ? 'text-red-400' : 'text-blue-400'} />
           </div>
           <div>
             <h3 className="text-xl font-serif text-white tracking-tight leading-none mb-1">Capacité Cloud</h3>
@@ -26,7 +26,7 @@ export const OverviewCapacitySection = ({ currentPhotos, maxPhotos }: { currentP
       <div className="space-y-3">
         <div className="h-1.5 w-full bg-white/[0.05] rounded-full overflow-hidden border border-white/[0.02]">
           <div 
-            className={`h-full rounded-full transition-all duration-1000 ease-out ${isHighCapacity ? 'bg-red-400' : 'bg-white/80'}`}
+            className={`h-full rounded-full transition-all duration-1000 ease-out ${isHighCapacity ? 'bg-red-400 shadow-[0_0_12px_rgba(239,68,68,0.5)]' : 'bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.5)]'}`}
             style={{ width: `${percentage}%` }}
           />
         </div>
@@ -35,6 +35,39 @@ export const OverviewCapacitySection = ({ currentPhotos, maxPhotos }: { currentP
           {isHighCapacity && <span className="text-red-400">Espace bientôt saturé</span>}
         </div>
       </div>
+      {/* Premium Perks Teaser */}
+      <div className="bg-white/[0.01] border border-white/[0.04] rounded-2xl p-4 mt-4 space-y-3">
+        <div className="flex items-center space-x-2 text-[9px] font-black text-blue-400 uppercase tracking-[0.15em]">
+          <Zap size={11} className="fill-current animate-pulse text-blue-400" />
+          <span>Libérez la puissance de l'événement</span>
+        </div>
+        <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] text-white/60 font-medium">
+          <li className="flex items-center space-x-2">
+            <span className="w-1 h-1 rounded-full bg-blue-400 shrink-0" />
+            <span>1 000+ photos HD</span>
+          </li>
+          <li className="flex items-center space-x-2">
+            <span className="w-1 h-1 rounded-full bg-blue-400 shrink-0" />
+            <span>Mur Live en Direct</span>
+          </li>
+          <li className="flex items-center space-x-2">
+            <span className="w-1 h-1 rounded-full bg-blue-400 shrink-0" />
+            <span>Défis illimités</span>
+          </li>
+          <li className="flex items-center space-x-2">
+            <span className="w-1 h-1 rounded-full bg-blue-400 shrink-0" />
+            <span>Co-Administrateurs</span>
+          </li>
+        </ul>
+      </div>
+
+      <button 
+        onClick={onUpgrade}
+        className="w-full mt-3 bg-gradient-to-r from-blue-600/20 to-cyan-600/20 hover:from-blue-600/30 hover:to-cyan-600/30 border border-blue-500/30 hover:border-blue-400/50 text-blue-300 hover:text-white font-bold text-[10px] uppercase tracking-[0.2em] py-4 rounded-2xl transition-all flex items-center justify-center space-x-2 active:scale-[0.98] shadow-lg shadow-blue-500/5 hover:shadow-blue-500/10"
+      >
+        <Zap size={13} className="fill-current text-blue-400 animate-bounce" style={{ animationDuration: '2s' }} />
+        <span>Débloquer le Plan Premium</span>
+      </button>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { Loader2, AlertTriangle, Lock, User, X, Bell } from 'lucide-react'
+import { Loader2, X, Bell } from 'lucide-react'
 import { useEventHomeLogic } from '../../hooks/useEventHomeLogic'
 import { GuestHero } from './components/GuestHero'
 import { GuestSwipeView } from './components/GuestSwipeView'

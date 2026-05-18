@@ -3,7 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 export const ChallengesTab = ({ challenges, showChallengeForm, setShowChallengeForm, newChallenge, setNewChallenge, handleSaveChallenge, deleteChallenge }: any) => {
   return (
-    <div className="space-y-8 pb-32">
+    <div className="relative space-y-8 pb-32 font-sans">
+      {/* Premium background mesh blobs */}
+      <div className="absolute top-[5%] left-[10%] w-72 h-72 bg-blue-600/10 rounded-full blur-[100px] -z-20 pointer-events-none animate-pulse-slow" />
+      <div className="absolute top-[35%] right-[5%] w-80 h-80 bg-blue-600/10 rounded-full blur-[120px] -z-20 pointer-events-none animate-pulse-slow" style={{ animationDelay: '2s' }} />
+
       <motion.div 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -16,7 +20,7 @@ export const ChallengesTab = ({ challenges, showChallengeForm, setShowChallengeF
         </div>
         <button 
           onClick={() => setShowChallengeForm(!showChallengeForm)}
-          className="bg-white/10 hover:bg-white/20 text-white p-3.5 rounded-full transition-all active:scale-95 border border-white/10"
+          className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 p-3.5 rounded-full transition-all active:scale-95 border border-blue-500/20"
         >
           <PlusCircle size={20} />
         </button>
@@ -49,7 +53,7 @@ export const ChallengesTab = ({ challenges, showChallengeForm, setShowChallengeF
 
               <button 
                 onClick={handleSaveChallenge}
-                className="w-full bg-white hover:bg-white/90 text-black py-4 rounded-full font-bold uppercase text-[9px] tracking-[0.2em] transition-all flex items-center justify-center space-x-2 relative z-10"
+                className="w-full bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20 py-4 rounded-full font-bold uppercase text-[9px] tracking-[0.2em] transition-all flex items-center justify-center space-x-2 relative z-10 active:scale-95"
               >
                 <Zap size={14} />
                 <span>Lancer le défi</span>

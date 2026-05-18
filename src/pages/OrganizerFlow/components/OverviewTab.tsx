@@ -1,14 +1,9 @@
 import { motion } from "framer-motion";
 import {
-  Clock3,
   Image as ImageIcon,
   Shield,
-  Users,
   Sparkles,
   QrCode,
-  Activity,
-  Lock,
-  HardDrive,
 } from "lucide-react";
 import { OverviewQRSection } from './OverviewQRSection';
 import { OverviewSecuritySection } from './OverviewSecuritySection';
@@ -26,8 +21,6 @@ interface OverviewTabProps {
   photos: any[];
   challenges: any[];
   totalReactions: number;
-  navigate: any;
-  eventId: string;
   eventUrl: string;
   eventData: any;
   copied: boolean;
@@ -49,43 +42,47 @@ interface OverviewTabProps {
   adminLoading: boolean;
   handleSaveAdmins: () => Promise<void>;
   currentConfig: any;
+  onUpgrade: () => void;
 }
 
 const MetricCard = ({
   icon,
   value,
   label,
-  accent,
+  accentColor,
+  glowBg,
 }: {
   icon: React.ReactNode;
   value: string | number;
   label: string;
-  accent: string;
+  accentColor: string;
+  glowBg: string;
 }) => {
   return (
     <motion.div
-      whileHover={{ y: -2, scale: 1.01 }}
-      className="relative overflow-hidden rounded-[24px] border border-white/[0.08] bg-white/[0.02] backdrop-blur-2xl p-6 min-h-[140px] group transition-all duration-500"
+      whileHover={{ y: -4, scale: 1.02 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      className="relative overflow-hidden rounded-[28px] border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-white/[0.01] backdrop-blur-2xl p-6 group flex flex-col justify-between min-h-[150px] sm:min-h-[170px] shadow-lg shadow-black/40 hover:border-white/20 transition-all duration-500"
     >
-      <div
-        className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-700 pointer-events-none"
-        style={{ background: `radial-gradient(circle at center, ${accent}, transparent 70%)` }}
-      />
-      <div className="relative z-10 flex h-full flex-col justify-between">
-        <div className="flex items-center justify-between">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/70 group-hover:text-white group-hover:bg-white/10 transition-all duration-300">
-            {icon}
-          </div>
-          <span className="text-[9px] uppercase tracking-[0.2em] text-white/30 font-semibold">
-            Métrique
-          </span>
+      {/* Background glow specific to card */}
+      <div className={`absolute -right-6 -bottom-6 w-24 h-24 rounded-full blur-[40px] opacity-10 group-hover:opacity-30 group-hover:scale-125 transition-all duration-700 pointer-events-none ${glowBg}`} />
+      
+      <div className="flex justify-between items-start">
+        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] ${accentColor} group-hover:bg-white/10 transition-all duration-300`}>
+          {icon}
         </div>
-        <div className="mt-4">
-          <h2 className="text-4xl font-serif text-white tracking-tight">{value}</h2>
-          <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-white/40 font-medium">
-            {label}
-          </p>
-        </div>
+        <span className="text-[8px] uppercase tracking-[0.25em] text-white/20 font-bold group-hover:text-white/40 transition-colors">
+          Stats
+        </span>
+      </div>
+      
+      <div className="mt-4">
+        <h2 className="text-4xl sm:text-5xl font-sans font-black text-white tracking-tight leading-none">
+          {value}
+        </h2>
+        <p className="mt-2 text-[10px] uppercase tracking-[0.15em] text-white/40 font-semibold group-hover:text-white/60 transition-colors">
+          {label}
+        </p>
       </div>
     </motion.div>
   );
@@ -94,17 +91,15 @@ const MetricCard = ({
 const CountdownCell = ({
   value,
   label,
-  active,
 }: {
   value: number;
   label: string;
-  active?: boolean;
 }) => (
-  <div className={`relative flex flex-col items-center justify-center rounded-[20px] border px-4 py-5 transition-all duration-500 ${active ? "border-white/20 bg-white/[0.05] shadow-[0_0_20px_rgba(255,255,255,0.03)]" : "border-white/[0.05] bg-transparent"}`}>
-    <div className={`text-4xl font-serif tracking-tight ${active ? "text-white" : "text-white/80"}`}>
+  <div className="flex flex-col items-center justify-center py-4 px-2 transition-colors hover:bg-white/[0.01]">
+    <div className="text-3xl sm:text-4xl font-sans font-black tracking-tight text-white/95">
       {String(value).padStart(2, "0")}
     </div>
-    <span className="mt-2 text-[9px] uppercase tracking-[0.2em] text-white/40 font-semibold">
+    <span className="mt-1 sm:mt-2 text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-white/30 font-bold">
       {label}
     </span>
   </div>
@@ -115,8 +110,6 @@ export function OverviewTab({
   photos,
   challenges,
   totalReactions,
-  navigate,
-  eventId,
   eventUrl,
   eventData,
   copied,
@@ -137,145 +130,190 @@ export function OverviewTab({
   handleToggleStagedAdmin,
   adminLoading,
   handleSaveAdmins,
-  currentConfig
+  currentConfig,
+  onUpgrade
 }: OverviewTabProps) {
   const isFinished = timeRemaining.phase === 'finished';
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden px-4 pb-40 pt-6 font-sans">
-      {/* Premium Cinematic Background FX */}
-      <div className="absolute inset-0 bg-[#08060d] -z-20" />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-white/[0.02] blur-[100px] rounded-full pointer-events-none -z-10" />
+    <div className="relative min-h-screen overflow-x-hidden px-0 pb-40 pt-0 font-sans">
+      
+      {/* 
+        PREMIUM BACKDROP LAYER 
+        Adding real colors and shapes behind elements so backdrop-blur has beautiful colors to frosted-glass.
+      */}
+      <div className="absolute inset-0 bg-[#08060d] -z-30 pointer-events-none" />
+      
+      {/* Dynamic blurred colored blobs */}
+      <div className="absolute top-[10%] left-[5%] w-72 h-72 bg-blue-600/10 rounded-full blur-[100px] -z-20 pointer-events-none animate-pulse-slow" />
+      <div className="absolute top-[40%] right-[5%] w-80 h-80 bg-blue-600/10 rounded-full blur-[120px] -z-20 pointer-events-none animate-pulse-slow" style={{ animationDelay: '2s' }} />
+      <div className="absolute bottom-[20%] left-[10%] w-96 h-96 bg-blue-600/5 rounded-full blur-[130px] -z-20 pointer-events-none animate-pulse-slow" style={{ animationDelay: '4s' }} />
 
-      {/* HEADER */}
-      <div className="relative z-10 mb-8 flex items-center justify-between">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-medium">
-            Tableau de Bord
-          </p>
-          <h1 className="mt-2 text-4xl font-serif text-white font-medium tracking-tight">
-            Vue Organisateur
-          </h1>
-        </div>
+      {/* ACCESS & SHARE (Priority #1) */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        className="mb-6 rounded-[32px] border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-5 sm:p-8 backdrop-blur-3xl shadow-lg"
+      >
+        <OverviewQRSection 
+          eventUrl={eventUrl}
+          eventName={eventData?.name || ""}
+          copied={copied}
+          copyLink={copyLink}
+          downloadQRCode={downloadQRCode}
+          shareWhatsApp={shareWhatsApp}
+        />
+      </motion.div>
+
+      {/* SECURITY & CAPACITY GRID */}
+      <div className="mb-6 grid gap-6 md:grid-cols-2">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+          className="rounded-[32px] border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-5 sm:p-8 backdrop-blur-3xl shadow-lg min-w-0"
+        >
+          <OverviewSecuritySection
+            enablePasswordToggle={enablePasswordToggle}
+            handleTogglePasswordFeature={handleTogglePasswordFeature}
+            eventData={eventData}
+            pwdLoading={pwdLoading}
+            handleRevokePassword={handleRevokePassword}
+            newPassword={newPassword}
+            setNewPassword={setNewPassword}
+            handleSetPassword={handleSetPassword}
+            enableAdminsToggle={enableAdminsToggle}
+            handleToggleAdminsFeature={handleToggleAdminsFeature}
+            allDisplayGuests={guests}
+            stagedAdmins={stagedAdmins}
+            handleToggleStagedAdmin={handleToggleStagedAdmin}
+            adminLoading={adminLoading}
+            handleSaveAdmins={handleSaveAdmins}
+          />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          className="rounded-[32px] border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-5 sm:p-8 backdrop-blur-3xl shadow-lg min-w-0"
+        >
+          {currentConfig && (
+            <OverviewCapacitySection 
+              currentPhotos={photos.length} 
+              maxPhotos={currentConfig.max_photos} 
+              onUpgrade={onUpgrade}
+            />
+          )}
+        </motion.div>
       </div>
 
       {/* HERO SECTION */}
       <motion.div
-        initial={{ opacity: 0, y: 15 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="relative overflow-hidden rounded-[32px] border border-white/[0.08] bg-white/[0.02] backdrop-blur-3xl p-8 shadow-2xl"
+        transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        className="relative overflow-hidden rounded-[36px] border border-white/[0.06] bg-gradient-to-b from-white/[0.04] to-white/[0.01] backdrop-blur-3xl p-6 sm:p-10 shadow-[0_24px_50px_rgba(0,0,0,0.5)]"
       >
-        <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-white/[0.03] to-transparent pointer-events-none" />
+        {/* Decorative inner glow */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none" />
+        <div className="absolute right-0 top-0 h-full w-2/3 bg-gradient-to-l from-white/[0.02] to-transparent pointer-events-none" />
+        <div className="absolute -left-10 -top-10 w-40 h-40 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="mb-4 flex items-center gap-3">
-                <div className="rounded-full bg-white/[0.08] p-2 border border-white/[0.05]">
-                  <Activity className="h-3.5 w-3.5 text-white/80" />
-                </div>
-                <span className="text-[10px] uppercase tracking-[0.25em] text-white/60 font-medium">
-                  Statut de l'événement
-                </span>
+        {/* Dynamic status logic (Epuré & Elegant) */}
+        {(() => {
+          let badgeText = "Planifié";
+          let badgeStyle = "border-blue-500/20 bg-blue-500/10 text-blue-300";
+          let subtitleLabel = "L'album photo n'a pas encore débuté";
+          let pulseColor = "bg-amber-400";
+          let showPulse = true;
+
+          if (timeRemaining.phase === 'before_start') {
+            badgeText = "Planifié";
+            badgeStyle = "border-blue-500/20 bg-blue-500/10 text-blue-300";
+            subtitleLabel = "Avant le début de l'événement";
+            pulseColor = "bg-blue-400";
+            showPulse = true;
+          } else if (timeRemaining.phase === 'active') {
+            badgeText = "En cours";
+            badgeStyle = "border-blue-500/20 bg-blue-500/10 text-blue-300";
+            subtitleLabel = "Album actif, photos en direct";
+            pulseColor = "bg-blue-400";
+            showPulse = true;
+          } else if (timeRemaining.phase === 'finished') {
+            badgeText = "Terminé";
+            badgeStyle = "border-white/10 bg-white/5 text-white/40";
+            subtitleLabel = "L'événement est clos, l'album est scellé";
+            pulseColor = "bg-white/40";
+            showPulse = false;
+          }
+
+          return (
+            <div className="relative z-10 flex flex-wrap items-center gap-3">
+              <div className={`inline-flex items-center space-x-2 rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-[0.15em] backdrop-blur-md ${badgeStyle}`}>
+                {showPulse && <div className={`w-1 h-1 rounded-full ${pulseColor} animate-pulse`} />}
+                <span>{badgeText}</span>
               </div>
-              <h2 className="text-3xl font-serif text-white tracking-tight">
-                {isFinished ? 'Album scellé' : 'Album en activité'}
-              </h2>
-              <p className="mt-2 text-sm text-white/50 font-light">
-                {timeRemaining.label}
-              </p>
+              <span className="text-[10px] text-white/20 hidden xs:inline">•</span>
+              <span className="text-[10px] text-white/70 font-semibold tracking-wide">
+                {subtitleLabel}
+              </span>
             </div>
+          );
+        })()}
 
-            <div className={`rounded-full border px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] backdrop-blur-md ${isFinished ? 'border-white/10 bg-white/5 text-white/60' : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'}`}>
-              {isFinished ? 'Terminé' : 'En cours'}
+        {/* COUNTDOWN */}
+        {!isFinished && (
+          <div className="mt-8 max-w-sm">
+            <div className="relative p-0.5 rounded-[26px] bg-gradient-to-b from-white/10 to-transparent shadow-inner">
+              <div className="flex border border-white/[0.05] rounded-[24px] bg-black/40 backdrop-blur-md divide-x divide-white/[0.05] overflow-hidden">
+                <div className="flex-1"><CountdownCell value={timeRemaining.days} label="jours" /></div>
+                <div className="flex-1"><CountdownCell value={timeRemaining.hours} label="heures" /></div>
+                <div className="flex-1"><CountdownCell value={timeRemaining.minutes} label="mins" /></div>
+                <div className="flex-1"><CountdownCell value={timeRemaining.seconds} label="sec" /></div>
+              </div>
             </div>
           </div>
-
-          {/* COUNTDOWN */}
-          {!isFinished && (
-            <div className="mt-10 grid grid-cols-4 gap-4 max-w-2xl">
-              <CountdownCell value={timeRemaining.days} label="jours" />
-              <CountdownCell value={timeRemaining.hours} label="heures" />
-              <CountdownCell value={timeRemaining.minutes} label="mins" />
-              <CountdownCell value={timeRemaining.seconds} label="sec" active />
-            </div>
-          )}
-        </div>
+        )}
       </motion.div>
 
       {/* METRICS */}
       <motion.div 
-        initial={{ opacity: 0, y: 15 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-        className="mt-6 grid grid-cols-2 gap-4"
+        transition={{ duration: 0.7, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="mt-6 grid grid-cols-2 gap-4 sm:gap-6"
       >
-        <MetricCard icon={<ImageIcon size={18} />} value={photos.length} label="photos partagées" accent="#ffffff" />
-        <MetricCard icon={<QrCode size={18} />} value={challenges.length} label="défis créés" accent="#ffffff" />
-        <MetricCard icon={<Sparkles size={18} />} value={totalReactions} label="réactions" accent="#ffffff" />
-        <MetricCard icon={<Shield size={18} />} value={eventData?.access_password ? "Privé" : "Ouvert"} label="confidentialité" accent="#ffffff" />
+        <MetricCard 
+          icon={<ImageIcon size={20} />} 
+          value={photos.length} 
+          label="photos partagées" 
+          accentColor="text-amber-400"
+          glowBg="bg-amber-400"
+        />
+        <MetricCard 
+          icon={<QrCode size={20} />} 
+          value={challenges.length} 
+          label="défis créés" 
+          accentColor="text-cyan-400"
+          glowBg="bg-cyan-400"
+        />
+        <MetricCard 
+          icon={<Sparkles size={20} />} 
+          value={totalReactions} 
+          label="réactions" 
+          accentColor="text-blue-400"
+          glowBg="bg-blue-400"
+        />
+        <MetricCard 
+          icon={<Shield size={20} />} 
+          value={eventData?.access_password ? "Privé" : "Ouvert"} 
+          label="confidentialité" 
+          accentColor="text-blue-400"
+          glowBg="bg-blue-400"
+        />
       </motion.div>
-
-      {/* LOWER GRID */}
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="rounded-[32px] border border-white/[0.08] bg-white/[0.02] p-8 backdrop-blur-3xl"
-        >
-          <OverviewQRSection 
-            eventUrl={eventUrl}
-            eventName={eventData?.name || ""}
-            copied={copied}
-            copyLink={copyLink}
-            downloadQRCode={downloadQRCode}
-            shareWhatsApp={shareWhatsApp}
-          />
-        </motion.div>
-
-        <div className="flex flex-col gap-6">
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="rounded-[32px] border border-white/[0.08] bg-white/[0.02] p-8 backdrop-blur-3xl"
-          >
-            <OverviewSecuritySection
-              enablePasswordToggle={enablePasswordToggle}
-              handleTogglePasswordFeature={handleTogglePasswordFeature}
-              eventData={eventData}
-              pwdLoading={pwdLoading}
-              handleRevokePassword={handleRevokePassword}
-              newPassword={newPassword}
-              setNewPassword={setNewPassword}
-              handleSetPassword={handleSetPassword}
-              enableAdminsToggle={enableAdminsToggle}
-              handleToggleAdminsFeature={handleToggleAdminsFeature}
-              allDisplayGuests={guests}
-              stagedAdmins={stagedAdmins}
-              handleToggleStagedAdmin={handleToggleStagedAdmin}
-              adminLoading={adminLoading}
-              handleSaveAdmins={handleSaveAdmins}
-            />
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="rounded-[32px] border border-white/[0.08] bg-white/[0.02] p-8 backdrop-blur-3xl"
-          >
-            {currentConfig && (
-              <OverviewCapacitySection 
-                currentPhotos={photos.length} 
-                maxPhotos={currentConfig.max_photos} 
-              />
-            )}
-          </motion.div>
-        </div>
-      </div>
     </div>
   );
 }

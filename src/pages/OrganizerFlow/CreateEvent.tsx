@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Sparkles, Zap, Hash, Users, AlertTriangle, LogIn, ArrowRight } from 'lucide-react'
+import { Calendar, Sparkles, Hash, Users, AlertTriangle, LogIn, ArrowRight } from 'lucide-react'
 import { useCreateEventLogic } from '../../hooks/useCreateEventLogic'
 
 export default function CreateEvent() {
