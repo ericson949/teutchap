@@ -1,13 +1,122 @@
-import { Hourglass, Check, ImageIcon, Hash, Zap } from 'lucide-react'
-import { OverviewQRSection } from './OverviewQRSection'
-import { OverviewSecuritySection } from './OverviewSecuritySection'
-import { OverviewCapacitySection } from './OverviewCapacitySection'
+import { motion } from "framer-motion";
+import {
+  Clock3,
+  Image as ImageIcon,
+  Shield,
+  Users,
+  Sparkles,
+  QrCode,
+  Activity,
+  Lock,
+  HardDrive,
+} from "lucide-react";
+import { OverviewQRSection } from './OverviewQRSection';
+import { OverviewSecuritySection } from './OverviewSecuritySection';
+import { OverviewCapacitySection } from './OverviewCapacitySection';
 
-export const OverviewTab = ({ 
-  timeRemaining, 
-  photos, 
-  challenges, 
+interface OverviewTabProps {
+  timeRemaining: {
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+    phase: string;
+    label: string;
+  };
+  photos: any[];
+  challenges: any[];
+  totalReactions: number;
+  navigate: any;
+  eventId: string;
+  eventUrl: string;
+  eventData: any;
+  copied: boolean;
+  copyLink: () => void;
+  downloadQRCode: () => void;
+  shareWhatsApp: () => void;
+  enablePasswordToggle: boolean;
+  handleTogglePasswordFeature: () => void;
+  pwdLoading: boolean;
+  handleRevokePassword: () => Promise<void>;
+  newPassword: string;
+  setNewPassword: (p: string) => void;
+  handleSetPassword: (p: string) => Promise<void>;
+  enableAdminsToggle: boolean;
+  handleToggleAdminsFeature: () => void;
+  guests: any[];
+  stagedAdmins: string[];
+  handleToggleStagedAdmin: (pseudo: string) => void;
+  adminLoading: boolean;
+  handleSaveAdmins: () => Promise<void>;
+  currentConfig: any;
+}
+
+const MetricCard = ({
+  icon,
+  value,
+  label,
+  accent,
+}: {
+  icon: React.ReactNode;
+  value: string | number;
+  label: string;
+  accent: string;
+}) => {
+  return (
+    <motion.div
+      whileHover={{ y: -2, scale: 1.01 }}
+      className="relative overflow-hidden rounded-[24px] border border-white/[0.08] bg-white/[0.02] backdrop-blur-2xl p-6 min-h-[140px] group transition-all duration-500"
+    >
+      <div
+        className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-700 pointer-events-none"
+        style={{ background: `radial-gradient(circle at center, ${accent}, transparent 70%)` }}
+      />
+      <div className="relative z-10 flex h-full flex-col justify-between">
+        <div className="flex items-center justify-between">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/70 group-hover:text-white group-hover:bg-white/10 transition-all duration-300">
+            {icon}
+          </div>
+          <span className="text-[9px] uppercase tracking-[0.2em] text-white/30 font-semibold">
+            Métrique
+          </span>
+        </div>
+        <div className="mt-4">
+          <h2 className="text-4xl font-serif text-white tracking-tight">{value}</h2>
+          <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-white/40 font-medium">
+            {label}
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const CountdownCell = ({
+  value,
+  label,
+  active,
+}: {
+  value: number;
+  label: string;
+  active?: boolean;
+}) => (
+  <div className={`relative flex flex-col items-center justify-center rounded-[20px] border px-4 py-5 transition-all duration-500 ${active ? "border-white/20 bg-white/[0.05] shadow-[0_0_20px_rgba(255,255,255,0.03)]" : "border-white/[0.05] bg-transparent"}`}>
+    <div className={`text-4xl font-serif tracking-tight ${active ? "text-white" : "text-white/80"}`}>
+      {String(value).padStart(2, "0")}
+    </div>
+    <span className="mt-2 text-[9px] uppercase tracking-[0.2em] text-white/40 font-semibold">
+      {label}
+    </span>
+  </div>
+);
+
+export function OverviewTab({
+  timeRemaining,
+  photos,
+  challenges,
   totalReactions,
+  navigate,
+  eventId,
   eventUrl,
   eventData,
   copied,
@@ -29,92 +138,144 @@ export const OverviewTab = ({
   adminLoading,
   handleSaveAdmins,
   currentConfig
-}: any) => {
+}: OverviewTabProps) {
+  const isFinished = timeRemaining.phase === 'finished';
+
   return (
-    <div className="space-y-8 md:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-      {/* Timer Card */}
-      <div className="glass rounded-[2rem] p-6 relative overflow-hidden group">
-        <div className="flex items-center justify-between border-b border-white/5 pb-4">
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-accent/10 rounded-2xl text-accent">
-              {timeRemaining.phase === 'finished' ? <Check size={20} /> : <Hourglass size={20} className="animate-spin" />}
-            </div>
-            <div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-accent block">Cycle Événementiel</span>
-              <h3 className="text-sm font-bold text-gray-200">{timeRemaining.label}</h3>
-            </div>
-          </div>
-        </div>
+    <div className="relative min-h-screen overflow-x-hidden px-4 pb-40 pt-6 font-sans">
+      {/* Premium Cinematic Background FX */}
+      <div className="absolute inset-0 bg-[#08060d] -z-20" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-white/[0.02] blur-[100px] rounded-full pointer-events-none -z-10" />
 
-        <div className="grid grid-cols-4 gap-3 pt-4 text-center">
-          {[
-            { v: timeRemaining.days, l: 'Jours' },
-            { v: timeRemaining.hours, l: 'Heures' },
-            { v: timeRemaining.minutes, l: 'Min' },
-            { v: timeRemaining.seconds, l: 'Sec', color: 'text-accent' }
-          ].map((t, i) => (
-            <div key={i} className="bg-black/40 border border-white/5 rounded-2xl py-3">
-              <span className={`text-2xl font-black ${t.color || 'text-white'}`}>{String(t.v).padStart(2, '0')}</span>
-              <span className="text-[8px] font-extrabold uppercase block text-gray-500">{t.l}</span>
-            </div>
-          ))}
+      {/* HEADER */}
+      <div className="relative z-10 mb-8 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-medium">
+            Tableau de Bord
+          </p>
+          <h1 className="mt-2 text-4xl font-serif text-white font-medium tracking-tight">
+            Vue Organisateur
+          </h1>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        {[
-          { label: 'Photos', value: photos.length, icon: ImageIcon, color: 'text-primary' },
-          { label: 'Défis', value: challenges.length, icon: Hash, color: 'text-accent' },
-          { label: 'Réactions', value: totalReactions, icon: Zap, color: 'text-yellow-400' },
-          { label: 'Statut', value: timeRemaining.phase === 'finished' ? 'Clôturé' : 'Actif', icon: Check, color: 'text-green-400' }
-        ].map((stat, i) => (
-          <div key={i} className="glass p-5 rounded-3xl border border-white/5 space-y-3">
-            <div className={`${stat.color} bg-white/5 w-10 h-10 rounded-xl flex items-center justify-center`}><stat.icon size={20} /></div>
+      {/* HERO SECTION */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="relative overflow-hidden rounded-[32px] border border-white/[0.08] bg-white/[0.02] backdrop-blur-3xl p-8 shadow-2xl"
+      >
+        <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-white/[0.03] to-transparent pointer-events-none" />
+
+        <div className="relative z-10">
+          <div className="flex items-start justify-between">
             <div>
-              <p className="text-2xl font-black">{stat.value}</p>
-              <p className="text-[9px] font-black uppercase tracking-widest text-gray-500">{stat.label}</p>
+              <div className="mb-4 flex items-center gap-3">
+                <div className="rounded-full bg-white/[0.08] p-2 border border-white/[0.05]">
+                  <Activity className="h-3.5 w-3.5 text-white/80" />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.25em] text-white/60 font-medium">
+                  Statut de l'événement
+                </span>
+              </div>
+              <h2 className="text-3xl font-serif text-white tracking-tight">
+                {isFinished ? 'Album scellé' : 'Album en activité'}
+              </h2>
+              <p className="mt-2 text-sm text-white/50 font-light">
+                {timeRemaining.label}
+              </p>
+            </div>
+
+            <div className={`rounded-full border px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] backdrop-blur-md ${isFinished ? 'border-white/10 bg-white/5 text-white/60' : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'}`}>
+              {isFinished ? 'Terminé' : 'En cours'}
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* Admin QR, Security & Storage Grid */}
-      {eventData && currentConfig && (
-        <div className="glass rounded-[2.5rem] p-6 md:p-10 border border-white/5 shadow-2xl relative overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center relative z-10">
-            <OverviewQRSection 
-              eventUrl={eventUrl} 
-              eventName={eventData.name} 
-              copied={copied} 
-              copyLink={copyLink} 
-              downloadQRCode={downloadQRCode} 
-              shareWhatsApp={shareWhatsApp} 
+          {/* COUNTDOWN */}
+          {!isFinished && (
+            <div className="mt-10 grid grid-cols-4 gap-4 max-w-2xl">
+              <CountdownCell value={timeRemaining.days} label="jours" />
+              <CountdownCell value={timeRemaining.hours} label="heures" />
+              <CountdownCell value={timeRemaining.minutes} label="mins" />
+              <CountdownCell value={timeRemaining.seconds} label="sec" active />
+            </div>
+          )}
+        </div>
+      </motion.div>
+
+      {/* METRICS */}
+      <motion.div 
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+        className="mt-6 grid grid-cols-2 gap-4"
+      >
+        <MetricCard icon={<ImageIcon size={18} />} value={photos.length} label="photos partagées" accent="#ffffff" />
+        <MetricCard icon={<QrCode size={18} />} value={challenges.length} label="défis créés" accent="#ffffff" />
+        <MetricCard icon={<Sparkles size={18} />} value={totalReactions} label="réactions" accent="#ffffff" />
+        <MetricCard icon={<Shield size={18} />} value={eventData?.access_password ? "Privé" : "Ouvert"} label="confidentialité" accent="#ffffff" />
+      </motion.div>
+
+      {/* LOWER GRID */}
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          className="rounded-[32px] border border-white/[0.08] bg-white/[0.02] p-8 backdrop-blur-3xl"
+        >
+          <OverviewQRSection 
+            eventUrl={eventUrl}
+            eventName={eventData?.name || ""}
+            copied={copied}
+            copyLink={copyLink}
+            downloadQRCode={downloadQRCode}
+            shareWhatsApp={shareWhatsApp}
+          />
+        </motion.div>
+
+        <div className="flex flex-col gap-6">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-[32px] border border-white/[0.08] bg-white/[0.02] p-8 backdrop-blur-3xl"
+          >
+            <OverviewSecuritySection
+              enablePasswordToggle={enablePasswordToggle}
+              handleTogglePasswordFeature={handleTogglePasswordFeature}
+              eventData={eventData}
+              pwdLoading={pwdLoading}
+              handleRevokePassword={handleRevokePassword}
+              newPassword={newPassword}
+              setNewPassword={setNewPassword}
+              handleSetPassword={handleSetPassword}
+              enableAdminsToggle={enableAdminsToggle}
+              handleToggleAdminsFeature={handleToggleAdminsFeature}
+              allDisplayGuests={guests}
+              stagedAdmins={stagedAdmins}
+              handleToggleStagedAdmin={handleToggleStagedAdmin}
+              adminLoading={adminLoading}
+              handleSaveAdmins={handleSaveAdmins}
             />
-            
-            <div className="space-y-6 md:border-l md:border-white/5 md:pl-8">
-              <OverviewSecuritySection 
-                enablePasswordToggle={enablePasswordToggle} 
-                handleTogglePasswordFeature={handleTogglePasswordFeature}
-                eventData={eventData} 
-                pwdLoading={pwdLoading}
-                handleRevokePassword={handleRevokePassword}
-                newPassword={newPassword} 
-                setNewPassword={setNewPassword}
-                handleSetPassword={handleSetPassword}
-                enableAdminsToggle={enableAdminsToggle}
-                handleToggleAdminsFeature={handleToggleAdminsFeature}
-                allDisplayGuests={guests} 
-                stagedAdmins={stagedAdmins}
-                handleToggleStagedAdmin={handleToggleStagedAdmin}
-                adminLoading={adminLoading} 
-                handleSaveAdmins={handleSaveAdmins}
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-[32px] border border-white/[0.08] bg-white/[0.02] p-8 backdrop-blur-3xl"
+          >
+            {currentConfig && (
+              <OverviewCapacitySection 
+                currentPhotos={photos.length} 
+                maxPhotos={currentConfig.max_photos} 
               />
-              <OverviewCapacitySection currentPhotos={photos.length} maxPhotos={currentConfig.max_photos} />
-            </div>
-          </div>
+            )}
+          </motion.div>
         </div>
-      )}
+      </div>
     </div>
-  )
+  );
 }
