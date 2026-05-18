@@ -74,10 +74,12 @@ export default function Dashboard() {
           {activeTab === 'gallery' && (
             <GalleryTab 
               photos={photos} 
+              challenges={challenges}
               isAdminUploading={isAdminUploading} 
               adminFileInputRef={adminFileInputRef} 
               handleAdminUploadChange={handleAdminUploadChange} 
               handleDeletePhoto={handleDeletePhoto}
+
               selectedFilesForUpload={selectedFilesForUpload}
               showUploadModal={showUploadModal}
               setShowUploadModal={setShowUploadModal}

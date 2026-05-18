@@ -58,8 +58,9 @@ export default function UploadPhoto() {
           </div>
           <button 
             onClick={() => setShouldCompress(!shouldCompress)} 
-            className={`w-12 h-6 rounded-full transition-all relative shrink-0 ${shouldCompress ? 'bg-primary shadow-[0_0_15px_rgba(170,59,255,0.4)]' : 'bg-white/10'}`}
+            className={`w-12 h-6 rounded-full transition-all relative shrink-0 ${shouldCompress ? 'bg-[#aa3bff] shadow-[0_0_15px_rgba(170,59,255,0.4)]' : 'bg-white/10'}`}
           >
+
             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${shouldCompress ? 'left-7' : 'left-1'}`} />
           </button>
         </div>

@@ -13,7 +13,8 @@ export function useUploadLogic(token: string | undefined) {
   const [selectedChallenge, setSelectedChallenge] = useState<string | null>(null)
   const [localUploadsCount] = useState<number>(0)
   const [guestPseudo, setGuestPseudo] = useState<string>('Invité')
-  const [shouldCompress, setShouldCompress] = useState(true)
+  const [shouldCompress, setShouldCompress] = useState(false)
+
 
 
   useEffect(() => {

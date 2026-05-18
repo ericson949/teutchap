@@ -13,7 +13,8 @@ export function useDashboardLogic(eventId: string | undefined) {
   const { eventData, loading: eventLoading, isOwner, updateEvent, deleteEvent } = useEvent(eventId)
   const [selectedFilesForUpload, setSelectedFilesForUpload] = useState<File[]>([])
   const [showUploadModal, setShowUploadModal] = useState(false)
-  const [organizerCompress, setOrganizerCompress] = useState(true)
+  const [organizerCompress, setOrganizerCompress] = useState(false)
+
 
 
   const { challenges, addChallenge, deleteChallenge } = useChallenges(eventData?.id)

@@ -48,7 +48,8 @@ export default function EventHome() {
         <div className="p-4 md:p-8">
           {offlineQueueCount > 0 && <OfflineBanner count={offlineQueueCount} isOnline={isOnline} onSync={handleSyncOffline} />}
           {activeTab === 'swipe' && <GuestSwipeView photos={photos} onSwipeRight={(p) => addReaction(p.id, '❤️')} />}
-          {activeTab === 'gallery' && <GuestGalleryView photos={photos} userReactions={userReactions} reactions={reactions} addReaction={addReaction} />}
+          {activeTab === 'gallery' && <GuestGalleryView photos={photos} userReactions={userReactions} reactions={reactions} addReaction={addReaction} challenges={challenges} />}
+
           {activeTab === 'challenges' && (
             <GuestChallengesView 
               challenges={challenges} 
