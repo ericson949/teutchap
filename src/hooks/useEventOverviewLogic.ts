@@ -14,7 +14,7 @@ export function useEventOverviewLogic(eventId: string | undefined) {
   const [newPassword, setNewPassword] = useState('')
   const [pwdLoading, setPwdLoading] = useState(false)
   const [stagedAdmins, setStagedAdmins] = useState<string[]>([])
-  const [adminLoading] = useState(false)
+  const [adminLoading, setAdminLoading] = useState(false)
   const [enablePasswordToggle, setEnablePasswordToggle] = useState(false)
   const [enableAdminsToggle, setEnableAdminsToggle] = useState(false)
   const [isExporting] = useState(false)
@@ -54,12 +54,16 @@ export function useEventOverviewLogic(eventId: string | undefined) {
   }, [eventData])
 
   useEffect(() => {
-    if (eventData) {
+    if (eventData && guests.length > 0) {
       if (eventData.access_password) setEnablePasswordToggle(true)
       if (eventData.co_admins?.length > 0) setEnableAdminsToggle(true)
-      setStagedAdmins(eventData.co_admins || [])
+      
+      const initialCoAdminPseudos = guests
+        .filter(g => eventData.co_admins?.includes(g.user_id))
+        .map(g => g.pseudo)
+      setStagedAdmins(initialCoAdminPseudos)
     }
-  }, [eventData])
+  }, [eventData, guests])
 
   const copyLink = (text: string) => {
     if (navigator.clipboard && window.isSecureContext) {
@@ -84,6 +88,29 @@ export function useEventOverviewLogic(eventId: string | undefined) {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const handleSaveAdmins = async () => {
+    if (!eventData?.id) return
+    setAdminLoading(true)
+    try {
+      const selectedGuests = guests.filter(g => stagedAdmins.includes(g.pseudo))
+      const coAdminIds = selectedGuests.map(g => g.user_id)
+
+      await updateEvent({ co_admins: coAdminIds })
+
+      for (const guest of guests) {
+        const isCoAdmin = coAdminIds.includes(guest.user_id)
+        const newRole = isCoAdmin ? 'co_admin' : 'guest'
+        if (guest.role !== newRole) {
+          await updateGuestRole(guest.user_id, newRole)
+        }
+      }
+    } catch (err) {
+      console.error("Error saving co-admins:", err)
+    } finally {
+      setAdminLoading(false)
+    }
+  }
+
   return {
     eventData, eventLoading, isOwner, photos, currentConfig, guests,
     copied, setCopied, newPassword, setNewPassword, pwdLoading,
@@ -100,6 +127,7 @@ export function useEventOverviewLogic(eventId: string | undefined) {
         setPwdLoading(true)
         await updateEvent({ access_password: null })
         setPwdLoading(false)
-    }
+    },
+    handleSaveAdmins
   }
 }

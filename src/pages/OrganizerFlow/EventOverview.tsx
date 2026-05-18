@@ -15,7 +15,7 @@ export default function EventOverview() {
     copied, newPassword, setNewPassword, pwdLoading,
     stagedAdmins, setStagedAdmins, adminLoading,
     enablePasswordToggle, setEnablePasswordToggle, enableAdminsToggle, setEnableAdminsToggle,
-    timeRemaining, handleSetPassword, handleRevokePassword, copyLink
+    timeRemaining, handleSetPassword, handleRevokePassword, copyLink, handleSaveAdmins
   } = useEventOverviewLogic(eventId)
 
   if (eventLoading) return <LoadingScreen />
@@ -150,7 +150,7 @@ export default function EventOverview() {
                 handleToggleAdminsFeature={() => setEnableAdminsToggle(!enableAdminsToggle)}
                 allDisplayGuests={guests} stagedAdmins={stagedAdmins}
                 handleToggleStagedAdmin={(p:string) => setStagedAdmins(prev => prev.includes(p) ? prev.filter(x=>x!==p) : [...prev, p])}
-                adminLoading={adminLoading} handleSaveAdmins={() => {}}
+                adminLoading={adminLoading} handleSaveAdmins={handleSaveAdmins}
               />
               <OverviewCapacitySection currentPhotos={photos.length} maxPhotos={currentConfig.max_photos} />
             </div>

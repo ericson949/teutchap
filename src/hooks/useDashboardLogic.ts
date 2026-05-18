@@ -6,6 +6,7 @@ import { usePhotos } from './usePhotos'
 import { useReactions } from './useReactions'
 import { useEventGuests } from './useEventGuests'
 import { useAuth } from '../contexts/AuthContext'
+import { useAppPlans } from './useAppPlans'
 import { compressImageUtil } from '../utils/image'
 
 export function useDashboardLogic(eventId: string | undefined) {
@@ -15,17 +16,25 @@ export function useDashboardLogic(eventId: string | undefined) {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [organizerCompress, setOrganizerCompress] = useState(false)
 
-
-
   const { challenges, addChallenge, deleteChallenge } = useChallenges(eventData?.id)
   const { photos } = usePhotos(eventData?.id)
   const { reactions, addReaction } = useReactions()
-  const { guests } = useEventGuests(eventData?.id)
+  const { guests, updateGuestRole } = useEventGuests(eventData?.id)
+  const { currentConfig } = useAppPlans(eventData?.plan)
   
   const [activeTab, setActiveTab] = useState('overview')
   const [showChallengeForm, setShowChallengeForm] = useState(false)
   const [isAdminUploading, setIsAdminUploading] = useState(false)
   const adminFileInputRef = useRef<HTMLInputElement>(null)
+
+  // Overview / Security integration states
+  const [copied, setCopied] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [pwdLoading, setPwdLoading] = useState(false)
+  const [stagedAdmins, setStagedAdmins] = useState<string[]>([])
+  const [adminLoading, setAdminLoading] = useState(false)
+  const [enablePasswordToggle, setEnablePasswordToggle] = useState(false)
+  const [enableAdminsToggle, setEnableAdminsToggle] = useState(false)
 
   // Timer logic
   const [timeRemaining, setTimeRemaining] = useState<any>({
@@ -45,7 +54,7 @@ export function useDashboardLogic(eventId: string | undefined) {
 
       if (now < start) { target = start; label = "Avant début"; phase = 'before_start'; }
       else if (now < end) { target = end; label = "Temps restant"; phase = 'active'; }
-      else { setTimeRemaining({ label: "Terminé", phase: 'finished' }); return; }
+      else { setTimeRemaining({ label: "Album révélé", phase: 'finished', days: 0, hours: 0, minutes: 0, seconds: 0 }); return; }
 
       const diff = Math.max(0, target - now)
       setTimeRemaining({
@@ -60,6 +69,76 @@ export function useDashboardLogic(eventId: string | undefined) {
     const itv = setInterval(updateTimer, 1000)
     return () => clearInterval(itv)
   }, [eventData])
+
+  useEffect(() => {
+    if (eventData && guests.length > 0) {
+      if (eventData.access_password) setEnablePasswordToggle(true)
+      if (eventData.co_admins?.length > 0) setEnableAdminsToggle(true)
+      
+      const initialCoAdminPseudos = guests
+        .filter(g => eventData.co_admins?.includes(g.user_id))
+        .map(g => g.pseudo)
+      setStagedAdmins(initialCoAdminPseudos)
+    }
+  }, [eventData, guests])
+
+  const copyLink = (text: string) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text)
+    } else {
+      const textArea = document.createElement("textarea")
+      textArea.value = text
+      textArea.style.position = "fixed"
+      textArea.style.left = "-9999px"
+      textArea.style.top = "0"
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
+      try {
+        document.execCommand('copy')
+      } catch (err) {
+        console.error('Fallback copy failed', err)
+      }
+      document.body.removeChild(textArea)
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleSetPassword = async (pwd: string) => {
+    setPwdLoading(true)
+    await updateEvent({ access_password: pwd })
+    setPwdLoading(false)
+  }
+
+  const handleRevokePassword = async () => {
+    setPwdLoading(true)
+    await updateEvent({ access_password: null })
+    setPwdLoading(false)
+  }
+
+  const handleSaveAdmins = async () => {
+    if (!eventData?.id) return
+    setAdminLoading(true)
+    try {
+      const selectedGuests = guests.filter(g => stagedAdmins.includes(g.pseudo))
+      const coAdminIds = selectedGuests.map(g => g.user_id)
+
+      await updateEvent({ co_admins: coAdminIds })
+
+      for (const guest of guests) {
+        const isCoAdmin = coAdminIds.includes(guest.user_id)
+        const newRole = isCoAdmin ? 'co_admin' : 'guest'
+        if (guest.role !== newRole) {
+          await updateGuestRole(guest.user_id, newRole)
+        }
+      }
+    } catch (err) {
+      console.error("Error saving co-admins:", err)
+    } finally {
+      setAdminLoading(false)
+    }
+  }
 
   const handleAdminUploadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -105,7 +184,6 @@ export function useDashboardLogic(eventId: string | undefined) {
     setShowUploadModal(false)
   }
 
-
   const handleDeletePhoto = async (photo: any, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!confirm("Supprimer cette photo ?")) return
@@ -124,8 +202,11 @@ export function useDashboardLogic(eventId: string | undefined) {
     updateEvent, deleteEvent, addChallenge, deleteChallenge, addReaction,
     handleAdminUploadChange, handleDeletePhoto,
     selectedFilesForUpload, showUploadModal, setShowUploadModal,
-    organizerCompress, setOrganizerCompress, confirmAdminUpload, cancelAdminUpload
+    organizerCompress, setOrganizerCompress, confirmAdminUpload, cancelAdminUpload,
+    // New integration return variables
+    copied, setCopied, newPassword, setNewPassword, pwdLoading,
+    stagedAdmins, setStagedAdmins, adminLoading,
+    enablePasswordToggle, setEnablePasswordToggle, enableAdminsToggle, setEnableAdminsToggle,
+    currentConfig, copyLink, handleSetPassword, handleRevokePassword, handleSaveAdmins
   }
 }
-
-

@@ -1,8 +1,37 @@
 import { Hourglass, Check, ImageIcon, Hash, Zap } from 'lucide-react'
+import { OverviewQRSection } from './OverviewQRSection'
+import { OverviewSecuritySection } from './OverviewSecuritySection'
+import { OverviewCapacitySection } from './OverviewCapacitySection'
 
-export const OverviewTab = ({ timeRemaining, photos, challenges, totalReactions }: any) => {
+export const OverviewTab = ({ 
+  timeRemaining, 
+  photos, 
+  challenges, 
+  totalReactions,
+  eventUrl,
+  eventData,
+  copied,
+  copyLink,
+  downloadQRCode,
+  shareWhatsApp,
+  enablePasswordToggle,
+  handleTogglePasswordFeature,
+  pwdLoading,
+  handleRevokePassword,
+  newPassword,
+  setNewPassword,
+  handleSetPassword,
+  enableAdminsToggle,
+  handleToggleAdminsFeature,
+  guests,
+  stagedAdmins,
+  handleToggleStagedAdmin,
+  adminLoading,
+  handleSaveAdmins,
+  currentConfig
+}: any) => {
   return (
-    <div className="space-y-8 md:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-8 md:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       {/* Timer Card */}
       <div className="glass rounded-[2rem] p-6 relative overflow-hidden group">
         <div className="flex items-center justify-between border-b border-white/5 pb-4">
@@ -49,6 +78,43 @@ export const OverviewTab = ({ timeRemaining, photos, challenges, totalReactions 
           </div>
         ))}
       </div>
+
+      {/* Admin QR, Security & Storage Grid */}
+      {eventData && currentConfig && (
+        <div className="glass rounded-[2.5rem] p-6 md:p-10 border border-white/5 shadow-2xl relative overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center relative z-10">
+            <OverviewQRSection 
+              eventUrl={eventUrl} 
+              eventName={eventData.name} 
+              copied={copied} 
+              copyLink={copyLink} 
+              downloadQRCode={downloadQRCode} 
+              shareWhatsApp={shareWhatsApp} 
+            />
+            
+            <div className="space-y-6 md:border-l md:border-white/5 md:pl-8">
+              <OverviewSecuritySection 
+                enablePasswordToggle={enablePasswordToggle} 
+                handleTogglePasswordFeature={handleTogglePasswordFeature}
+                eventData={eventData} 
+                pwdLoading={pwdLoading}
+                handleRevokePassword={handleRevokePassword}
+                newPassword={newPassword} 
+                setNewPassword={setNewPassword}
+                handleSetPassword={handleSetPassword}
+                enableAdminsToggle={enableAdminsToggle}
+                handleToggleAdminsFeature={handleToggleAdminsFeature}
+                allDisplayGuests={guests} 
+                stagedAdmins={stagedAdmins}
+                handleToggleStagedAdmin={handleToggleStagedAdmin}
+                adminLoading={adminLoading} 
+                handleSaveAdmins={handleSaveAdmins}
+              />
+              <OverviewCapacitySection currentPhotos={photos.length} maxPhotos={currentConfig.max_photos} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

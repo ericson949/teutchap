@@ -18,10 +18,53 @@ export default function Dashboard() {
     updateEvent, deleteEvent, deleteChallenge, handleAdminUploadChange,
     handleDeletePhoto,
     selectedFilesForUpload, showUploadModal, setShowUploadModal,
-    organizerCompress, setOrganizerCompress, confirmAdminUpload, cancelAdminUpload
+    organizerCompress, setOrganizerCompress, confirmAdminUpload, cancelAdminUpload,
+    // New integration variables
+    copied, newPassword, setNewPassword, pwdLoading,
+    stagedAdmins, setStagedAdmins, adminLoading,
+    enablePasswordToggle, setEnablePasswordToggle, enableAdminsToggle, setEnableAdminsToggle,
+    currentConfig, copyLink, handleSetPassword, handleRevokePassword, handleSaveAdmins, guests
   } = useDashboardLogic(eventId)
 
+  const downloadQRCode = () => {
+    const qrCanvas = document.querySelector('#overview-qr canvas') as HTMLCanvasElement
+    if (!qrCanvas) return
+    
+    const finalCanvas = document.createElement('canvas')
+    const ctx = finalCanvas.getContext('2d')
+    if (!ctx) return
 
+    const padding = 80
+    const textSectionHeight = 160
+    finalCanvas.width = qrCanvas.width + padding * 2
+    finalCanvas.height = qrCanvas.height + padding * 2 + textSectionHeight
+
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height)
+
+    ctx.fillStyle = '#08060d'
+    ctx.textAlign = 'center'
+    
+    ctx.font = '900 32px Inter, sans-serif'
+    const title = `Partagez vos photos de ${eventData.name}`
+    ctx.fillText(title, finalCanvas.width / 2, padding + 40)
+    
+    ctx.font = 'bold 48px Inter, sans-serif'
+    ctx.fillText('ICI', finalCanvas.width / 2, padding + 110)
+
+    ctx.drawImage(qrCanvas, padding, padding + textSectionHeight)
+
+    const pngFile = finalCanvas.toDataURL('image/png')
+    const downloadLink = document.createElement('a')
+    downloadLink.download = `Teutchap_${eventData.name.replace(/\s+/g, '_')}.png`
+    downloadLink.href = pngFile
+    downloadLink.click()
+  }
+
+  const shareWhatsApp = () => {
+    const text = `Rejoins l'album photo de l'événement "${eventData.name}" sur Teutchap ! 📸\n\nScanne le QR Code ou clique ici : ${eventUrl}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+  }
 
   const organizerTabs = [
     { id: 'overview', label: 'Aperçu', icon: <LayoutDashboard size={20} /> },
@@ -70,7 +113,37 @@ export default function Dashboard() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-6 pt-32 pb-12 relative z-10">
         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
-          {activeTab === 'overview' && <OverviewTab timeRemaining={timeRemaining} photos={photos} challenges={challenges} totalReactions={totalReactions} navigate={navigate} eventId={eventId} />}
+          {activeTab === 'overview' && (
+            <OverviewTab 
+              timeRemaining={timeRemaining} 
+              photos={photos} 
+              challenges={challenges} 
+              totalReactions={totalReactions} 
+              navigate={navigate} 
+              eventId={eventId} 
+              eventUrl={eventUrl}
+              eventData={eventData}
+              copied={copied}
+              copyLink={() => copyLink(eventUrl)}
+              downloadQRCode={downloadQRCode}
+              shareWhatsApp={shareWhatsApp}
+              enablePasswordToggle={enablePasswordToggle}
+              handleTogglePasswordFeature={() => setEnablePasswordToggle(!enablePasswordToggle)}
+              pwdLoading={pwdLoading}
+              handleRevokePassword={handleRevokePassword}
+              newPassword={newPassword}
+              setNewPassword={setNewPassword}
+              handleSetPassword={handleSetPassword}
+              enableAdminsToggle={enableAdminsToggle}
+              handleToggleAdminsFeature={() => setEnableAdminsToggle(!enableAdminsToggle)}
+              guests={guests}
+              stagedAdmins={stagedAdmins}
+              handleToggleStagedAdmin={(p: string) => setStagedAdmins(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])}
+              adminLoading={adminLoading}
+              handleSaveAdmins={handleSaveAdmins}
+              currentConfig={currentConfig}
+            />
+          )}
           {activeTab === 'gallery' && (
             <GalleryTab 
               photos={photos} 
@@ -91,7 +164,7 @@ export default function Dashboard() {
           )}
 
           {activeTab === 'challenges' && <ChallengesTab challenges={challenges} showChallengeForm={showChallengeForm} setShowChallengeForm={setShowChallengeForm} newChallenge={{title: '', description: ''}} setNewChallenge={() => {}} handleSaveChallenge={() => {}} deleteChallenge={deleteChallenge} />}
-          {activeTab === 'settings' && <SettingsTab eventData={eventData} eventUrl={eventUrl} copyLink={() => {}} shareWhatsApp={() => {}} updateEvent={updateEvent} deleteEvent={deleteEvent} />}
+          {activeTab === 'settings' && <SettingsTab eventData={eventData} eventUrl={eventUrl} copyLink={() => copyLink(eventUrl)} shareWhatsApp={shareWhatsApp} updateEvent={updateEvent} deleteEvent={deleteEvent} />}
 
         </div>
       </main>
