@@ -1,5 +1,6 @@
 import React from 'react'
-import { Trophy, Hash } from 'lucide-react'
+import { Trophy, Hash, Sparkles, Target } from 'lucide-react'
+import { getChallengeTemplates } from '../../../lib/gamification'
 
 interface GuestChallengesViewProps {
   challenges: any[]
@@ -10,12 +11,17 @@ interface GuestChallengesViewProps {
   newChalTitle: string
   setNewChalTitle: (val: string) => void
   allowGuestChallenges?: boolean
+  eventType?: string
 }
 
 export const GuestChallengesView: React.FC<GuestChallengesViewProps> = ({ 
   challenges, photoCountPerChallenge, showChallengeForm, setShowChallengeForm, 
-  handleCreateChallengeSubmit, newChalTitle, setNewChalTitle, allowGuestChallenges = false
+  handleCreateChallengeSubmit, newChalTitle, setNewChalTitle, allowGuestChallenges = false,
+  eventType
 }) => {
+  const templates = getChallengeTemplates(eventType).slice(0, 4)
+  const activeChallengeIds = new Set(challenges.map(c => c.title?.toLowerCase()))
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
@@ -33,6 +39,32 @@ export const GuestChallengesView: React.FC<GuestChallengesViewProps> = ({
           <button type="submit" className="w-full bg-primary text-white font-black py-3 rounded-xl text-[10px] uppercase">Lancer le défi</button>
         </form>
       )}
+
+      <div className="glass rounded-3xl border border-white/5 p-5 space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-blue-300">
+              <Sparkles size={13} className="fill-current" />
+              <span className="text-[9px] font-black uppercase tracking-[0.2em]">Missions suggerees</span>
+            </div>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/35">
+              Inspirez vos prochaines photos
+            </p>
+          </div>
+          <Target size={18} className="text-white/30" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {templates.map(template => {
+            const alreadyActive = activeChallengeIds.has(template.title.toLowerCase())
+            return (
+              <div key={template.title} className={`rounded-2xl border p-3 ${alreadyActive ? 'border-blue-500/20 bg-blue-500/10' : 'border-white/5 bg-white/[0.03]'}`}>
+                <p className="text-xs font-black text-white">{template.title}</p>
+                <p className="mt-1 text-[9px] font-semibold leading-relaxed text-white/40">{template.description}</p>
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 gap-4">
         {challenges.length === 0 ? (

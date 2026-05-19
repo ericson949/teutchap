@@ -28,12 +28,16 @@ export interface EventData {
   id: string;
   name: string;
   token?: string;
+  event_type?: string;
   event_date: string;
   status?: string;
   plan?: string;
   access_password?: string;
   auto_moderation?: boolean;
   allow_guest_challenges?: boolean;
+  gamification_mode?: 'adaptive' | 'party' | 'sober' | 'off';
+  enable_leaderboard?: boolean;
+  enable_awards?: boolean;
   creator_device_id?: string;
 }
 

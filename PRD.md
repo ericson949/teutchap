@@ -131,6 +131,58 @@ L'Afrique centrale organise des événements à très haute valeur émotionnelle
 - **F-12 — Galerie Premium & Lightbox Ambient-Glow** : Fiche d'informations transparente (`glassmorphic`) révélant les émojis de réaction, l'auteur et les défis liés, couplée à un zoom plein écran immersif avec lueur ambiante cinématique. Fermeture multi-canal fluide par clic universel ou bouton `X` dédié.
 - **F-13 — Prévention des Suppressions Accidentelles** : Élimination complète des calques d'actions intrusifs au survol des cellules de la grille. Les clics sur la galerie ouvrent directement la Fiche de Détail, centralisant la suppression d'images dans un flux d'administration explicite et protégé pour parer aux doubles tapes tactiles involontaires.
 
+## 7. Gamification — Engagement façon "missions photo"
+
+### Objectif produit
+
+La gamification transforme la contribution photo en expérience sociale légère : l'invité ne reçoit plus seulement une consigne "envoyez vos photos", il rejoint une mini-aventure événementielle faite de missions, badges, réactions et photos du moment. Le système doit augmenter le taux de participation sans distraire les invités de l'événement réel.
+
+### Principes de design
+
+- **Léger avant tout** : pas de mécanique addictive quotidienne, pas de streak hors événement.
+- **Adapté au contexte** : mariage, anniversaire, corporate, cérémonie religieuse, graduation et hommage n'ont pas le même ton.
+- **Social plutôt que compétitif** : les classements existent, mais restent doux et désactivables dans les contextes sobres.
+- **Premium-ready** : les missions illimitées, le Live Wall gamifié, les awards et le best-of final deviennent des leviers d'upgrade.
+
+### Fonctionnalités implémentées en Phase 1
+
+- **Missions photo suggérées** : templates automatiques selon le type d'événement (`mariage`, `anniversaire`, `corporate`, `funerailles`, `eglise`, `graduation`, fallback générique).
+- **Progression invité** : calcul local des points à partir des photos envoyées, défis complétés et réactions reçues.
+- **Badges automatiques** : Premier souvenir, Contributeur, Mission accomplie, Coup de coeur, Photographe VIP.
+- **Photos du moment** : classement des photos avec le plus de réactions, affiché dans l'espace invité et enrichi sur le Live Wall.
+- **Console organisateur** : onglet Défis enrichi avec templates recommandés, statistiques de défis actifs, défis complétés et photos associées.
+
+### Fonctionnalités implémentées en Phase 2
+
+- **Palmarès live / awards** : calcul automatique de la photo de l'événement, du meilleur contributeur et du défi star à partir des photos, réactions et défis existants.
+- **Classement contributeurs** : score par invité combinant photos ajoutées, défis complétés et réactions reçues.
+- **Mode sobre** : désactivation automatique des classements pour les événements d'hommage/funérailles, avec expérience discrète centrée sur les souvenirs.
+- **Contrôles organisateur** : réglages persistés sur l'événement (`adaptive`, `party`, `sober`, `off`) et interrupteurs dédiés aux classements et awards.
+- **Live Wall enrichi** : affichage conditionnel des top photos, awards et contributeur leader selon le mode choisi.
+
+### Roadmap gamification
+
+| Phase | Fonctionnalités | Objectif |
+|---|---|---|
+| Phase 1 | Missions, badges, progression locale, top photos | Augmenter la participation sans nouveau backend |
+| Phase 2 | Awards de fin d'événement, classement contributeurs, mode sobre, activation/désactivation par contexte | Créer une raison d'upgrade Premium |
+| Phase 3 | IA de validation des missions, highlight reel automatique, suggestions intelligentes de photos manquantes | Différenciation forte face aux albums QR classiques |
+
+### Règles par type d'événement
+
+- **Mariage** : missions émotionnelles, famille, couple, danse, tenues.
+- **Anniversaire / soirée** : missions fun, réactions visibles, classement plus présent.
+- **Corporate** : missions d'équipe, networking, stands, coulisses.
+- **Funérailles / hommages** : pas de compétition par défaut ; missions sobres et contributions discrètes.
+- **Église / camp religieux** : missions communautaires, groupes, chorale, service.
+- **Graduation** : diplôme, famille, promotion, moments de fierté.
+
+### Modèle économique associé
+
+- **Gratuit** : missions limitées, badges simples, réactions basiques.
+- **Premium** : défis illimités, Live Wall gamifié, top photos, awards de fin d'événement.
+- **VIP** : branding personnalisé, concours photo, modération avancée, highlight reel et support organisateur.
+
 ---
 
 ## 9. Modèle de données (Schéma Physique PostgreSQL)
@@ -150,6 +202,9 @@ L'Afrique centrale organise des événements à très haute valeur émotionnelle
 - `start_time`, `end_time` (TIMESTAMP) : Bornes temporelles de validité.
 - `access_password` (TEXT, Nullable) : Clé de chiffrement/verrouillage de l'album partagé.
 - `co_admins` (TEXT[]) : Matrice des identifiants secondaires habilités à la co-gestion.
+- `gamification_mode` (TEXT) : Mode d'animation (`adaptive`, `party`, `sober`, `off`).
+- `enable_leaderboard` (BOOLEAN) : Activation du classement contributeurs.
+- `enable_awards` (BOOLEAN) : Activation du palmarès / awards de fin d'événement.
 
 ### Table `photos`
 - `id` (UUID, Primary Key)

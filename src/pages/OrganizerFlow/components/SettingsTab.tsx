@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Copy, Share2, Trash2, Loader2, AlertTriangle } from 'lucide-react'
+import { Shield, Copy, Share2, Trash2, Loader2, AlertTriangle, Trophy } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { EventData } from '../../../types'
 
@@ -97,6 +97,64 @@ export const SettingsTab = ({ eventData, eventUrl, copyLink, shareWhatsApp, upda
           </div>
         </motion.div>
 
+        {/* Gamification Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.25 }}
+          className="bg-white/[0.02] p-5 sm:p-8 rounded-[32px] border border-white/[0.08] space-y-6 backdrop-blur-2xl md:col-span-2"
+        >
+          <div className="flex items-center space-x-4">
+            <div className="bg-white/[0.05] p-3 rounded-full border border-white/[0.1]">
+              <Trophy size={20} className="text-white/80" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-serif tracking-tight text-white">Gamification</h3>
+              <p className="text-[9px] text-white/40 font-medium uppercase tracking-[0.1em] mt-1">
+                Controlez les missions, awards et classements visibles par les invites
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { id: 'adaptive', label: 'Auto', desc: 'Selon le type' },
+              { id: 'party', label: 'Festif', desc: 'Classements visibles' },
+              { id: 'sober', label: 'Sobre', desc: 'Sans competition' },
+              { id: 'off', label: 'Off', desc: 'Masquer le jeu' }
+            ].map((mode) => {
+              const active = (eventData.gamification_mode || 'adaptive') === mode.id
+              return (
+                <button
+                  key={mode.id}
+                  onClick={() => updateEvent({ gamification_mode: mode.id as EventData['gamification_mode'] })}
+                  className={`rounded-2xl border p-4 text-left transition-all ${
+                    active ? 'bg-blue-500/15 border-blue-500/30 text-white' : 'bg-white/[0.03] border-white/[0.05] text-white/45 hover:text-white'
+                  }`}
+                >
+                  <p className="text-[11px] font-black uppercase tracking-widest">{mode.label}</p>
+                  <p className="mt-1 text-[8px] font-bold uppercase tracking-wider opacity-60">{mode.desc}</p>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <ToggleRow
+              title="Classement contributeurs"
+              description="Affiche les invites les plus actifs dans l album et le Live Wall"
+              checked={eventData.enable_leaderboard !== false}
+              onChange={() => updateEvent({ enable_leaderboard: eventData.enable_leaderboard === false })}
+            />
+            <ToggleRow
+              title="Awards de fin d evenement"
+              description="Prepare un palmares avec photo du moment, meilleur contributeur et defi star"
+              checked={eventData.enable_awards !== false}
+              onChange={() => updateEvent({ enable_awards: eventData.enable_awards === false })}
+            />
+          </div>
+        </motion.div>
+
         {/* Security Section */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
@@ -181,3 +239,18 @@ export const SettingsTab = ({ eventData, eventUrl, copyLink, shareWhatsApp, upda
     </div>
   )
 }
+
+const ToggleRow = ({ title, description, checked, onChange }: { title: string; description: string; checked: boolean; onChange: () => void }) => (
+  <div className="flex items-center justify-between gap-4 p-5 bg-white/[0.03] border border-white/[0.05] rounded-[24px]">
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white">{title}</p>
+      <p className="text-[9px] text-white/40 font-medium uppercase tracking-[0.1em] mt-1 leading-relaxed">{description}</p>
+    </div>
+    <button
+      onClick={onChange}
+      className={`w-12 h-6 rounded-full transition-all relative border shrink-0 ${checked ? 'bg-white border-white' : 'bg-transparent border-white/20'}`}
+    >
+      <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${checked ? 'left-7 bg-black' : 'left-1 bg-white/40'}`} />
+    </button>
+  </div>
+)

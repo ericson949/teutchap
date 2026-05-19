@@ -15,12 +15,13 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [isPhotoDetailOpen, setIsPhotoDetailOpen] = useState(false)
+  const [newChallenge, setNewChallenge] = useState({ title: '', description: '' })
   
   const {
     eventData, eventLoading, isOwner, challenges, photos,
     activeTab, setActiveTab, showChallengeForm, setShowChallengeForm,
     isAdminUploading, adminFileInputRef, timeRemaining, totalReactions,
-    updateEvent, deleteEvent, deleteChallenge, handleAdminUploadChange,
+    updateEvent, deleteEvent, addChallenge, deleteChallenge, handleAdminUploadChange,
     handleDeletePhoto,
     selectedFilesForUpload, showUploadModal, setShowUploadModal,
     organizerCompress, setOrganizerCompress, confirmAdminUpload, cancelAdminUpload,
@@ -277,6 +278,16 @@ export default function Dashboard() {
   if (!isOwner) return <AccessDeniedScreen />
 
   const eventUrl = `${window.location.origin}/e/${eventData.token}`
+  const photoCountPerChallenge = photos.reduce((acc: any, photo) => {
+    if (photo.challenge_id) acc[photo.challenge_id] = (acc[photo.challenge_id] || 0) + 1
+    return acc
+  }, {})
+  const handleSaveChallenge = async () => {
+    if (!newChallenge.title.trim()) return
+    await addChallenge(newChallenge.title.trim(), newChallenge.description.trim())
+    setNewChallenge({ title: '', description: '' })
+    setShowChallengeForm(false)
+  }
 
   return (
     <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30 overflow-x-hidden pb-24">
@@ -372,7 +383,19 @@ export default function Dashboard() {
             />
           )}
 
-          {activeTab === 'challenges' && <ChallengesTab challenges={challenges} showChallengeForm={showChallengeForm} setShowChallengeForm={setShowChallengeForm} newChallenge={{title: '', description: ''}} setNewChallenge={() => {}} handleSaveChallenge={() => {}} deleteChallenge={deleteChallenge} />}
+          {activeTab === 'challenges' && (
+            <ChallengesTab
+              challenges={challenges}
+              showChallengeForm={showChallengeForm}
+              setShowChallengeForm={setShowChallengeForm}
+              newChallenge={newChallenge}
+              setNewChallenge={setNewChallenge}
+              handleSaveChallenge={handleSaveChallenge}
+              deleteChallenge={deleteChallenge}
+              eventType={eventData.event_type}
+              photoCountPerChallenge={photoCountPerChallenge}
+            />
+          )}
           {activeTab === 'settings' && <SettingsTab eventData={eventData} eventUrl={eventUrl} copyLink={() => copyLink(eventUrl)} shareWhatsApp={shareWhatsApp} updateEvent={updateEvent} deleteEvent={deleteEvent} />}
 
         </div>

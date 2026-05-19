@@ -9,6 +9,8 @@ import { GuestGalleryView } from './components/GuestGalleryView'
 import { GuestChallengesView } from './components/GuestChallengesView'
 import { GuestBottomNav } from './components/GuestBottomNav'
 import UploadPhoto from './UploadPhoto'
+import GamificationPanel from '../../components/GamificationPanel'
+import EventAwards from '../../components/EventAwards'
 
 export default function EventHome() {
   const { token } = useParams()
@@ -28,11 +30,12 @@ export default function EventHome() {
 
   const isRevealed = !eventData?.reveal_time || new Date() >= new Date(eventData.reveal_time)
 
+  const isGamificationOff = eventData?.gamification_mode === 'off'
   const guestTabs = [
     { id: 'gallery', label: 'Album', icon: '🖼️' },
     { id: 'challenges', label: 'Défis', icon: '🏆' },
     { id: 'swipe', label: 'Swipe', icon: '🔥' }
-  ]
+  ].filter(tab => !isGamificationOff || tab.id === 'gallery')
 
   if (eventLoading) return <LoadingScreen />
   if (!eventData) return <NotFoundScreen onBack={() => navigate('/')} />
@@ -61,7 +64,27 @@ export default function EventHome() {
         
         <div className="p-4 md:p-8">
           {offlineQueueCount > 0 && <OfflineBanner count={offlineQueueCount} isOnline={isOnline} onSync={handleSyncOffline} />}
-          {activeTab === 'swipe' && (
+          <div className="mb-6">
+            <GamificationPanel
+              photos={photos}
+              reactions={reactions}
+              guestPseudo={guestPseudo}
+              eventType={eventData?.event_type}
+              gamificationMode={eventData?.gamification_mode}
+            />
+          </div>
+          <div className="mb-6">
+            <EventAwards
+              photos={photos}
+              reactions={reactions}
+              challenges={challenges}
+              eventType={eventData?.event_type}
+              gamificationMode={eventData?.gamification_mode}
+              showLeaderboard={eventData?.enable_leaderboard !== false}
+              showAwards={eventData?.enable_awards !== false}
+            />
+          </div>
+          {!isGamificationOff && activeTab === 'swipe' && (
             isRevealed ? (
               <GuestSwipeView photos={photos} onSwipeRight={(p) => addReaction(p.id, '❤️')} />
             ) : (
@@ -79,7 +102,7 @@ export default function EventHome() {
             />
           )}
 
-          {activeTab === 'challenges' && (
+          {!isGamificationOff && activeTab === 'challenges' && (
             <GuestChallengesView 
               challenges={challenges} 
               photoCountPerChallenge={photos.reduce((acc: any, p) => { if(p.challenge_id) acc[p.challenge_id] = (acc[p.challenge_id] || 0) + 1; return acc; }, {})}
@@ -87,6 +110,7 @@ export default function EventHome() {
               handleCreateChallengeSubmit={(e) => { e.preventDefault(); addChallenge(newChalTitle, ''); setNewChalTitle(''); setShowChallengeForm(false); }}
               newChalTitle={newChalTitle} setNewChalTitle={setNewChalTitle}
               allowGuestChallenges={eventData?.allow_guest_challenges}
+              eventType={eventData?.event_type}
             />
           )}
         </div>

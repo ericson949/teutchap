@@ -4,6 +4,8 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Sparkles, Clock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { usePhotos } from '../../hooks/usePhotos'
+import { useReactions } from '../../hooks/useReactions'
+import { getContributorLeaderboard, getEventAwards, getPhotoLeaderboard, isSoberEvent } from '../../lib/gamification'
 
 export default function LiveWall() {
   const { token } = useParams()
@@ -12,6 +14,7 @@ export default function LiveWall() {
   const [timeRemaining, setTimeRemaining] = useState<string | null>(null)
   
   const { photos } = usePhotos(eventData?.id, { autoModeration: true })
+  const { reactions } = useReactions()
 
   useEffect(() => {
     fetchEvent()
@@ -168,6 +171,11 @@ export default function LiveWall() {
   }
 
   const currentPhoto = photos[currentIndex]
+  const topPhotos = getPhotoLeaderboard(photos, reactions)
+  const currentReactionTotal = Object.values(reactions[currentPhoto.id] || {}).reduce((sum, count) => sum + count, 0)
+  const soberMode = isSoberEvent(eventData.event_type, eventData.gamification_mode)
+  const liveAwards = getEventAwards(photos, reactions).slice(0, 2)
+  const topContributors = getContributorLeaderboard(photos, reactions, 3)
 
   return (
     <div className="min-h-screen bg-black overflow-hidden relative flex items-center justify-center">
@@ -247,6 +255,14 @@ export default function LiveWall() {
                  Par {currentPhoto.uploader_name}
                </div>
              )}
+             {!soberMode && currentReactionTotal > 0 && (
+               <div className="mb-3 inline-flex items-center space-x-2 bg-white/10 border border-white/10 px-4 py-2 rounded-xl">
+                 <TrophyIcon />
+                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">
+                   {currentReactionTotal} reaction(s)
+                 </span>
+               </div>
+             )}
              {currentPhoto.ai_tags && currentPhoto.ai_tags.length > 0 ? (
                <div className="flex flex-wrap gap-2">
                  {currentPhoto.ai_tags.slice(0, 3).map((tag: string) => (
@@ -265,6 +281,43 @@ export default function LiveWall() {
 
           {/* Persistent QR Code Call to Action */}
           <div className="glass-dark p-5 rounded-[2.5rem] border-white/10 shadow-2xl flex items-center space-x-8 backdrop-blur-3xl border-t border-l pointer-events-auto">
+             {!soberMode && eventData.enable_leaderboard !== false && topPhotos.length > 0 && (
+               <div className="hidden xl:flex items-center space-x-3 border-r border-white/10 pr-6">
+                 <div className="text-right">
+                   <p className="text-[9px] font-black text-primary uppercase tracking-[0.25em]">Top photos</p>
+                   <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">En direct</p>
+                 </div>
+                 <div className="flex -space-x-3">
+                   {topPhotos.map((photo, index) => (
+                     <div key={photo.id} className="relative w-12 h-12 rounded-2xl overflow-hidden border-2 border-black bg-white/5">
+                       <img
+                         src={photo.url_thumb?.startsWith('blob:') || photo.url_thumb?.startsWith('data:') ? photo.url_thumb : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_thumb}`}
+                         className="w-full h-full object-cover"
+                       />
+                       <span className="absolute left-1 top-1 bg-black/70 rounded-full px-1.5 py-0.5 text-[7px] font-black text-white">
+                         {index + 1}
+                       </span>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+             )}
+             {!soberMode && eventData.enable_awards !== false && liveAwards.length > 0 && (
+               <div className="hidden 2xl:flex items-center space-x-3 border-r border-white/10 pr-6">
+                 {liveAwards.map((award) => (
+                   <div key={award.id} className="text-right max-w-36">
+                     <p className="text-[8px] font-black text-primary uppercase tracking-[0.2em] truncate">{award.title}</p>
+                     <p className="text-[10px] font-black text-white truncate">{award.winner}</p>
+                   </div>
+                 ))}
+               </div>
+             )}
+             {!soberMode && eventData.enable_leaderboard !== false && topContributors.length > 0 && (
+               <div className="hidden 2xl:block text-right border-r border-white/10 pr-6">
+                 <p className="text-[8px] font-black text-primary uppercase tracking-[0.2em]">Top invite</p>
+                 <p className="text-[10px] font-black text-white truncate max-w-28">{topContributors[0].name}</p>
+               </div>
+             )}
              <div className="text-right">
                 <p className="text-sm font-black text-white uppercase tracking-widest leading-tight">Ajoutez votre<br/>photo</p>
                 <div className="flex items-center justify-end space-x-2 mt-2">
@@ -293,3 +346,13 @@ export default function LiveWall() {
     </div>
   )
 }
+
+const TrophyIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4 text-primary">
+    <path d="M8 21h8" />
+    <path d="M12 17v4" />
+    <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z" />
+    <path d="M5 5H3v2a4 4 0 0 0 4 4" />
+    <path d="M19 5h2v2a4 4 0 0 1-4 4" />
+  </svg>
+)
