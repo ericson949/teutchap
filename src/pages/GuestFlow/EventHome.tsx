@@ -47,11 +47,11 @@ export default function EventHome() {
   }
 
   return (
-    <div className="min-h-screen bg-[#08060d] text-white flex flex-col relative overflow-x-hidden font-sans">
+    <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text-primary)] flex flex-col relative overflow-x-hidden font-sans">
       {/* Decorative Premium Glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[10%] left-[5%] w-72 h-72 bg-blue-600/10 rounded-full blur-[100px] -z-20 pointer-events-none animate-pulse-slow" />
-        <div className="absolute top-[40%] right-[5%] w-80 h-80 bg-blue-600/10 rounded-full blur-[120px] -z-20 pointer-events-none animate-pulse-slow" style={{ animationDelay: '2s' }} />
+        <div className="glow-accent top-[10%] left-[5%] animate-pulse-slow" />
+        <div className="glow-accent top-[40%] right-[5%] animate-pulse-slow" style={{ animationDelay: '2s' }} />
       </div>
 
       {!isPhotoDetailOpen && (
@@ -131,113 +131,59 @@ export default function EventHome() {
 
 // Sub-components to keep EventHome under 300 lines
 const LoadingScreen = () => (
-  <div className="min-h-screen bg-[#08060d] flex flex-col items-center justify-center relative overflow-hidden">
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-      <div className="absolute top-[30%] left-[20%] w-[350px] h-[350px] bg-blue-600/10 blur-[130px] rounded-full animate-pulse-slow" />
-    </div>
+  <div className="min-h-screen bg-[var(--bg-app)] flex flex-col items-center justify-center relative overflow-hidden">
+    <div className="glow-accent top-[30%] left-[20%] animate-pulse-slow" />
     <div className="relative z-10 flex flex-col items-center">
-      <Loader2 size={32} className="text-blue-400 animate-spin" />
-      <p className="mt-6 text-[10px] font-black uppercase tracking-[0.25em] text-white/50">Développement des souvenirs...</p>
+      <Loader2 size={28} className="text-[var(--color-accent)] animate-spin" />
+      <p className="mt-6 t-eyebrow">Développement des souvenirs...</p>
     </div>
   </div>
 )
 
 const NotFoundScreen = ({ onBack }: { onBack: () => void }) => (
-  <div className="min-h-screen bg-[#08060d] flex flex-col items-center justify-center p-8 text-center space-y-8 relative overflow-hidden">
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-      <div className="absolute top-[30%] left-[20%] w-[350px] h-[350px] bg-blue-600/10 blur-[130px] rounded-full animate-pulse-slow" />
-    </div>
+  <div className="min-h-screen bg-[var(--bg-app)] flex flex-col items-center justify-center p-8 text-center space-y-8 relative overflow-hidden">
+    <div className="glow-accent top-[30%] left-[20%] animate-pulse-slow" />
     <div className="space-y-4 relative z-10">
-      <h2 className="text-4xl md:text-5xl font-serif text-white tracking-tight">Événement introuvable</h2>
-      <p className="text-white/40 text-xs font-semibold uppercase tracking-widest max-w-xs mx-auto">Le lien suivi semble être expiré ou incorrect.</p>
+      <h2 className="t-display">Événement introuvable</h2>
+      <p className="t-body max-w-xs mx-auto">Le lien suivi semble être expiré ou incorrect.</p>
     </div>
-    <button 
-      onClick={onBack} 
-      className="relative z-10 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-500 hover:to-blue-300 text-white font-bold px-8 py-4 rounded-2xl shadow-[0_10px_25px_rgba(59,130,246,0.3)] transition-all text-[10px] uppercase tracking-[0.2em] active:scale-95 cursor-pointer"
-    >
-      Retour à l'accueil
-    </button>
+    <button onClick={onBack} className="btn-accent relative z-10">Retour à l'accueil</button>
   </div>
 )
 
 const PasswordScreen = ({ pwdInput, setPwdInput, pwdError, onVerify }: any) => (
-  <div className="min-h-screen bg-[#08060d] flex flex-col items-center justify-center p-8 relative overflow-hidden">
-    {/* Decorative Premium Glows */}
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-      <div className="absolute top-[20%] right-[-10%] w-[350px] h-[350px] bg-blue-600/10 blur-[130px] rounded-full animate-pulse-slow" />
-      <div className="absolute bottom-[20%] left-[-10%] w-[350px] h-[350px] bg-blue-600/5 blur-[130px] rounded-full animate-pulse-slow" style={{ animationDelay: '2s' }} />
-    </div>
-
-    <form 
-      onSubmit={(e) => { e.preventDefault(); onVerify(); }} 
-      className="cinematic-surface p-8 sm:p-10 w-full max-w-md space-y-8 relative z-10 border border-white/[0.08] shadow-[0_24px_50px_rgba(0,0,0,0.6)]"
-    >
+  <div className="min-h-screen bg-[var(--bg-app)] flex flex-col items-center justify-center p-8 relative overflow-hidden">
+    <div className="glow-accent top-[20%] right-[-10%] animate-pulse-slow" />
+    <div className="glow-accent bottom-[20%] left-[-10%] animate-pulse-slow" style={{ animationDelay: '2s' }} />
+    <form onSubmit={(e) => { e.preventDefault(); onVerify(); }} className="cinematic-surface p-8 sm:p-10 w-full max-w-md space-y-8 relative z-10">
       <div className="text-center space-y-3">
-        <div className="w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(59,130,246,0.1)]">
-          <Lock size={18} className="text-blue-400" />
+        <div className="w-12 h-12 rounded-full bg-[var(--color-accent-soft)] border border-[var(--color-accent)]/20 text-[var(--color-accent)] flex items-center justify-center mx-auto">
+          <Lock size={18} />
         </div>
-        <h2 className="text-3xl font-serif text-white tracking-tight leading-none">Accès Protégé</h2>
-        <p className="text-white/40 text-[10px] font-semibold uppercase tracking-[0.15em]">Veuillez entrer le code de l'événement</p>
+        <h2 className="t-display text-3xl">Accès Protégé</h2>
+        <p className="t-eyebrow">Veuillez entrer le code de l'événement</p>
       </div>
-
-      <input 
-        type="password" 
-        value={pwdInput} 
-        onChange={(e) => setPwdInput(e.target.value)} 
-        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl p-6 text-center text-4xl font-serif tracking-[0.5em] outline-none focus:border-blue-500/40 focus:bg-white/[0.05] focus:shadow-[0_0_20px_rgba(59,130,246,0.15)] transition-all text-white placeholder-white/10" 
-        placeholder="••••" 
-        autoFocus 
-      />
-
-      {pwdError && (
-        <div className="bg-red-500/5 border border-red-500/10 rounded-xl py-2 px-4 text-center">
-          <p className="text-red-400 text-[9px] font-bold uppercase tracking-wider">Code incorrect</p>
-        </div>
-      )}
-
-      <button 
-        type="submit" 
-        className="w-full bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-500 hover:to-blue-300 text-white font-bold py-4 rounded-2xl shadow-[0_10px_25px_rgba(59,130,246,0.3)] transition-all flex items-center justify-center space-x-2 text-[10px] uppercase tracking-[0.2em] active:scale-95 cursor-pointer"
-      >
-        <span>Déverrouiller</span>
-      </button>
+      <input type="password" value={pwdInput} onChange={(e) => setPwdInput(e.target.value)} className="w-full bg-[var(--bg-glass)] border border-[var(--border-default)] rounded-[var(--radius-md)] p-6 text-center text-4xl font-serif tracking-[0.5em] outline-none focus:border-[var(--border-active)] focus:bg-white/[0.05] transition-all text-[var(--text-primary)] placeholder-white/10" placeholder="••••" autoFocus />
+      {pwdError && <div className="bg-red-500/5 border border-red-500/10 rounded-[var(--radius-sm)] py-2 px-4 text-center"><p className="text-red-400 t-eyebrow">Code incorrect</p></div>}
+      <button type="submit" className="btn-accent w-full">Déverrouiller</button>
     </form>
   </div>
 )
 
 const OnboardingScreen = ({ inputPseudo, setInputPseudo, onJoin }: any) => (
-  <div className="min-h-screen bg-[#08060d] flex flex-col items-center justify-center p-8 relative overflow-hidden">
-    {/* Decorative Premium Glows */}
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-      <div className="absolute top-[20%] right-[-10%] w-[350px] h-[350px] bg-blue-600/10 blur-[130px] rounded-full animate-pulse-slow" />
-      <div className="absolute bottom-[20%] left-[-10%] w-[350px] h-[350px] bg-blue-600/5 blur-[130px] rounded-full animate-pulse-slow" style={{ animationDelay: '2s' }} />
-    </div>
-
-    <div className="cinematic-surface p-8 sm:p-10 w-full max-w-md space-y-8 relative z-10 border border-white/[0.08] shadow-[0_24px_50px_rgba(0,0,0,0.6)]">
+  <div className="min-h-screen bg-[var(--bg-app)] flex flex-col items-center justify-center p-8 relative overflow-hidden">
+    <div className="glow-accent top-[20%] right-[-10%] animate-pulse-slow" />
+    <div className="glow-accent bottom-[20%] left-[-10%] animate-pulse-slow" style={{ animationDelay: '2s' }} />
+    <div className="cinematic-surface p-8 sm:p-10 w-full max-w-md space-y-8 relative z-10">
       <div className="text-center space-y-3">
-        <div className="w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(59,130,246,0.1)]">
-          <Sparkles size={18} className="text-blue-400 animate-pulse" />
+        <div className="w-12 h-12 rounded-full bg-[var(--color-accent-soft)] border border-[var(--color-accent)]/20 text-[var(--color-accent)] flex items-center justify-center mx-auto">
+          <Sparkles size={18} className="animate-pulse" />
         </div>
-        <h2 className="text-3xl font-serif text-white tracking-tight leading-none">Bienvenue</h2>
-        <p className="text-white/40 text-[10px] font-semibold uppercase tracking-[0.15em]">Comment souhaitez-vous apparaître ?</p>
+        <h2 className="t-display text-3xl">Bienvenue</h2>
+        <p className="t-eyebrow">Comment souhaitez-vous apparaître ?</p>
       </div>
-
-      <input 
-        type="text" 
-        value={inputPseudo} 
-        onChange={(e) => setInputPseudo(e.target.value)} 
-        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl p-4 text-center text-xl font-serif outline-none focus:border-blue-500/40 focus:bg-white/[0.05] focus:shadow-[0_0_20px_rgba(59,130,246,0.15)] transition-all text-white placeholder-white/20" 
-        placeholder="Votre pseudo" 
-        autoFocus
-      />
-
-      <button 
-        disabled={!inputPseudo.trim()} 
-        onClick={() => onJoin(inputPseudo.trim())} 
-        className="w-full bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-500 hover:to-blue-300 text-white font-bold py-4 rounded-2xl shadow-[0_10px_25px_rgba(59,130,246,0.3)] transition-all flex items-center justify-center space-x-2 text-[10px] uppercase tracking-[0.2em] active:scale-95 cursor-pointer disabled:opacity-30 disabled:pointer-events-none disabled:shadow-none"
-      >
-        <span>Rejoindre l'aventure</span>
-      </button>
+      <input type="text" value={inputPseudo} onChange={(e) => setInputPseudo(e.target.value)} className="w-full bg-[var(--bg-glass)] border border-[var(--border-default)] rounded-[var(--radius-md)] p-4 text-center text-xl font-serif outline-none focus:border-[var(--border-active)] focus:bg-white/[0.05] transition-all text-[var(--text-primary)] placeholder-white/20" placeholder="Votre pseudo" autoFocus />
+      <button disabled={!inputPseudo.trim()} onClick={() => onJoin(inputPseudo.trim())} className="btn-accent w-full disabled:opacity-30 disabled:pointer-events-none">Rejoindre l'aventure</button>
     </div>
   </div>
 )
@@ -245,16 +191,16 @@ const OnboardingScreen = ({ inputPseudo, setInputPseudo, onJoin }: any) => (
 // Removed local BackgroundGlows, using index.css global body gradients
 
 const GuestHeader = ({ guestPseudo, onEditPseudo, token }: any) => (
-  <header className="bg-[#08060d]/80 border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-40 backdrop-blur-2xl">
-    <div className="flex items-center space-x-3">
-      <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-      <span className="text-[11px] font-black uppercase tracking-[0.25em] text-blue-400 truncate max-w-[150px]">Teutchap</span>
+  <header className="bg-[var(--bg-app)]/80 border-b border-[var(--border-subtle)] px-6 py-4 flex items-center justify-between sticky top-0 z-40 backdrop-blur-xl">
+    <div className="flex items-center gap-3">
+      <div className="w-2 h-2 bg-[var(--color-accent)] rounded-full animate-pulse shadow-[var(--shadow-glow-accent)]" />
+      <span className="t-eyebrow text-[var(--color-accent)] truncate max-w-[150px]">Teutchap</span>
     </div>
-    <div className="flex items-center space-x-4">
-      <div className="text-[10px] font-bold text-white/60">{guestPseudo}</div>
+    <div className="flex items-center gap-4">
+      <div className="t-caption text-[var(--text-secondary)]">{guestPseudo}</div>
       <button 
         onClick={() => { const n = prompt("Modifier mon pseudo :", guestPseudo); if(n?.trim()) { onEditPseudo(n.trim()); localStorage.setItem(`teutchap_pseudo_${token}`, n.trim()); }}} 
-        className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors uppercase tracking-widest cursor-pointer"
+        className="t-eyebrow text-[var(--color-accent)] hover:text-white transition-colors cursor-pointer"
       >
         Éditer
       </button>
@@ -264,13 +210,13 @@ const GuestHeader = ({ guestPseudo, onEditPseudo, token }: any) => (
 
 const NotificationPrompt = ({ onDisable }: { onDisable: () => void }) => (
   <div className="mx-4 mt-4 animate-in slide-in-from-top-4 duration-500 relative z-[60]">
-    <div className="glass rounded-3xl p-5 border-white/10 shadow-2xl relative">
-      <button onClick={onDisable} className="absolute top-3 right-3 text-gray-500"><X size={14} /></button>
-      <div className="flex items-center space-x-4">
-        <div className="bg-primary/20 p-3 rounded-2xl text-primary animate-bounce"><Bell size={20} /></div>
+    <div className="glass rounded-[var(--radius-md)] p-5 border-[var(--border-default)] relative">
+      <button onClick={onDisable} className="absolute top-3 right-3 text-[var(--text-secondary)]"><X size={14} /></button>
+      <div className="flex items-center gap-4">
+        <div className="bg-[var(--color-accent-soft)] p-3 rounded-[var(--radius-sm)] text-[var(--color-accent)] animate-bounce"><Bell size={20} /></div>
         <div>
-          <h4 className="text-xs font-black uppercase tracking-widest text-gradient">Notifications</h4>
-          <p className="text-[9px] text-gray-400 font-bold leading-tight">Voir les moments en direct.</p>
+          <h4 className="t-eyebrow text-gradient">Notifications</h4>
+          <p className="t-caption">Voir les moments en direct.</p>
         </div>
       </div>
     </div>
@@ -278,9 +224,9 @@ const NotificationPrompt = ({ onDisable }: { onDisable: () => void }) => (
 )
 
 const OfflineBanner = ({ count, isOnline, onSync }: any) => (
-  <div className="glass p-4 rounded-2xl mb-8 flex items-center justify-between border-primary/20">
-    <span className="text-[10px] font-black uppercase tracking-widest">Hors-ligne ({count})</span>
-    {isOnline && <button onClick={onSync} className="bg-primary px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest">Synchroniser</button>}
+  <div className="glass p-4 rounded-[var(--radius-md)] mb-8 flex items-center justify-between border-[var(--color-accent)]/20">
+    <span className="t-eyebrow">Hors-ligne ({count})</span>
+    {isOnline && <button onClick={onSync} className="btn-accent px-4 py-2 min-h-0 text-[9px]">Synchroniser</button>}
   </div>
 )
 
@@ -289,63 +235,40 @@ const SwipeLockedScreen = ({ revealTime }: { revealTime: string }) => {
 
   useEffect(() => {
     if (!revealTime) return
-
     const updateTimer = () => {
       const now = new Date()
-      const revealDate = new Date(revealTime)
-      const diff = revealDate.getTime() - now.getTime()
-
-      if (diff <= 0) {
-        setTimeLeft('')
-        window.location.reload()
-        return
-      }
-
+      const diff = new Date(revealTime).getTime() - now.getTime()
+      if (diff <= 0) { setTimeLeft(''); window.location.reload(); return }
       const hours = Math.floor(diff / (1000 * 60 * 60))
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
       const seconds = Math.floor((diff % (1000 * 60)) / 1000)
-
-      const hStr = hours > 0 ? `${hours}h ` : ''
-      const mStr = `${minutes.toString().padStart(2, '0')}m `
-      const sStr = `${seconds.toString().padStart(2, '0')}s`
-      setTimeLeft(hStr + mStr + sStr)
+      setTimeLeft((hours > 0 ? `${hours}h ` : '') + `${minutes.toString().padStart(2, '0')}m ${seconds.toString().padStart(2, '0')}s`)
     }
-
     updateTimer()
-    const timerId = setInterval(updateTimer, 1000)
-    return () => clearInterval(timerId)
+    const id = setInterval(updateTimer, 1000)
+    return () => clearInterval(id)
   }, [revealTime])
 
   return (
-    <div className="cinematic-surface p-8 sm:p-10 w-full max-w-lg mx-auto text-center space-y-8 border border-white/[0.08] shadow-[0_24px_50px_rgba(0,0,0,0.5)] relative overflow-hidden rounded-[32px] mt-6">
-      {/* Glow mesh blob inside the card */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-[50px] rounded-full pointer-events-none" />
-      
+    <div className="cinematic-surface p-8 sm:p-10 w-full max-w-lg mx-auto text-center space-y-8 relative overflow-hidden mt-6">
+      <div className="glow-accent top-0 right-0 w-32 h-32" />
       <div className="space-y-4 relative z-10">
-        <div className="w-16 h-16 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(59,130,246,0.15)] animate-pulse">
-          <Lock size={24} className="text-blue-400" />
+        <div className="w-16 h-16 rounded-full bg-[var(--color-accent-soft)] border border-[var(--color-accent)]/20 text-[var(--color-accent)] flex items-center justify-center mx-auto animate-pulse">
+          <Lock size={24} />
         </div>
-        <h3 className="text-2xl font-serif text-white tracking-tight">Swipe Verrouillé</h3>
-        <p className="text-white/40 text-xs font-semibold uppercase tracking-[0.15em] max-w-xs mx-auto leading-relaxed">
-          Le Swipe commencera uniquement après le reveal de toutes les photos.
-        </p>
+        <h3 className="t-display text-2xl">Swipe Verrouillé</h3>
+        <p className="t-body max-w-xs mx-auto">Le Swipe commencera uniquement après le reveal de toutes les photos.</p>
       </div>
-
       {timeLeft && (
         <div className="relative group py-2">
-          <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-2xl blur-lg opacity-75" />
-          <div className="relative bg-white/[0.02] border border-white/[0.06] rounded-2xl py-4 px-6 flex flex-col items-center">
-            <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.25em] mb-1">Révélation dans</span>
-            <span className="text-3xl font-serif text-white tracking-widest font-bold tabular-nums">
-              {timeLeft}
-            </span>
+          <div className="absolute -inset-1 bg-gradient-to-r from-[var(--color-accent)]/20 to-cyan-500/20 rounded-[var(--radius-md)] blur-lg opacity-75" />
+          <div className="relative bg-white/[0.02] border border-[var(--border-subtle)] rounded-[var(--radius-md)] py-4 px-6 flex flex-col items-center">
+            <span className="t-eyebrow text-[var(--color-accent)] mb-1">Révélation dans</span>
+            <span className="text-3xl font-serif tracking-widest font-bold tabular-nums">{timeLeft}</span>
           </div>
         </div>
       )}
-
-      <div className="pt-2 text-[10px] font-bold text-blue-400/60 uppercase tracking-[0.2em] leading-relaxed max-w-xs mx-auto">
-        ⚡ Profitez-en pour capturer et ajouter vos plus beaux souvenirs dès maintenant !
-      </div>
+      <div className="t-eyebrow text-[var(--color-accent)]/60 max-w-xs mx-auto">⚡ Profitez-en pour capturer et ajouter vos plus beaux souvenirs dès maintenant !</div>
     </div>
   )
 }
