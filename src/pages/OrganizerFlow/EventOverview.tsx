@@ -8,7 +8,7 @@ import { OverviewSecuritySection } from './components/OverviewSecuritySection'
 import { OverviewTimerSection } from './components/OverviewTimerSection'
 import { OverviewCapacitySection } from './components/OverviewCapacitySection'
 import UpgradeEvent from './UpgradeEvent'
-import { PageShell, AppHeader, Card, Button, Badge, LoadingScreen as SharedLoading, ErrorScreen } from '../../components/ui/primitives'
+import { Card, Button, Badge, LoadingScreen as SharedLoading, ErrorScreen } from '../../components/ui/primitives'
 import { generateQRFlyer } from '../../utils/generateQRFlyer'
 
 export default function EventOverview() {

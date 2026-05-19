@@ -9,24 +9,24 @@ interface GuestSwipeViewProps {
 
 export const GuestSwipeView: React.FC<GuestSwipeViewProps> = ({ photos, onSwipeRight }) => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[500px] animate-in fade-in zoom-in-95 duration-500">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-black tracking-tight">Découverte</h2>
-        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Swippez pour liker les moments</p>
+    <div className="flex min-h-[500px] flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500">
+      <div className="mb-8 text-center">
+        <h2 className="font-serif text-3xl text-white">Decouverte</h2>
+        <p className="t-caption mt-1">Glissez pour garder les moments que vous aimez</p>
       </div>
-      
+
       {photos.length > 0 ? (
-        <div className="w-full max-w-sm aspect-[3/4] relative">
-          <TinderPhotoStack 
-            photos={photos.slice(0, 10)} 
+        <div className="relative aspect-[3/4] w-full max-w-sm">
+          <TinderPhotoStack
+            photos={photos.slice(0, 10)}
             onSwipeRight={onSwipeRight}
             onSwipeLeft={(photo) => console.log('Ignored', photo.id)}
           />
         </div>
       ) : (
-        <div className="text-center py-20 opacity-40">
+        <div className="py-20 text-center text-[var(--text-tertiary)]">
           <Camera size={48} className="mx-auto mb-4" />
-          <p className="font-black uppercase tracking-widest text-sm">Aucune photo à swiper</p>
+          <p className="text-sm font-semibold">Aucune photo a decouvrir</p>
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Hash, ImageIcon, Calendar, ChevronRight, LogOut, User, Lock } from 'lucide-react'
+import { Plus, Hash, ImageIcon, Calendar, ChevronRight, LogOut, Lock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import AuthModal from '../../components/AuthModal'

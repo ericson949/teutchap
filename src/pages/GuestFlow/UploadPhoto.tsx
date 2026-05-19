@@ -32,8 +32,8 @@ export default function UploadPhoto({ isModal = false, onClose, token: propToken
     const files = Array.from(e.target.files as FileList)
     const newPhotos = []
     for (const f of files) {
-        const blob = shouldCompress ? await compressImage(f) : f
-        newPhotos.push({ id: Math.random().toString(36), blob, url: URL.createObjectURL(blob), compressedSize: blob.size })
+      const blob = shouldCompress ? await compressImage(f) : f
+      newPhotos.push({ id: Math.random().toString(36), blob, url: URL.createObjectURL(blob), compressedSize: blob.size })
     }
     setPendingPhotos([...pendingPhotos, ...newPhotos])
   }
@@ -55,63 +55,60 @@ export default function UploadPhoto({ isModal = false, onClose, token: propToken
   }
 
   const content = (
-    <div className={`min-h-screen bg-[#08060d] text-white flex flex-col ${isModal ? 'w-full h-full' : ''}`}>
-      <header className="glass-dark border-b border-white/5 px-4 py-3 flex items-center justify-between sticky top-0 z-40 backdrop-blur-xl">
-        <button onClick={handleClose} className="p-2 text-gray-400 hover:text-white">
+    <div className={`min-h-screen bg-[var(--bg-app)] text-[var(--text-primary)] flex flex-col ${isModal ? 'w-full h-full' : ''}`}>
+      <header className="glass-dark sticky top-0 z-40 flex items-center justify-between border-b border-[var(--border-subtle)] px-4 py-3 backdrop-blur-xl">
+        <button onClick={handleClose} className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-secondary)] transition-colors hover:bg-white/5 hover:text-white" aria-label="Retour">
           <ArrowLeft size={20} />
         </button>
         <div className="flex flex-col items-center">
-          <h1 className="text-xs font-black uppercase tracking-widest text-gradient">Nouveau Souvenir</h1>
-          <span className="text-[8px] text-gray-500 font-bold">Signé par {guestPseudo}</span>
+          <h1 className="text-sm font-semibold text-white">Nouveau souvenir</h1>
+          <span className="t-caption">Signe par {guestPseudo}</span>
         </div>
-        <div className="w-8" />
+        <div className="w-10" />
       </header>
 
-      <main className="flex-1 p-4 space-y-6 max-w-xl mx-auto w-full relative z-10">
-        
-        {/* Toggle de compression éco-responsable */}
-        <div className="glass p-5 rounded-[2rem] border border-white/5 flex items-center justify-between space-x-4 animate-in fade-in slide-in-from-top-4 duration-500 relative overflow-hidden group">
-          <div className="absolute -right-12 -top-12 w-24 h-24 bg-blue-500/10 rounded-full blur-[30px] pointer-events-none group-hover:bg-blue-500/20 transition-all duration-700" />
-          
-          <div className="space-y-1 relative z-10">
-            <h4 className="text-[11px] font-black uppercase tracking-widest text-white">Optimisation HD</h4>
-            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider leading-tight">
-              {shouldCompress 
-                ? "Compression active (économise vos données mobiles)" 
-                : "Qualité originale (fichiers volumineux)"}
+      <main className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 p-4">
+        <div className="glass flex items-center justify-between gap-4 rounded-[var(--radius-md)] border-[var(--border-default)] p-5">
+          <div className="space-y-1">
+            <h4 className="text-sm font-semibold text-white">Qualite optimisee</h4>
+            <p className="text-xs leading-5 text-[var(--text-secondary)]">
+              {shouldCompress
+                ? "Economise les donnees mobiles sans casser le souvenir."
+                : "Conserve la qualite originale. Les fichiers seront plus lourds."}
             </p>
           </div>
-          <button 
-            onClick={() => setShouldCompress(!shouldCompress)} 
-            className={`w-12 h-6 rounded-full transition-all relative shrink-0 ${shouldCompress ? 'bg-blue-600 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'bg-white/10'}`}
+          <button
+            onClick={() => setShouldCompress(!shouldCompress)}
+            className={`relative h-7 w-12 shrink-0 rounded-full border transition-all ${shouldCompress ? 'border-[var(--color-accent)] bg-[var(--color-accent)] shadow-[0_0_16px_var(--color-accent-glow)]' : 'border-white/15 bg-white/5'}`}
+            aria-pressed={shouldCompress}
           >
-            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${shouldCompress ? 'left-7' : 'left-1'}`} />
+            <div className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${shouldCompress ? 'left-6' : 'left-1'}`} />
           </button>
         </div>
 
         {isCompressing ? <LoadingState /> : pendingPhotos.length === 0 ? (
-          <UploadActionButtons 
-            onCameraClick={() => cameraRef.current?.click()} 
-            onGalleryClick={() => galleryRef.current?.click()} 
+          <UploadActionButtons
+            onCameraClick={() => cameraRef.current?.click()}
+            onGalleryClick={() => galleryRef.current?.click()}
           />
         ) : (
           <div className="space-y-6 animate-in zoom-in-95 duration-300">
             <div className="grid grid-cols-2 gap-3">
               {pendingPhotos.map(p => (
-                <div key={p.id} className="relative glass rounded-2xl aspect-[3/4] overflow-hidden border border-white/10 shadow-xl group">
-                  <img src={p.url} className="w-full h-full object-cover" />
-                  <button onClick={() => setPendingPhotos(prev => prev.filter(x => x.id !== p.id))} className="absolute top-2 right-2 bg-black/60 p-2 rounded-full text-white border border-white/10 hover:bg-black/80"><X size={14} /></button>
-                  <div className="absolute bottom-2 left-2 glass-dark px-2 py-0.5 rounded text-[8px] font-black text-blue-400">{(p.compressedSize / 1024).toFixed(0)} KB</div>
+                <div key={p.id} className="group relative aspect-[3/4] overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-default)] bg-white/5 shadow-xl">
+                  <img src={p.url} className="h-full w-full object-cover" />
+                  <button onClick={() => setPendingPhotos(prev => prev.filter(x => x.id !== p.id))} className="absolute right-2 top-2 rounded-full border border-white/10 bg-black/65 p-2 text-white transition-colors hover:bg-black/80" aria-label="Retirer la photo"><X size={14} /></button>
+                  <div className="glass-dark absolute bottom-2 left-2 rounded-full px-2.5 py-1 text-[10px] font-semibold text-[var(--color-accent)]">{(p.compressedSize / 1024).toFixed(0)} KB</div>
                 </div>
               ))}
             </div>
 
             {challenges.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 flex items-center space-x-1.5"><Zap size={12} className="text-blue-500 fill-current"/><span>Associer à un défi ?</span></h3>
+                <h3 className="flex items-center gap-2 t-eyebrow"><Zap size={12} className="text-[var(--color-champagne)]" /><span>Associer a une mission</span></h3>
                 <div className="grid grid-cols-2 gap-2">
                   {challenges.map(c => (
-                    <button key={c.id} onClick={() => setSelectedChallenge(selectedChallenge === c.id ? null : c.id)} className={`p-3 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all border ${selectedChallenge === c.id ? 'bg-blue-600 border-blue-500 text-white scale-105 shadow-lg shadow-blue-500/20' : 'glass border-white/5 text-gray-400 hover:text-white'}`}>
+                    <button key={c.id} onClick={() => setSelectedChallenge(selectedChallenge === c.id ? null : c.id)} className={`rounded-[var(--radius-sm)] border p-3 text-left text-xs font-semibold transition-all ${selectedChallenge === c.id ? 'border-[var(--color-accent)]/35 bg-[var(--color-accent-soft)] text-white' : 'border-[var(--border-subtle)] bg-white/[0.025] text-[var(--text-secondary)] hover:text-white'}`}>
                       {c.title}
                     </button>
                   ))}
@@ -119,10 +116,10 @@ export default function UploadPhoto({ isModal = false, onClose, token: propToken
               </div>
             )}
 
-            <button 
-              onClick={() => setShowConfirmModal(true)} 
-              disabled={isUploading} 
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-500 hover:to-blue-300 text-white font-bold py-4 rounded-2xl shadow-[0_10px_25px_rgba(59,130,246,0.3)] transition-all flex items-center justify-center space-x-2 text-[10px] uppercase tracking-[0.2em] active:scale-95 cursor-pointer disabled:opacity-30 disabled:pointer-events-none disabled:shadow-none"
+            <button
+              onClick={() => setShowConfirmModal(true)}
+              disabled={isUploading}
+              className="btn-accent w-full"
             >
               {isUploading ? (
                 <>
@@ -132,62 +129,50 @@ export default function UploadPhoto({ isModal = false, onClose, token: propToken
               ) : (
                 <>
                   <Upload size={16} />
-                  <span>Publier les souvenirs signés</span>
+                  <span>Publier les souvenirs</span>
                 </>
               )}
             </button>
           </div>
         )}
 
-        {/* Modale de prévisualisation et confirmation finale client */}
         {showConfirmModal && pendingPhotos.length > 0 && (
-          <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
-            <div className="glass rounded-[3rem] p-8 max-w-sm w-full border border-white/10 flex flex-col space-y-6 shadow-2xl relative overflow-hidden">
-              <div className="absolute -top-12 -right-12 w-40 h-40 bg-blue-500/10 rounded-full blur-[50px] pointer-events-none" />
-              
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="surface-elevated relative flex w-full max-w-sm flex-col gap-6 overflow-hidden rounded-[var(--radius-lg)] p-6 shadow-2xl">
               <div className="space-y-1 text-center">
-                <h3 className="text-lg font-serif text-white">Prêt à publier ?</h3>
-                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">
-                  {pendingPhotos.length} {pendingPhotos.length > 1 ? 'photos prêtes à l\'envoi' : 'photo prête à l\'envoi'}
+                <h3 className="font-serif text-2xl text-white">Pret a publier ?</h3>
+                <p className="t-caption">
+                  {pendingPhotos.length} {pendingPhotos.length > 1 ? 'photos pretes a rejoindre l album' : 'photo prete a rejoindre l album'}
                 </p>
               </div>
 
-              {/* Résumé des options sélectionnées */}
-              <div className="space-y-3 bg-white/5 p-4 rounded-2xl border border-white/5 text-[10px] uppercase font-bold tracking-wider text-gray-400">
-                <div className="flex justify-between">
-                  <span>Optimisation HD :</span>
-                  <span className="text-white">{shouldCompress ? "Oui (Léger)" : "Non (Qualité originale)"}</span>
-                </div>
+              <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-white/[0.03] p-4 text-xs text-[var(--text-secondary)]">
+                <SummaryRow label="Qualite" value={shouldCompress ? 'Optimisee' : 'Originale'} />
                 {selectedChallenge && (
-                  <div className="flex justify-between">
-                    <span>Défi associé :</span>
-                    <span className="text-blue-400 truncate max-w-[150px]">
-                      {challenges.find(c => c.id === selectedChallenge)?.title || "Oui"}
-                    </span>
-                  </div>
+                  <SummaryRow
+                    label="Mission"
+                    value={challenges.find(c => c.id === selectedChallenge)?.title || 'Selectionnee'}
+                  />
                 )}
-                <div className="flex justify-between border-t border-white/5 pt-2">
-                  <span>Poids total estimé :</span>
-                  <span className="text-white">
-                    {(pendingPhotos.reduce((sum, p) => sum + p.compressedSize, 0) / 1024).toFixed(0)} KB
-                  </span>
-                </div>
+                <SummaryRow
+                  label="Poids estime"
+                  value={`${(pendingPhotos.reduce((sum, p) => sum + p.compressedSize, 0) / 1024).toFixed(0)} KB`}
+                />
               </div>
 
-              {/* Boutons de confirmation */}
               <div className="flex gap-3">
-                <button 
+                <button
                   onClick={() => setShowConfirmModal(false)}
-                  className="flex-1 py-4 border border-white/10 rounded-2xl font-black uppercase text-[10px] tracking-widest text-gray-400 hover:bg-white/5 transition-all"
+                  className="btn-secondary flex-1"
                 >
                   Annuler
                 </button>
-                <button 
+                <button
                   onClick={() => {
-                    setShowConfirmModal(false);
-                    handleUpload(handleComplete);
+                    setShowConfirmModal(false)
+                    handleUpload(handleComplete)
                   }}
-                  className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-500 hover:to-blue-300 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-[0_10px_20px_rgba(59,130,246,0.3)] flex items-center justify-center space-x-2 cursor-pointer"
+                  className="btn-accent flex-1"
                 >
                   <Upload size={14} />
                   <span>Publier</span>
@@ -210,7 +195,7 @@ export default function UploadPhoto({ isModal = false, onClose, token: propToken
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-        className="fixed inset-0 z-50 overflow-y-auto bg-[#08060d] w-full h-full"
+        className="fixed inset-0 z-50 h-full w-full overflow-y-auto bg-[var(--bg-app)]"
       >
         {content}
       </motion.div>
@@ -220,12 +205,19 @@ export default function UploadPhoto({ isModal = false, onClose, token: propToken
   return content
 }
 
+const SummaryRow = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex justify-between gap-4">
+    <span>{label}</span>
+    <span className="truncate text-right font-semibold text-white">{value}</span>
+  </div>
+)
+
 const LoadingState = () => (
-  <div className="glass rounded-[2.5rem] p-12 text-center space-y-4 border-primary/20 animate-in fade-in duration-300">
-    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-    <div className="space-y-1">
-      <p className="text-sm font-black text-white tracking-tight">Optimisation sur votre appareil...</p>
-      <p className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">Compression HD intelligente</p>
+  <div className="glass rounded-[var(--radius-lg)] border-[var(--border-default)] p-10 text-center">
+    <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
+    <div className="mt-4 space-y-1">
+      <p className="text-sm font-semibold text-white">Preparation des photos...</p>
+      <p className="t-caption">Optimisation locale avant l envoi</p>
     </div>
   </div>
 )

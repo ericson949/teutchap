@@ -31,7 +31,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       } else {
         const { error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
-        alert('Vérifiez votre email pour confirmer l\'inscription !')
+        alert("Verifiez votre email pour confirmer l'inscription.")
       }
       if (onSuccess) onSuccess()
       onClose()
@@ -43,105 +43,102 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden p-4 md:p-6">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      
-      <div className="relative w-full max-w-md glass rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
-        <button 
+
+      <div className="surface-elevated relative w-full max-w-md overflow-hidden rounded-[var(--radius-lg)] animate-in fade-in zoom-in-95 duration-300">
+        <button
           onClick={onClose}
-          className="absolute top-6 right-6 p-2 text-gray-500 hover:text-white transition-colors"
+          className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full text-[var(--text-secondary)] transition-colors hover:bg-white/5 hover:text-white"
+          aria-label="Fermer"
         >
-          <X size={24} />
+          <X size={20} />
         </button>
 
         <div className="p-8 md:p-10">
-          <div className="text-center space-y-2 mb-10">
-            <h2 className="text-3xl font-black tracking-tighter text-gradient">
+          <div className="mb-8 space-y-2 text-center">
+            <h2 className="font-serif text-3xl font-semibold text-white">
               {isLogin ? 'Bon retour' : 'Rejoindre Teutchap'}
             </h2>
-            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">
-              {isLogin ? 'Connectez-vous pour gérer vos événements' : 'Créez un compte pour sauvegarder vos souvenirs'}
+            <p className="t-caption mx-auto max-w-xs">
+              {isLogin ? 'Connectez-vous pour gerer vos evenements.' : 'Creez un compte pour sauvegarder vos albums.'}
             </p>
           </div>
 
-          <div className="space-y-4 mb-8">
-            <button 
+          <div className="mb-7 space-y-3">
+            <button
               onClick={signInWithGoogle}
-              className="w-full flex items-center justify-center space-x-3 bg-white text-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-xl"
+              className="btn-primary w-full"
             >
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="h-5 w-5" alt="Google" />
               <span>Continuer avec Google</span>
             </button>
-            <button 
+            <button
               onClick={signInWithApple}
-              className="w-full flex items-center justify-center space-x-3 bg-black text-white border border-white/10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-xl"
+              className="btn-secondary w-full"
             >
-              <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" className="w-5 h-5 invert" alt="Apple" />
+              <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" className="h-5 w-5 invert" alt="Apple" />
               <span>Continuer avec Apple</span>
             </button>
           </div>
 
-          <div className="relative mb-8">
+          <div className="relative mb-7">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/5"></div>
+              <div className="w-full border-t border-[var(--border-subtle)]" />
             </div>
-            <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest">
-              <span className="bg-[#08060d] px-4 text-gray-600">Ou avec email</span>
+            <div className="relative flex justify-center">
+              <span className="bg-[var(--bg-elevated)] px-4 t-caption">Ou avec email</span>
             </div>
           </div>
 
-          <form onSubmit={handleEmailAuth} className="space-y-5">
-            <div className="space-y-2">
-              <div className="relative group">
-                <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-primary transition-colors" size={18} />
-                <input 
-                  type="email"
-                  placeholder="Email"
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 py-4 text-sm font-bold outline-none focus:border-primary/50 transition-all placeholder:text-gray-700"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
+          <form onSubmit={handleEmailAuth} className="space-y-4">
+            <div className="relative group">
+              <Mail className="absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[var(--text-tertiary)] transition-colors group-focus-within:text-[var(--color-accent)]" size={18} />
+              <input
+                type="email"
+                placeholder="Email"
+                className="ui-input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
             </div>
-            <div className="space-y-2">
-              <div className="relative group">
-                <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-primary transition-colors" size={18} />
-                <input 
-                  type="password"
-                  placeholder="Mot de passe"
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 py-4 text-sm font-bold outline-none focus:border-primary/50 transition-all placeholder:text-gray-700"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
-              </div>
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[var(--text-tertiary)] transition-colors group-focus-within:text-[var(--color-accent)]" size={18} />
+              <input
+                type="password"
+                placeholder="Mot de passe"
+                className="ui-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+              />
             </div>
 
-            {error && <p className="text-red-500 text-[10px] font-black uppercase text-center">{error}</p>}
+            {error && <p className="rounded-[var(--radius-sm)] border border-red-500/20 bg-red-500/10 px-3 py-2 text-center text-xs text-red-200">{error}</p>}
 
-            <button 
+            <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary hover:bg-primary-dark text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl shadow-primary/20 flex items-center justify-center space-x-2"
+              className="btn-accent w-full"
             >
               {loading ? <Loader2 className="animate-spin" /> : (
                 <>
-                  <span>{isLogin ? 'Se connecter' : 'S\'inscrire'}</span>
+                  <span>{isLogin ? 'Se connecter' : "S'inscrire"}</span>
                   <ArrowRight size={18} />
                 </>
               )}
             </button>
           </form>
 
-          <p className="mt-8 text-center text-[10px] font-black uppercase tracking-widest text-gray-600">
-            {isLogin ? 'Pas encore de compte ?' : 'Déjà un compte ?'}{' '}
-            <button 
+          <p className="mt-7 text-center text-xs text-[var(--text-secondary)]">
+            {isLogin ? 'Pas encore de compte ?' : 'Deja un compte ?'}{' '}
+            <button
               onClick={() => setIsLogin(!isLogin)}
-              className="text-primary hover:underline"
+              className="font-semibold text-[var(--text-primary)] hover:underline"
             >
-              {isLogin ? 'Créer un compte' : 'Se connecter'}
+              {isLogin ? 'Creer un compte' : 'Se connecter'}
             </button>
           </p>
         </div>

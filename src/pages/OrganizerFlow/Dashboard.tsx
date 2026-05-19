@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
-import { LayoutDashboard, Image as ImageIcon, Hash, Settings as SettingsIcon, RefreshCw, Check } from 'lucide-react'
+import { LayoutDashboard, Image as ImageIcon, Hash, Settings as SettingsIcon, RefreshCw, Check, ArrowLeft } from 'lucide-react'
 import { useDashboardLogic } from '../../hooks/useDashboardLogic'
 import PremiumTabs from '../../components/PremiumTabs'
 import UpgradeEvent from './UpgradeEvent'
@@ -37,20 +37,20 @@ export default function Dashboard() {
   const downloadQRCode = () => generateQRFlyer({ eventName: eventData.name })
 
   const shareWhatsApp = () => {
-    const text = `Rejoins l'album photo de l'événement "${eventData.name}" sur Teutchap ! 📸\n\nScanne le QR Code ou clique ici : ${eventUrl}`
+    const text = `Rejoins l'album photo de l'evenement "${eventData.name}" sur Teutchap !\n\nScanne le QR Code ou clique ici : ${eventUrl}`
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
   }
 
   const organizerTabs = [
-    { id: 'overview', label: 'Aperçu', icon: <LayoutDashboard size={20} /> },
+    { id: 'overview', label: 'Apercu', icon: <LayoutDashboard size={20} /> },
     { id: 'gallery', label: 'Galerie', icon: <ImageIcon size={20} /> },
-    { id: 'challenges', label: 'Défis', icon: <Hash size={20} /> },
-    { id: 'settings', label: 'Params', icon: <SettingsIcon size={20} /> }
+    { id: 'challenges', label: 'Missions', icon: <Hash size={20} /> },
+    { id: 'settings', label: 'Reglages', icon: <SettingsIcon size={20} /> }
   ]
 
   if (eventLoading) return <SharedLoading message="Chargement..." />
-  if (!eventData) return <ErrorScreen title="Album Introuvable" description="Ce lien semble être expiré ou incorrect." action={<Button variant="secondary" onClick={() => navigate('/')}>Retour</Button>} />
-  if (!isOwner) return <ErrorScreen title="Accès refusé" description="Ce lien semble être expiré ou invalide." action={<Button variant="secondary" onClick={() => navigate('/')}>Retour à l'accueil</Button>} />
+  if (!eventData) return <ErrorScreen title="Album introuvable" description="Ce lien semble etre expire ou incorrect." action={<Button variant="secondary" onClick={() => navigate('/')}>Retour</Button>} />
+  if (!isOwner) return <ErrorScreen title="Acces refuse" description="Ce lien semble etre expire ou invalide." action={<Button variant="secondary" onClick={() => navigate('/')}>Retour a l'accueil</Button>} />
 
   const eventUrl = `${window.location.origin}/e/${eventData.token}`
   const photoCountPerChallenge = photos.reduce((acc: any, photo) => {
@@ -73,14 +73,14 @@ export default function Dashboard() {
           <div className="flex items-center space-x-4 pointer-events-auto">
             <button 
               onClick={() => navigate(`/overview/${eventId}`)}
-              className="glass border border-white/10 w-11 h-11 flex items-center justify-center rounded-2xl active:scale-95 transition-all hover:bg-white/5 shadow-xl group"
+              className="glass border border-[var(--border-default)] w-11 h-11 flex items-center justify-center rounded-[var(--radius-sm)] active:scale-95 transition-all hover:bg-white/5 shadow-xl group"
             >
               <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
             </button>
             
             <div className="flex flex-col">
-              <span className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-bold leading-none mb-1">
-                Console Organisateur
+              <span className="t-eyebrow mb-1 leading-none">
+                Console organisateur
               </span>
               <span className="text-base font-serif text-white font-semibold truncate max-w-[140px] leading-none">
                 {eventData?.name}
@@ -91,14 +91,14 @@ export default function Dashboard() {
           {/* Sync Indicator (Aligned on the right, vertically centered) */}
           <div className="pointer-events-auto">
             {eventLoading ? (
-              <div className="flex items-center space-x-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full animate-pulse text-[9px] font-black uppercase tracking-wider text-white/60">
+              <div className="ui-chip animate-pulse">
                 <RefreshCw size={8} className="animate-spin text-white" />
                 <span>Sync...</span>
               </div>
             ) : (
-              <div className="flex items-center space-x-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-black uppercase tracking-wider text-white/40">
+              <div className="ui-chip">
                 <Check size={8} className="text-emerald-400" />
-                <span>À jour</span>
+                <span>A jour</span>
               </div>
             )}
           </div>
@@ -196,5 +196,3 @@ export default function Dashboard() {
   )
 }
 
-// Ensure icons used in the header are imported
-import { ArrowLeft } from 'lucide-react'

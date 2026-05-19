@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Loader2, X, Bell, Lock, Sparkles } from 'lucide-react'
+import { Loader2, X, Bell, Lock, Sparkles, Image as ImageIcon, Flame, Trophy } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import { useEventHomeLogic } from '../../hooks/useEventHomeLogic'
 import { GuestHero } from './components/GuestHero'
@@ -32,9 +32,9 @@ export default function EventHome() {
 
   const isGamificationOff = eventData?.gamification_mode === 'off'
   const guestTabs = [
-    { id: 'gallery', label: 'Album', icon: '🖼️' },
-    { id: 'challenges', label: 'Défis', icon: '🏆' },
-    { id: 'swipe', label: 'Swipe', icon: '🔥' }
+    { id: 'gallery', label: 'Album', icon: <ImageIcon size={18} /> },
+    { id: 'challenges', label: 'Missions', icon: <Trophy size={18} /> },
+    { id: 'swipe', label: 'Swipe', icon: <Flame size={18} /> }
   ].filter(tab => !isGamificationOff || tab.id === 'gallery')
 
   if (eventLoading) return <LoadingScreen />
