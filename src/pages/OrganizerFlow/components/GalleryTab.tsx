@@ -1,35 +1,41 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type React from 'react'
 import { createPortal } from 'react-dom'
-import { Cloud, Trash2, Download, FolderArchive, Loader2, Upload, X, User, Heart, Sparkles, ArrowLeft, Image as ImageIcon } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-
+import { ArrowLeft, Cloud, Download, FolderArchive, Heart, Image as ImageIcon, Loader2, Sparkles, Trash2, Upload, User, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { supabase } from '../../../lib/supabase'
-
-import type { Photo, Challenge } from '../../../types'
+import { PageHeader, PrimaryButton, SecondaryButton } from '../../../components/ui/primitives'
+import type { Challenge, Photo } from '../../../types'
 
 interface GalleryTabProps {
-  photos: Photo[];
-  challenges?: Challenge[];
-  isAdminUploading: boolean;
-  adminFileInputRef: React.RefObject<HTMLInputElement | null>;
-  handleAdminUploadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleDeletePhoto: (photo: Photo, e?: React.MouseEvent) => void;
-  selectedFilesForUpload?: File[];
-  showUploadModal?: boolean;
-  setShowUploadModal: (val: boolean) => void;
-  organizerCompress?: boolean;
-  setOrganizerCompress: (val: boolean) => void;
-  confirmAdminUpload: () => void;
-  cancelAdminUpload: () => void;
-  onPhotoSelectChange?: (selected: boolean) => void;
+  photos: Photo[]
+  challenges?: Challenge[]
+  isAdminUploading: boolean
+  adminFileInputRef: React.RefObject<HTMLInputElement | null>
+  handleAdminUploadChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  handleDeletePhoto: (photo: Photo, e?: React.MouseEvent) => void
+  selectedFilesForUpload?: File[]
+  showUploadModal?: boolean
+  setShowUploadModal: (val: boolean) => void
+  organizerCompress?: boolean
+  setOrganizerCompress: (val: boolean) => void
+  confirmAdminUpload: () => void
+  cancelAdminUpload: () => void
+  onPhotoSelectChange?: (selected: boolean) => void
 }
 
-export const GalleryTab = ({ 
-  photos, 
+const storageUrl = (path?: string) => {
+  if (!path) return ''
+  if (path.startsWith('blob:') || path.startsWith('data:') || path.startsWith('http')) return path
+  return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${path}`
+}
+
+export const GalleryTab = ({
+  photos,
   challenges = [],
-  isAdminUploading, 
-  adminFileInputRef, 
-  handleAdminUploadChange, 
+  isAdminUploading,
+  adminFileInputRef,
+  handleAdminUploadChange,
   handleDeletePhoto,
   selectedFilesForUpload = [],
   showUploadModal = false,
@@ -39,455 +45,323 @@ export const GalleryTab = ({
   cancelAdminUpload,
   onPhotoSelectChange
 }: GalleryTabProps) => {
-
   const [isZipping, setIsZipping] = useState(false)
   const [zipProgress, setZipProgress] = useState(0)
   const [zipStatus, setZipStatus] = useState('')
   const [previewUrls, setPreviewUrls] = useState<string[]>([])
-
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)
   const [isBindingChallenge, setIsBindingChallenge] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
+  const selectedChallenge = useMemo(
+    () => challenges.find((challenge) => challenge.id === selectedPhoto?.challenge_id),
+    [challenges, selectedPhoto?.challenge_id]
+  )
 
   useEffect(() => {
-    if (onPhotoSelectChange) {
-      onPhotoSelectChange(!!selectedPhoto)
-    }
+    onPhotoSelectChange?.(!!selectedPhoto)
   }, [selectedPhoto, onPhotoSelectChange])
+
+  useEffect(() => {
+    if (!selectedFilesForUpload.length) {
+      setPreviewUrls([])
+      return
+    }
+    const urls = selectedFilesForUpload.map((file) => URL.createObjectURL(file))
+    setPreviewUrls(urls)
+    return () => urls.forEach((url) => URL.revokeObjectURL(url))
+  }, [selectedFilesForUpload])
 
   const handleBindPhotoToChallenge = async (photoId: string, challengeId: string | null) => {
     setIsBindingChallenge(true)
     try {
-      const { error } = await supabase
-        .from('photos')
-        .update({ challenge_id: challengeId })
-        .eq('id', photoId)
+      const { error } = await supabase.from('photos').update({ challenge_id: challengeId }).eq('id', photoId)
       if (error) throw error
-      setSelectedPhoto((prev: Photo | null) => prev ? { ...prev, challenge_id: challengeId } as Photo : null)
+      setSelectedPhoto((prev) => prev ? { ...prev, challenge_id: challengeId } : null)
     } catch (e) {
-      console.error("Erreur liaison défi:", e)
-      alert("Erreur lors de la liaison au défi.")
+      console.error('Erreur liaison defi:', e)
+      alert('Erreur lors de la liaison au defi.')
     } finally {
       setIsBindingChallenge(false)
     }
   }
 
-  useEffect(() => {
-    if (!selectedFilesForUpload || selectedFilesForUpload.length === 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setPreviewUrls([])
-      return
-    }
-    const urls = selectedFilesForUpload.map((f: File) => URL.createObjectURL(f))
-    setPreviewUrls(urls)
-    return () => {
-      urls.forEach((u: string) => URL.revokeObjectURL(u))
-    }
-  }, [selectedFilesForUpload])
-
   const handleDownloadZIP = async () => {
     if (photos.length === 0) return
     setIsZipping(true)
     setZipProgress(0)
-    setZipStatus('Initialisation...')
+    setZipStatus('Preparation de l album...')
 
     try {
       const JSZip = (await import('jszip')).default
       const zip = new JSZip()
-      const total = photos.length
-      
-      for (let i = 0; i < total; i++) {
-        const photo = photos[i]
-        setZipStatus(`Récupération de la photo ${i + 1}/${total}...`)
-        setZipProgress(Math.round((i / total) * 50))
+
+      for (let index = 0; index < photos.length; index++) {
+        const photo = photos[index]
+        setZipStatus(`Recuperation ${index + 1}/${photos.length}`)
+        setZipProgress(Math.round((index / photos.length) * 55))
 
         try {
-          const imageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/events_photos/${photo.url_original || photo.url_thumb}`
-          const response = await fetch(imageUrl)
-          if (!response.ok) throw new Error('Échec du fetch')
+          const response = await fetch(storageUrl(photo.url_original || photo.url_thumb))
+          if (!response.ok) throw new Error('Fetch failed')
           const blob = await response.blob()
-
           const extension = photo.url_original?.split('.').pop() || 'jpg'
-          const uploaderName = photo.uploader_name || 'Invite'
-          const safeUploaderName = uploaderName.replace(/[^a-zA-Z0-9]/g, '_')
-          const filename = `${safeUploaderName}_${photo.id.substring(0, 5)}.${extension}`
-          
-          zip.file(filename, blob)
-        } catch (fetchErr) {
-          console.warn(`Échec de récupération de la photo ${photo.id}:`, fetchErr)
+          const author = (photo.uploader_name || photo.contributor_name || 'Invite').replace(/[^a-zA-Z0-9]/g, '_')
+          zip.file(`${author}_${photo.id.slice(0, 5)}.${extension}`, blob)
+        } catch (error) {
+          console.warn(`Photo ignored in ZIP: ${photo.id}`, error)
         }
       }
 
-      setZipStatus('Compression de l\'album...')
+      setZipStatus('Compression...')
       const zipBlob = await zip.generateAsync({ type: 'blob' }, (metadata) => {
-        const compressionProgress = Math.round(50 + (metadata.percent || 0) / 2)
-        setZipProgress(compressionProgress)
+        setZipProgress(Math.round(55 + (metadata.percent || 0) * 0.45))
       })
-
-      setZipStatus('Enregistrement en cours...')
-      const downloadUrl = URL.createObjectURL(zipBlob)
+      const url = URL.createObjectURL(zipBlob)
       const link = document.createElement('a')
-      link.href = downloadUrl
+      link.href = url
       link.download = `Teutchap_Album_${Date.now()}.zip`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      URL.revokeObjectURL(downloadUrl)
-
-      setZipStatus('Album téléchargé !')
+      URL.revokeObjectURL(url)
+      setZipStatus('Album exporte')
       setZipProgress(100)
-      
-      setTimeout(() => setIsZipping(false), 1500)
-    } catch (err) {
-      console.error('Erreur lors de la génération du ZIP:', err)
-      alert("Une erreur est survenue lors de l'assemblage de l'album ZIP.")
+      setTimeout(() => setIsZipping(false), 1200)
+    } catch (error) {
+      console.error('Erreur ZIP:', error)
+      alert("Une erreur est survenue lors de l'export de l'album.")
       setIsZipping(false)
     }
   }
 
   return (
     <div className="relative space-y-8 pb-32 font-sans">
-      {/* Premium background mesh blobs */}
-      <div className="absolute top-[10%] left-[5%] w-72 h-72 bg-blue-600/10 rounded-full blur-[100px] -z-20 pointer-events-none animate-pulse-slow" />
-      <div className="absolute top-[50%] right-[5%] w-80 h-80 bg-blue-600/10 rounded-full blur-[120px] -z-20 pointer-events-none animate-pulse-slow" style={{ animationDelay: '2s' }} />
-      <div className="absolute bottom-[10%] left-[20%] w-96 h-96 bg-blue-600/5 rounded-full blur-[130px] -z-20 pointer-events-none animate-pulse-slow" style={{ animationDelay: '4s' }} />
+      <PageHeader
+        eyebrow="Contenu"
+        title="Galerie"
+        description="Controlez les souvenirs ajoutes a l'album, associez-les a des missions et exportez l'ensemble."
+        action={(
+          <div className="flex flex-wrap items-center gap-3">
+            <input type="file" multiple accept="image/*" className="hidden" ref={adminFileInputRef} onChange={handleAdminUploadChange} />
+            {photos.length > 0 && (
+              <SecondaryButton onClick={handleDownloadZIP} disabled={isZipping}>
+                <Download size={16} />
+                <span>Exporter</span>
+              </SecondaryButton>
+            )}
+            <PrimaryButton disabled={isAdminUploading} onClick={() => adminFileInputRef.current?.click()}>
+              <Cloud size={16} />
+              <span>{isAdminUploading ? 'Envoi...' : 'Ajouter'}</span>
+            </PrimaryButton>
+          </div>
+        )}
+      />
 
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col md:flex-row md:items-end justify-between gap-6"
-      >
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-medium">Contenu</p>
-          <h2 className="mt-2 text-4xl font-serif text-white tracking-tight">Galerie Temps Réel</h2>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-4">
-          <input type="file" multiple accept="image/*" className="hidden" ref={adminFileInputRef} onChange={handleAdminUploadChange} />
-          
-          {photos.length > 0 && (
-            <button 
-              onClick={handleDownloadZIP}
-              disabled={isZipping}
-              className="flex-1 md:flex-none bg-blue-500/10 border border-blue-500/20 text-blue-300 px-6 py-4 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-blue-500/20 transition-all flex items-center justify-center space-x-3 active:scale-95"
-            >
-              <Download size={16} />
-              <span>Télécharger l'album</span>
-            </button>
-          )}
-
-          <button 
-            disabled={isAdminUploading}
-            onClick={() => adminFileInputRef.current?.click()}
-            className="flex-1 md:flex-none bg-blue-500/10 border border-blue-500/20 text-blue-300 px-8 py-4 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:bg-blue-500/20 transition-all flex items-center justify-center space-x-3 active:scale-95"
-          >
-            <Cloud size={16} />
-            <span>{isAdminUploading ? 'Envoi...' : 'Ajouter'}</span>
-          </button>
-        </div>
-      </motion.div>
-
-      {/* Grid */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
-        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-      >
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35 }} className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         {photos.length === 0 ? (
-          <div className="col-span-full py-32 flex flex-col items-center justify-center text-white/30 border border-white/[0.05] rounded-[32px] bg-white/[0.02]">
-            <ImageIcon size={48} className="mb-4 opacity-50" />
-            <p className="font-serif text-xl tracking-tight">Aucun souvenir capturé</p>
-            <p className="text-[10px] uppercase tracking-[0.2em] mt-2 font-medium">L'album est vide</p>
+          <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-[var(--line)] bg-[var(--surface)] py-28 text-center text-[var(--text-soft)]">
+            <ImageIcon size={40} className="mb-4" />
+            <p className="text-lg font-semibold text-[var(--text-main)]">Aucun souvenir</p>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">L'album est encore vide.</p>
           </div>
         ) : (
-          photos.map((photo: Photo, i: number) => {
-            const photoChallenge = challenges.find((c: Challenge) => c.id === photo.challenge_id)
+          photos.map((photo, index) => {
+            const photoChallenge = challenges.find((challenge) => challenge.id === photo.challenge_id)
             return (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
+              <motion.button
+                type="button"
+                initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: i * 0.05 }}
-                key={photo.id} 
+                transition={{ duration: 0.28, delay: Math.min(index * 0.025, 0.25) }}
+                key={photo.id}
                 onClick={() => setSelectedPhoto(photo)}
-                className="relative aspect-[3/4] rounded-[24px] overflow-hidden bg-white/5 border border-white/[0.05] group cursor-pointer"
+                className="group relative aspect-[3/4] overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] text-left shadow-[var(--shadow-soft)] outline-none transition hover:border-white/18 focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
               >
-                <img 
-                  src={import.meta.env.VITE_SUPABASE_URL + '/storage/v1/object/public/events_photos/' + photo.url_thumb} 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  loading="lazy"
-                />
-                
-                {/* Subtle dark overlay on hover */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-500" />
-
-                {photoChallenge && (
-                  <div className="absolute top-3 left-3 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full text-[8px] font-bold uppercase tracking-[0.15em] text-white flex items-center space-x-1.5 border border-white/20 z-20">
-                    <Sparkles size={10} className="text-white" />
-                    <span>{photoChallenge.title}</span>
-                  </div>
-                )}
-              </motion.div>
+                <img src={storageUrl(photo.url_thumb || photo.url_original)} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" loading="lazy" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent opacity-80" />
+                <div className="absolute bottom-3 left-3 right-3">
+                  <p className="truncate text-xs font-semibold text-white">{photo.uploader_name || photo.contributor_name || 'Invite'}</p>
+                  {photoChallenge && (
+                    <p className="mt-1 inline-flex max-w-full items-center gap-1 rounded-lg bg-black/45 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-white/75">
+                      <Sparkles size={10} />
+                      <span className="truncate">{photoChallenge.title}</span>
+                    </p>
+                  )}
+                </div>
+              </motion.button>
             )
           })
         )}
       </motion.div>
 
-      {/* Upload ZIP Modal Overlay */}
       <AnimatePresence>
         {isZipping && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center p-6"
-          >
-            <div className="bg-white/[0.03] border border-white/[0.08] rounded-[40px] p-10 max-w-sm w-full flex flex-col items-center text-center space-y-8 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-white/5 blur-[50px] rounded-full pointer-events-none" />
-              
-              <div className="relative w-20 h-20 flex items-center justify-center">
-                <div className="absolute inset-0 border-2 border-white/10 border-t-white rounded-full animate-spin" />
-                <FolderArchive size={24} className="text-white opacity-80" />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-6 backdrop-blur-xl">
+            <div className="w-full max-w-sm rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center shadow-[var(--shadow-soft)]">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--line)] bg-white/[0.03]">
+                <FolderArchive size={24} className="text-[var(--accent)]" />
               </div>
-              
-              <div className="space-y-3 z-10 w-full">
-                <h3 className="text-2xl font-serif text-white tracking-tight">Préparation</h3>
-                <p className="text-[9px] font-semibold text-white/50 uppercase tracking-[0.2em]">{zipStatus}</p>
+              <h3 className="mt-6 text-xl font-semibold text-white">Export de l'album</h3>
+              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{zipStatus}</p>
+              <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/5">
+                <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: `${zipProgress}%` }} />
               </div>
-
-              <div className="w-full bg-white/[0.05] h-1 rounded-full overflow-hidden relative z-10">
-                <div 
-                  className="bg-white h-full rounded-full transition-all duration-300" 
-                  style={{ width: `${zipProgress}%` }}
-                />
-              </div>
-
-              <span className="text-3xl font-serif text-white relative z-10">{zipProgress}%</span>
+              <p className="mt-4 text-2xl font-semibold text-white">{zipProgress}%</p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Upload Confirmation Modal */}
       <AnimatePresence>
         {showUploadModal && selectedFilesForUpload.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center p-4"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white/[0.03] rounded-[40px] p-8 max-w-lg w-full border border-white/[0.08] flex flex-col space-y-8 shadow-2xl overflow-hidden max-h-[90vh]"
-            >
-              <div className="space-y-2 text-center">
-                <h3 className="text-3xl font-serif text-white tracking-tight">Ajouter des photos</h3>
-                <p className="text-[10px] text-white/50 font-medium uppercase tracking-[0.2em]">
-                  {selectedFilesForUpload.length} fichier{selectedFilesForUpload.length > 1 && 's'} sélectionné{selectedFilesForUpload.length > 1 && 's'}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 overflow-y-auto max-h-[250px] pr-2 scrollbar-thin">
-                {previewUrls.map((url: string, idx: number) => (
-                  <div key={idx} className="relative aspect-square rounded-[16px] overflow-hidden border border-white/10">
-                    <img src={url} className="w-full h-full object-cover" />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-xl">
+            <motion.div initial={{ scale: 0.97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.97, opacity: 0 }} className="w-full max-w-lg rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[var(--shadow-soft)]">
+              <h3 className="text-xl font-semibold text-white">Ajouter des photos</h3>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">{selectedFilesForUpload.length} fichier(s) selectionne(s)</p>
+              <div className="mt-6 grid max-h-64 grid-cols-3 gap-3 overflow-y-auto sm:grid-cols-4">
+                {previewUrls.map((url) => (
+                  <div key={url} className="aspect-square overflow-hidden rounded-xl border border-[var(--line)]">
+                    <img src={url} className="h-full w-full object-cover" />
                   </div>
                 ))}
               </div>
-
-              <div className="bg-white/[0.02] p-6 rounded-[24px] border border-white/[0.05] flex items-center justify-between space-x-4">
-                <div className="space-y-1.5">
-                  <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] text-white">Compression d'image</h4>
-                  <p className="text-[9px] text-white/40 font-medium uppercase tracking-widest leading-relaxed max-w-[200px]">
-                    {organizerCompress ? "Optimisé pour le web (~350Ko/img)" : "Taille originale (Plus long)"}
-                  </p>
+              <div className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-[var(--line)] bg-white/[0.025] p-4">
+                <div>
+                  <p className="text-xs font-semibold text-white">Compression image</p>
+                  <p className="mt-1 text-xs text-[var(--text-muted)]">{organizerCompress ? 'Optimise pour le web' : 'Qualite originale'}</p>
                 </div>
-                <button 
-                  onClick={() => setOrganizerCompress(!organizerCompress)} 
-                  className={`w-12 h-6 rounded-full transition-all relative shrink-0 border ${organizerCompress ? 'bg-white border-white' : 'bg-transparent border-white/20'}`}
-                >
-                  <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${organizerCompress ? 'left-7 bg-black' : 'left-1 bg-white/40'}`} />
+                <button onClick={() => setOrganizerCompress(!organizerCompress)} className={`relative h-6 w-11 rounded-full border transition ${organizerCompress ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-white/15 bg-white/5'}`}>
+                  <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${organizerCompress ? 'left-6' : 'left-1'}`} />
                 </button>
               </div>
-
-              <div className="flex gap-4">
-                <button 
-                  onClick={cancelAdminUpload}
-                  className="flex-1 py-4 border border-white/10 hover:bg-white/[0.05] rounded-full font-bold uppercase text-[9px] tracking-[0.2em] text-white/60 hover:text-white transition-all"
-                >
-                  Annuler
-                </button>
-                <button 
-                  onClick={confirmAdminUpload}
-                  className="flex-1 py-4 bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20 rounded-full font-bold uppercase text-[9px] tracking-[0.2em] transition-all flex items-center justify-center space-x-2 active:scale-95"
-                >
-                  <Upload size={14} />
-                  <span>Confirmer</span>
-                </button>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <SecondaryButton onClick={cancelAdminUpload}>Annuler</SecondaryButton>
+                <PrimaryButton onClick={confirmAdminUpload}><Upload size={15} /> Confirmer</PrimaryButton>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Cinematic Detail View */}
-      <AnimatePresence>
-        {selectedPhoto && !isFullscreen && createPortal(
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-2xl flex flex-col items-center justify-center p-4"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="relative bg-white/[0.02] border border-white/[0.05] rounded-[40px] p-6 max-w-sm w-full flex flex-col space-y-6 shadow-2xl overflow-y-auto max-h-[90vh] no-scrollbar"
-            >
-              <div 
-                onClick={() => setIsFullscreen(true)}
-                className="aspect-[3/4] w-full rounded-[24px] overflow-hidden border border-white/10 relative cursor-zoom-in group"
-              >
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setSelectedPhoto(null); }} 
-                  className="absolute top-4 left-4 bg-black/40 backdrop-blur-xl p-3 rounded-full text-white hover:bg-black/60 transition-all z-20 border border-white/10"
-                >
-                  <ArrowLeft size={16} />
-                </button>
-                <img 
-                  src={import.meta.env.VITE_SUPABASE_URL + '/storage/v1/object/public/events_photos/' + (selectedPhoto.url_original || selectedPhoto.url_thumb)} 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                />
-              </div>
+      {selectedPhoto && !isFullscreen && createPortal(
+        <PhotoDetail
+          photo={selectedPhoto}
+          selectedChallenge={selectedChallenge}
+          challenges={challenges}
+          isBindingChallenge={isBindingChallenge}
+          onClose={() => setSelectedPhoto(null)}
+          onFullscreen={() => setIsFullscreen(true)}
+          onBind={handleBindPhotoToChallenge}
+          onDelete={(event) => {
+            const photoToDelete = selectedPhoto
+            setSelectedPhoto(null)
+            handleDeletePhoto(photoToDelete, event)
+          }}
+        />,
+        document.body
+      )}
 
-              <div className="space-y-4 px-2 pb-2">
-                {/* Info Block */}
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="bg-white/[0.03] border border-white/[0.05] p-4 rounded-[20px] flex flex-col gap-2">
-                      <User size={14} className="text-white/40" />
-                      <div>
-                        <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/40 block mb-0.5">Capturé par</span>
-                        <p className="text-[10px] font-mono text-white truncate">{selectedPhoto.uploader_name || selectedPhoto.contributor_name || 'Invité'}</p>
-                      </div>
-                   </div>
-                   <div className="bg-white/[0.03] border border-white/[0.05] p-4 rounded-[20px] flex flex-col gap-2">
-                      <Heart size={14} className="text-white/40" />
-                      <div>
-                        <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/40 block mb-0.5">Réactions</span>
-                        <div className="flex gap-1.5 mt-1">
-                          {['❤️', '🔥', '👏'].map(emoji => {
-                            const count = selectedPhoto.reaction_count || 0
-                            return (
-                              <div key={emoji} className="bg-white/5 px-2 py-0.5 rounded-full text-[8px] font-bold flex items-center space-x-1">
-                                <span>{emoji}</span>
-                                <span className="text-white/80">{count}</span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                   </div>
-                </div>
-
-                {/* Challenge Section */}
-                <div className="bg-white/[0.03] border border-white/[0.05] p-5 rounded-[24px] space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/50">Défi associé</span>
-                    {isBindingChallenge && <Loader2 size={12} className="animate-spin text-white/50" />}
-                  </div>
-                  
-                  {selectedPhoto.challenge_id ? (
-                    <div className="inline-flex items-center space-x-2 bg-white/10 text-white px-4 py-2 rounded-full text-[9px] font-bold uppercase tracking-[0.15em] border border-white/20">
-                      <Sparkles size={12} />
-                      <span>{challenges.find((c: Challenge) => c.id === selectedPhoto.challenge_id)?.title}</span>
-                    </div>
-                  ) : (
-                    <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-white/30 italic">Aucun défi associé</p>
-                  )}
-
-                  {challenges.length > 0 && (
-                    <div className="pt-4 border-t border-white/[0.05] space-y-3">
-                      <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/40 block">Assigner à un défi</span>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedPhoto.challenge_id && (
-                          <button 
-                            disabled={isBindingChallenge}
-                            onClick={() => handleBindPhotoToChallenge(selectedPhoto.id, null)}
-                            className="px-3 py-1.5 rounded-full text-[8px] font-bold uppercase tracking-[0.2em] bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all"
-                          >
-                            Détacher
-                          </button>
-                        )}
-                        {challenges.map((c: Challenge) => {
-                          if (c.id === selectedPhoto.challenge_id) return null
-                          return (
-                            <button 
-                              key={c.id}
-                              disabled={isBindingChallenge}
-                              onClick={() => handleBindPhotoToChallenge(selectedPhoto.id, c.id)}
-                              className="px-3 py-1.5 rounded-full text-[8px] font-bold uppercase tracking-[0.2em] bg-white/[0.05] text-white/60 border border-white/[0.08] hover:bg-white/10 hover:text-white transition-all"
-                            >
-                              {c.title}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <button 
-                  onClick={(e) => { setSelectedPhoto(null); handleDeletePhoto(selectedPhoto, e); }}
-                  className="w-full py-4 mt-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-full font-bold uppercase text-[9px] tracking-[0.2em] transition-all flex items-center justify-center space-x-2"
-                >
-                  <Trash2 size={14} />
-                  <span>Supprimer de l'album</span>
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>,
-          document.body
-        )}
-      </AnimatePresence>
-
-      {/* Fullscreen Cinematic Image */}
-      <AnimatePresence>
-        {selectedPhoto && isFullscreen && createPortal(
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsFullscreen(false)} 
-            className="fixed inset-0 z-[120] bg-[#050505] flex items-center justify-center cursor-zoom-out select-none"
-          >
-            <div className="absolute inset-0 bg-cover bg-center blur-[100px] opacity-20 pointer-events-none scale-110" style={{ backgroundImage: 'url(' + import.meta.env.VITE_SUPABASE_URL + '/storage/v1/object/public/events_photos/' + (selectedPhoto.url_original || selectedPhoto.url_thumb) + ')' }} />
-
-            <img 
-              src={import.meta.env.VITE_SUPABASE_URL + '/storage/v1/object/public/events_photos/' + (selectedPhoto.url_original || selectedPhoto.url_thumb)} 
-              className="w-full h-full object-contain relative z-10 p-4" 
-            />
-            
-            <button 
-              onClick={(e) => { e.stopPropagation(); setIsFullscreen(false); }}
-              className="absolute top-8 right-8 z-20 bg-white/5 backdrop-blur-xl p-4 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center border border-white/10"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 bg-black/40 backdrop-blur-md px-6 py-3 rounded-full text-white/50 text-[9px] font-bold uppercase tracking-[0.2em] border border-white/5">
-              Cliquer pour fermer
-            </div>
-          </motion.div>,
-          document.body
-        )}
-      </AnimatePresence>
+      {selectedPhoto && isFullscreen && createPortal(
+        <div onClick={() => setIsFullscreen(false)} className="fixed inset-0 z-[120] flex cursor-zoom-out items-center justify-center bg-black">
+          <img src={storageUrl(selectedPhoto.url_original || selectedPhoto.url_thumb)} className="relative z-10 h-full w-full object-contain p-3 md:p-6" />
+          <button onClick={(event) => { event.stopPropagation(); setIsFullscreen(false) }} className="absolute right-5 top-5 z-20 rounded-xl border border-white/10 bg-black/55 p-3 text-white/75 backdrop-blur transition hover:text-white">
+            <X size={20} />
+          </button>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
+
+const PhotoDetail = ({
+  photo,
+  selectedChallenge,
+  challenges,
+  isBindingChallenge,
+  onClose,
+  onFullscreen,
+  onBind,
+  onDelete
+}: {
+  photo: Photo
+  selectedChallenge?: Challenge
+  challenges: Challenge[]
+  isBindingChallenge: boolean
+  onClose: () => void
+  onFullscreen: () => void
+  onBind: (photoId: string, challengeId: string | null) => void
+  onDelete: (event: React.MouseEvent) => void
+}) => (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/82 p-4 backdrop-blur-xl">
+    <motion.div initial={{ opacity: 0, y: 14, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="grid max-h-[92vh] w-full max-w-4xl grid-cols-1 overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow-soft)] md:grid-cols-[1.05fr_0.95fr]">
+      <button type="button" onClick={onFullscreen} className="relative min-h-[360px] bg-black text-left">
+        <img src={storageUrl(photo.url_original || photo.url_thumb)} className="h-full w-full object-contain" />
+        <span className="absolute left-4 top-4 rounded-xl bg-black/55 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/75 backdrop-blur">
+          Plein ecran
+        </span>
+      </button>
+
+      <div className="overflow-y-auto p-6">
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <p className="ui-eyebrow">Detail photo</p>
+            <h3 className="mt-1 text-2xl font-semibold tracking-tight text-white">Souvenir</h3>
+          </div>
+          <button onClick={onClose} className="rounded-xl border border-[var(--line)] bg-white/[0.03] p-3 text-white/65 transition hover:text-white">
+            <ArrowLeft size={18} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <InfoTile icon={<User size={16} />} label="Ajoute par" value={photo.uploader_name || photo.contributor_name || 'Invite'} />
+          <InfoTile icon={<Heart size={16} />} label="Reactions" value={photo.reaction_count || 0} />
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-[var(--line)] bg-white/[0.025] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">Mission associee</p>
+            {isBindingChallenge && <Loader2 size={14} className="animate-spin text-[var(--accent)]" />}
+          </div>
+          {selectedChallenge ? (
+            <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-xl bg-white/[0.05] px-3 py-2 text-sm font-semibold text-white">
+              <Sparkles size={14} className="text-[var(--accent)]" />
+              <span className="truncate">{selectedChallenge.title}</span>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-[var(--text-muted)]">Aucune mission associee.</p>
+          )}
+
+          {challenges.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--line)] pt-4">
+              {photo.challenge_id && (
+                <button onClick={() => onBind(photo.id, null)} className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-red-300">
+                  Detacher
+                </button>
+              )}
+              {challenges.filter((challenge) => challenge.id !== photo.challenge_id).map((challenge) => (
+                <button key={challenge.id} onClick={() => onBind(photo.id, challenge.id)} className="rounded-lg border border-[var(--line)] bg-white/[0.03] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/65 transition hover:text-white">
+                  {challenge.title}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button onClick={onDelete} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-4 text-xs font-semibold uppercase tracking-[0.12em] text-red-300 transition hover:bg-red-500/15">
+          <Trash2 size={15} />
+          Supprimer de l'album
+        </button>
+      </div>
+    </motion.div>
+  </div>
+)
+
+const InfoTile = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) => (
+  <div className="rounded-2xl border border-[var(--line)] bg-white/[0.025] p-4">
+    <div className="text-[var(--accent)]">{icon}</div>
+    <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">{label}</p>
+    <p className="mt-1 truncate text-sm font-semibold text-white">{value}</p>
+  </div>
+)

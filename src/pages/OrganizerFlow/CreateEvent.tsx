@@ -1,7 +1,9 @@
 import { useEffect } from 'react'
+import type React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Sparkles, Hash, Users, AlertTriangle, LogIn, ArrowRight } from 'lucide-react'
+import { ArrowRight, Calendar, Hash, Image, LogIn, ShieldCheck, Users } from 'lucide-react'
 import { useCreateEventLogic } from '../../hooks/useCreateEventLogic'
+import { PrimaryButton, SecondaryButton, Surface } from '../../components/ui/primitives'
 
 export default function CreateEvent() {
   const navigate = useNavigate()
@@ -18,16 +20,9 @@ export default function CreateEvent() {
     let widgetId: string | null = null
     let interval: any = null
 
-    // Callbacks globaux pour Turnstile
-    ;(window as any).onTurnstileSuccess = (token: string) => {
-      handleTurnstileVerify(token)
-    }
-    ;(window as any).onTurnstileExpired = () => {
-      handleTurnstileExpired()
-    }
-    ;(window as any).onTurnstileError = () => {
-      handleTurnstileExpired()
-    }
+    ;(window as any).onTurnstileSuccess = (token: string) => handleTurnstileVerify(token)
+    ;(window as any).onTurnstileExpired = () => handleTurnstileExpired()
+    ;(window as any).onTurnstileError = () => handleTurnstileExpired()
 
     const renderWidget = () => {
       const turnstile = (window as any).turnstile
@@ -36,9 +31,9 @@ export default function CreateEvent() {
         try {
           container.innerHTML = ''
           widgetId = turnstile.render('#teutchap-turnstile-container', {
-            sitekey: '1x00000000000000000000AA', // Clé de test invisible qui passe toujours automatiquement
+            sitekey: '1x00000000000000000000AA',
             theme: 'dark',
-            appearance: 'never', // Rendu invisible / offscreen complet
+            appearance: 'never',
             callback: 'onTurnstileSuccess',
             'expired-callback': 'onTurnstileExpired',
             'error-callback': 'onTurnstileError',
@@ -49,7 +44,6 @@ export default function CreateEvent() {
         }
       }
     }
-
 
     if ((window as any).turnstile) {
       renderWidget()
@@ -75,123 +69,164 @@ export default function CreateEvent() {
     }
   }, [activeTab, handleTurnstileVerify, handleTurnstileExpired])
 
-
-
-
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center p-4 selection:bg-white/10 relative overflow-x-hidden font-sans">
-
-      
-      <div className="w-full max-w-xl relative z-10 space-y-8 py-10 md:py-16">
-        <header className="text-center space-y-4 animate-in fade-in slide-in-from-top-8 duration-1000">
-          <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-6 py-2.5 rounded-full backdrop-blur-xl mb-4">
-            <span className="text-[10px] font-medium uppercase tracking-[0.4em] text-white/40">{activeTab === 'create' ? "Nouveau projet" : "Accès Invité"}</span>
+    <div className="min-h-screen text-[var(--text-main)]">
+      <main className="mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 items-center gap-8 px-5 py-8 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
+        <section className="space-y-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/[0.03] px-4 py-2">
+            <ShieldCheck size={14} className="text-[var(--accent)]" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+              Album evenementiel sans application
+            </span>
           </div>
-          <h1 className="text-6xl md:text-9xl font-serif tracking-tight leading-[1] flex flex-col items-center">
-            <span className="text-white/40">{activeTab === 'create' ? 'Capturez' : 'Rejoignez'}</span>
-            <span className="text-white">{activeTab === 'create' ? "L'éternité" : 'La Réception'}</span>
-          </h1>
-        </header>
 
-        <div className="flex bg-white/5 border border-white/10 p-1 rounded-full max-w-sm mx-auto relative z-20">
-          <TabButton active={activeTab === 'create'} onClick={() => setActiveTab('create')} label="Créer" />
-          <TabButton active={activeTab === 'join'} onClick={() => setActiveTab('join')} label="Rejoindre" />
-        </div>
+          <div className="space-y-5">
+            <h1 className="max-w-xl text-5xl font-semibold leading-[0.95] tracking-tight text-[var(--text-main)] md:text-7xl">
+              Rassemblez tous les souvenirs au meme endroit.
+            </h1>
+            <p className="max-w-lg text-base leading-7 text-[var(--text-muted)]">
+              Creez un album, partagez un QR code, et laissez vos invites ajouter leurs photos en quelques secondes.
+            </p>
+          </div>
 
-        <div className="cinematic-surface p-8 md:p-14 space-y-10 relative overflow-hidden group">
+          <div className="grid max-w-lg grid-cols-3 gap-3">
+            <TrustStat value="30s" label="creation" />
+            <TrustStat value="0" label="app requise" />
+            <TrustStat value="QR" label="partage" />
+          </div>
+        </section>
+
+        <Surface className="overflow-hidden p-5 md:p-7">
+          <div className="mb-6 grid grid-cols-2 rounded-2xl bg-black/20 p-1">
+            <Segment active={activeTab === 'create'} onClick={() => setActiveTab('create')} label="Creer" />
+            <Segment active={activeTab === 'join'} onClick={() => setActiveTab('join')} label="Rejoindre" />
+          </div>
+
           {activeTab === 'create' ? (
-            <form onSubmit={(e) => { e.preventDefault(); handleSubmit(navigate); }} className="space-y-6 relative z-10">
-              <InputGroup label="Nom de l'événement" icon={<Hash size={18}/>} placeholder="Ex: Mariage de Sarah & Marc" value={formData.name} onChange={(v: string) => setFormData({...formData, name: v})} />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <SelectGroup label="Réception" icon={<Sparkles size={16}/>} value={formData.eventType} onChange={(v: string) => setFormData({...formData, eventType: v})} options={[{v:'mariage', l:'💍 Mariage'}, {v:'anniversaire', l:'🎂 Anniversaire'}, {v:'soiree', l:'🎉 Fête'}]} />
-                <SelectGroup label="Capacité" icon={<Users size={16}/>} value={formData.expectedGuests} onChange={(v: string) => setFormData({...formData, expectedGuests: v})} options={[{v:'50', l:'< 50'}, {v:'100', l:'100'}, {v:'300', l:'300'}]} />
+            <form onSubmit={(e) => { e.preventDefault(); handleSubmit(navigate) }} className="space-y-5">
+              <FormIntro title="Nouvel album" description="Configurez l'evenement. Le QR sera pret juste apres la creation." />
+              <Field label="Nom de l'evenement" icon={<Hash size={17} />}>
+                <input
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Mariage de Sarah & Marc"
+                  className="ui-input"
+                />
+              </Field>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="Type" icon={<Image size={17} />}>
+                  <select className="ui-input" value={formData.eventType} onChange={(e) => setFormData({ ...formData, eventType: e.target.value })}>
+                    <option value="mariage">Mariage</option>
+                    <option value="anniversaire">Anniversaire</option>
+                    <option value="corporate">Corporate</option>
+                    <option value="graduation">Graduation</option>
+                    <option value="funerailles">Hommage</option>
+                  </select>
+                </Field>
+                <Field label="Capacite" icon={<Users size={17} />}>
+                  <select className="ui-input" value={formData.expectedGuests} onChange={(e) => setFormData({ ...formData, expectedGuests: e.target.value })}>
+                    <option value="50">Moins de 50</option>
+                    <option value="100">100 invites</option>
+                    <option value="300">300 invites</option>
+                  </select>
+                </Field>
               </div>
 
-              <div className="space-y-4">
-                  <InputGroup type="datetime-local" label="Date et heure" icon={<Calendar size={18}/>} value={formData.eventDateTime} onChange={(v: string) => setFormData({...formData, eventDateTime: v})} />
-                  <label className="flex items-center space-x-4 cursor-pointer group w-fit ml-2">
-                    <div onClick={() => setIsMultiDay(!isMultiDay)} className={`w-11 h-6 rounded-full transition-all relative ${isMultiDay ? 'bg-white shadow-[0_0_15px_rgba(255,255,255,0.4)]' : 'bg-white/10'}`}>
-                      <div className={`absolute top-1 w-4 h-4 bg-black/80 rounded-full transition-all ${isMultiDay ? 'left-6' : 'left-1'}`} />
-                    </div>
-                    <span className="text-[10px] font-medium uppercase tracking-widest text-white/60">Multi-jours</span>
-                  </label>
-              </div>
+              <Field label="Date et heure" icon={<Calendar size={17} />}>
+                <input
+                  required
+                  type="datetime-local"
+                  style={{ colorScheme: 'dark' }}
+                  value={formData.eventDateTime}
+                  onChange={(e) => setFormData({ ...formData, eventDateTime: e.target.value })}
+                  className="ui-input"
+                />
+              </Field>
 
-              {/* Raccordement Réel Cloudflare Turnstile */}
-              <div className="flex justify-center py-2 relative z-20">
-                <div id="teutchap-turnstile-container" className="min-h-[65px] flex items-center justify-center" />
+              <label className="flex w-fit cursor-pointer items-center gap-3 rounded-xl border border-[var(--line)] bg-white/[0.025] px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => setIsMultiDay(!isMultiDay)}
+                  className={`relative h-6 w-11 rounded-full border transition ${isMultiDay ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-white/15 bg-white/5'}`}
+                >
+                  <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${isMultiDay ? 'left-6' : 'left-1'}`} />
+                </button>
+                <span className="text-xs font-semibold text-[var(--text-muted)]">Evenement multi-jours</span>
+              </label>
+
+              <div className="flex min-h-8 justify-center">
+                <div id="teutchap-turnstile-container" />
               </div>
 
               {creationError && <ErrorMessage message={creationError} />}
-              <SubmitButton loading={loading} label="Créer mon album" icon={<Sparkles size={18}/>} />
+              <PrimaryButton type="submit" disabled={loading} className="w-full">
+                {loading ? <Spinner /> : <><span>Creer l'album</span><ArrowRight size={16} /></>}
+              </PrimaryButton>
             </form>
-
           ) : (
-            <form onSubmit={(e) => { e.preventDefault(); handleJoin(navigate); }} className="space-y-8 relative z-10 text-center animate-in fade-in">
-              <div className="w-16 h-16 bg-white/5 border border-white/10 rounded-full flex items-center justify-center mx-auto text-white/60"><LogIn size={28} /></div>
-              <div className="space-y-2">
-                <h2 className="text-3xl font-serif text-white text-glow">Album Privé</h2>
-                <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Entrez le code pour rejoindre</p>
-              </div>
-              <InputGroup label="Code Album" icon={<LogIn size={18}/>} placeholder="Ex: lwidj0ck" value={joinInput} onChange={setJoinInput} />
+            <form onSubmit={(e) => { e.preventDefault(); handleJoin(navigate) }} className="space-y-6">
+              <FormIntro title="Rejoindre un album" description="Entrez le code partage par l'organisateur." />
+              <Field label="Code album" icon={<LogIn size={17} />}>
+                <input
+                  required
+                  value={joinInput}
+                  onChange={(e) => setJoinInput(e.target.value)}
+                  placeholder="ex: lwidj0ck"
+                  className="ui-input text-center font-mono tracking-[0.18em]"
+                />
+              </Field>
               {joinError && <ErrorMessage message={joinError} />}
-              <SubmitButton loading={joinLoading} label="Rejoindre la réception" icon={<ArrowRight size={18}/>} />
+              <SecondaryButton type="submit" disabled={joinLoading} className="w-full">
+                {joinLoading ? <Spinner /> : <><span>Ouvrir l'album</span><ArrowRight size={16} /></>}
+              </SecondaryButton>
             </form>
           )}
-        </div>
-      </div>
+        </Surface>
+      </main>
     </div>
   )
 }
 
-const TabButton = ({ active, onClick, label }: any) => (
-  <button onClick={onClick} className={`flex-1 py-3 rounded-full text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-500 ${active ? 'bg-white text-black shadow-xl shadow-white/5' : 'text-white/30 hover:text-white/60'}`}>
-    <span>{label}</span>
+const Segment = ({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`rounded-xl px-4 py-3 text-xs font-semibold transition ${active ? 'bg-white text-black' : 'text-[var(--text-muted)] hover:text-white'}`}
+  >
+    {label}
   </button>
 )
 
-const InputGroup = ({ label, icon, value, onChange, placeholder, type="text" }: any) => (
-  <div className="space-y-4">
-    <label className="text-[10px] font-semibold uppercase tracking-[0.25em] text-white/80 ml-4">{label}</label>
-    <div className="relative">
-      <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none z-10">{icon}</div>
-      <input 
-        type={type} 
-        required 
-        placeholder={placeholder} 
-        style={{ colorScheme: 'dark' }}
-        className="w-full bg-white/[0.08] border border-white/10 rounded-2xl pl-14 pr-4 py-6 text-base font-serif outline-none focus:border-white/40 transition-all text-white placeholder:text-white/40 appearance-none min-w-0" 
-        value={value} 
-        onChange={e => onChange(e.target.value)} 
-      />
-    </div>
+const TrustStat = ({ value, label }: { value: string; label: string }) => (
+  <div className="rounded-2xl border border-[var(--line)] bg-white/[0.025] p-4">
+    <p className="text-2xl font-semibold text-white">{value}</p>
+    <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">{label}</p>
   </div>
 )
 
-const SelectGroup = ({ label, icon, value, onChange, options }: any) => (
-  <div className="space-y-4">
-    <label className="text-[10px] font-semibold uppercase tracking-[0.25em] text-white/80 ml-4 block truncate">{label}</label>
-    <div className="relative">
-      <div className="absolute left-5 top-1/2 -translate-y-1/2 text-white/50">{icon}</div>
-      <select className="w-full bg-white/[0.08] border border-white/10 rounded-2xl pl-12 pr-8 py-5 text-sm font-medium outline-none focus:border-white/40 transition-all appearance-none text-white" value={value} onChange={e => onChange(e.target.value)}>
-        {options.map((o: any) => <option key={o.v} value={o.v} className="bg-black text-white">{o.l}</option>)}
-      </select>
-    </div>
+const FormIntro = ({ title, description }: { title: string; description: string }) => (
+  <div className="space-y-1 pb-2">
+    <h2 className="text-2xl font-semibold tracking-tight text-white">{title}</h2>
+    <p className="text-sm leading-6 text-[var(--text-muted)]">{description}</p>
   </div>
+)
+
+const Field = ({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) => (
+  <label className="block space-y-2">
+    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">{label}</span>
+    <span className="relative block">
+      <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[var(--text-soft)]">{icon}</span>
+      {children}
+    </span>
+  </label>
 )
 
 const ErrorMessage = ({ message }: { message: string }) => (
-  <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-start space-x-3 text-red-400 text-xs">
-    <AlertTriangle size={18} className="shrink-0" />
-    <span className="font-medium leading-relaxed">{message}</span>
+  <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+    {message}
   </div>
 )
 
-const SubmitButton = ({ loading, label }: any) => (
-  <button type="submit" disabled={loading} className="w-full btn-pill btn-primary py-6 text-xs uppercase tracking-[0.4em] flex items-center justify-center disabled:opacity-30">
-    {loading ? <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" /> : label}
-  </button>
-)
-
-// Removed BackgroundGlows - now handled globally in index.css
+const Spinner = () => <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
