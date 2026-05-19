@@ -2,8 +2,18 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Shield, Copy, Share2, Trash2, Loader2, AlertTriangle } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { EventData } from '../../../types'
 
-export const SettingsTab = ({ eventData, eventUrl, copyLink, shareWhatsApp, updateEvent, deleteEvent }: any) => {
+interface SettingsTabProps {
+  eventData: EventData;
+  eventUrl: string;
+  copyLink: () => void;
+  shareWhatsApp: () => void;
+  updateEvent: (updates: Partial<EventData>) => void;
+  deleteEvent: () => Promise<any>;
+}
+
+export const SettingsTab = ({ eventData, eventUrl, copyLink, shareWhatsApp, updateEvent, deleteEvent }: SettingsTabProps) => {
   const [isDeleting, setIsDeleting] = useState(false)
   const navigate = useNavigate()
 

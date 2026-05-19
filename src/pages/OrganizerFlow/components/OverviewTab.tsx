@@ -8,21 +8,15 @@ import {
 import { OverviewQRSection } from './OverviewQRSection';
 import { OverviewSecuritySection } from './OverviewSecuritySection';
 import { OverviewCapacitySection } from './OverviewCapacitySection';
+import { Photo, Challenge, EventData, Guest, TimeRemaining } from '../../../types'
 
 interface OverviewTabProps {
-  timeRemaining: {
-    days: number;
-    hours: number;
-    minutes: number;
-    seconds: number;
-    phase: string;
-    label: string;
-  };
-  photos: any[];
-  challenges: any[];
+  timeRemaining: TimeRemaining;
+  photos: Photo[];
+  challenges: Challenge[];
   totalReactions: number;
   eventUrl: string;
-  eventData: any;
+  eventData: EventData;
   copied: boolean;
   copyLink: () => void;
   downloadQRCode: () => void;
@@ -36,7 +30,7 @@ interface OverviewTabProps {
   handleSetPassword: (p: string) => Promise<void>;
   enableAdminsToggle: boolean;
   handleToggleAdminsFeature: () => void;
-  guests: any[];
+  guests: Guest[];
   stagedAdmins: string[];
   handleToggleStagedAdmin: (pseudo: string) => void;
   adminLoading: boolean;

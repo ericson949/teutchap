@@ -5,6 +5,24 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 import { supabase } from '../../../lib/supabase'
 
+import { Photo, Challenge } from '../../../types'
+
+interface GalleryTabProps {
+  photos: Photo[];
+  challenges?: Challenge[];
+  isAdminUploading: boolean;
+  adminFileInputRef: React.RefObject<HTMLInputElement | null>;
+  handleAdminUploadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleDeletePhoto: (photo: Photo, e?: React.MouseEvent) => void;
+  selectedFilesForUpload?: File[];
+  showUploadModal?: boolean;
+  organizerCompress?: boolean;
+  setOrganizerCompress: (val: boolean) => void;
+  confirmAdminUpload: () => void;
+  cancelAdminUpload: () => void;
+  onPhotoSelectChange?: (selected: boolean) => void;
+}
+
 export const GalleryTab = ({ 
   photos, 
   challenges = [],
@@ -19,14 +37,14 @@ export const GalleryTab = ({
   confirmAdminUpload,
   cancelAdminUpload,
   onPhotoSelectChange
-}: any) => {
+}: GalleryTabProps) => {
 
   const [isZipping, setIsZipping] = useState(false)
   const [zipProgress, setZipProgress] = useState(0)
   const [zipStatus, setZipStatus] = useState('')
   const [previewUrls, setPreviewUrls] = useState<string[]>([])
 
-  const [selectedPhoto, setSelectedPhoto] = useState<any | null>(null)
+  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)
   const [isBindingChallenge, setIsBindingChallenge] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
@@ -45,7 +63,7 @@ export const GalleryTab = ({
         .update({ challenge_id: challengeId })
         .eq('id', photoId)
       if (error) throw error
-      setSelectedPhoto((prev: any) => prev ? { ...prev, challenge_id: challengeId } : null)
+      setSelectedPhoto((prev: Photo | null) => prev ? { ...prev, challenge_id: challengeId } as Photo : null)
     } catch (e) {
       console.error("Erreur liaison défi:", e)
       alert("Erreur lors de la liaison au défi.")
@@ -56,6 +74,7 @@ export const GalleryTab = ({
 
   useEffect(() => {
     if (!selectedFilesForUpload || selectedFilesForUpload.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPreviewUrls([])
       return
     }
@@ -184,8 +203,8 @@ export const GalleryTab = ({
             <p className="text-[10px] uppercase tracking-[0.2em] mt-2 font-medium">L'album est vide</p>
           </div>
         ) : (
-          photos.map((photo: any, i: number) => {
-            const photoChallenge = challenges.find((c: any) => c.id === photo.challenge_id)
+          photos.map((photo: Photo, i: number) => {
+            const photoChallenge = challenges.find((c: Challenge) => c.id === photo.challenge_id)
             return (
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
@@ -386,7 +405,7 @@ export const GalleryTab = ({
                   {selectedPhoto.challenge_id ? (
                     <div className="inline-flex items-center space-x-2 bg-white/10 text-white px-4 py-2 rounded-full text-[9px] font-bold uppercase tracking-[0.15em] border border-white/20">
                       <Sparkles size={12} />
-                      <span>{challenges.find((c: any) => c.id === selectedPhoto.challenge_id)?.title}</span>
+                      <span>{challenges.find((c: Challenge) => c.id === selectedPhoto.challenge_id)?.title}</span>
                     </div>
                   ) : (
                     <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-white/30 italic">Aucun défi associé</p>
@@ -405,7 +424,7 @@ export const GalleryTab = ({
                             Détacher
                           </button>
                         )}
-                        {challenges.map((c: any) => {
+                        {challenges.map((c: Challenge) => {
                           if (c.id === selectedPhoto.challenge_id) return null
                           return (
                             <button 

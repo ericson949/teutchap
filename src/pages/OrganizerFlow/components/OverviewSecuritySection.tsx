@@ -1,12 +1,31 @@
 import { useState } from 'react'
 import { Trash2, Loader2, Users, Check, Lock, Eye, EyeOff } from 'lucide-react'
+import { EventData, Guest } from '../../../types'
+
+interface OverviewSecuritySectionProps {
+  enablePasswordToggle: boolean;
+  handleTogglePasswordFeature: () => void;
+  eventData: EventData;
+  pwdLoading: boolean;
+  handleRevokePassword: () => void;
+  newPassword: string;
+  setNewPassword: (p: string) => void;
+  handleSetPassword: (p: string) => void;
+  enableAdminsToggle: boolean;
+  handleToggleAdminsFeature: () => void;
+  allDisplayGuests: Guest[];
+  stagedAdmins: string[];
+  handleToggleStagedAdmin: (pseudo: string) => void;
+  adminLoading: boolean;
+  handleSaveAdmins: () => void;
+}
 
 export const OverviewSecuritySection = ({ 
   enablePasswordToggle, handleTogglePasswordFeature, eventData, pwdLoading, 
   handleRevokePassword, newPassword, setNewPassword, handleSetPassword,
   enableAdminsToggle, handleToggleAdminsFeature, allDisplayGuests, stagedAdmins, 
   handleToggleStagedAdmin, adminLoading, handleSaveAdmins
-}: any) => {
+}: OverviewSecuritySectionProps) => {
   const [showPassword, setShowPassword] = useState(false)
   return (
     <div className="space-y-8">

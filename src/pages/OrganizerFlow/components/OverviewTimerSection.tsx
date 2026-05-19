@@ -1,6 +1,11 @@
 import { Hourglass, Check } from 'lucide-react'
+import { TimeRemaining } from '../../../types'
 
-export const OverviewTimerSection = ({ timeRemaining }: any) => {
+interface OverviewTimerSectionProps {
+  timeRemaining: TimeRemaining;
+}
+
+export const OverviewTimerSection = ({ timeRemaining }: OverviewTimerSectionProps) => {
   const isFinished = timeRemaining.phase === 'finished'
 
   return (

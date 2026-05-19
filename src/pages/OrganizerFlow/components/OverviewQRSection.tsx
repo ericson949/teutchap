@@ -1,7 +1,16 @@
 import { QRCodeCanvas } from 'qrcode.react'
 import { Download, Copy, Check } from 'lucide-react'
 
-export const OverviewQRSection = ({ eventUrl, copied, copyLink, downloadQRCode, shareWhatsApp }: any) => {
+interface OverviewQRSectionProps {
+  eventUrl: string;
+  eventName?: string;
+  copied: boolean;
+  copyLink: () => void;
+  downloadQRCode: () => void;
+  shareWhatsApp: () => void;
+}
+
+export const OverviewQRSection = ({ eventUrl, copied, copyLink, downloadQRCode, shareWhatsApp }: OverviewQRSectionProps) => {
   return (
     <div className="w-full flex flex-col md:flex-row gap-8 items-center md:items-start">
         {/* QR Code */}

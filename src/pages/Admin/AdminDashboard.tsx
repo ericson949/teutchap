@@ -26,9 +26,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
-      // For development purposes, we could allow access or show a warning
-      // For production, we would redirect to home
-      // navigate('/')
+      navigate('/')
     }
   }, [isAdmin, authLoading, navigate])
 
@@ -63,10 +61,8 @@ export default function AdminDashboard() {
 
   if (authLoading) return <div className="min-h-screen bg-[#08060d] flex items-center justify-center text-white">Verification...</div>
 
-  // Even if not admin, we show a "Developer View" if it's localhost
-  const isDev = window.location.hostname === 'localhost'
-  if (!isAdmin && !isDev) {
-    return <div className="min-h-screen bg-[#08060d] flex items-center justify-center text-white">Accès refusé.</div>
+  if (!isAdmin) {
+    return <div className="min-h-screen bg-[#08060d] flex items-center justify-center text-white">Accès refusé. Redirection...</div>
   }
 
   const filteredEvents = events.filter(e => 

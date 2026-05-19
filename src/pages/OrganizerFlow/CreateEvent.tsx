@@ -50,15 +50,6 @@ export default function CreateEvent() {
       }
     }
 
-    // Sécurité anti-blocage : Si Turnstile ne charge pas sous 1.5s (mode offline/mauvaise connexion),
-    // on valide automatiquement pour ne jamais bloquer l'organisateur.
-    const fallbackTimeout = setTimeout(() => {
-      const turnstile = (window as any).turnstile
-      if (!turnstile || !widgetId) {
-        console.warn("Turnstile non disponible ou bloqué. Passage en mode secours automatique.")
-        handleTurnstileVerify('fallback-offline-token')
-      }
-    }, 1500)
 
     if ((window as any).turnstile) {
       renderWidget()
@@ -72,7 +63,6 @@ export default function CreateEvent() {
     }
 
     return () => {
-      if (fallbackTimeout) clearTimeout(fallbackTimeout)
       if (interval) clearInterval(interval)
       if (widgetId && (window as any).turnstile) {
         try {
