@@ -1,5 +1,5 @@
 import { Hourglass, Check } from 'lucide-react'
-import { TimeRemaining } from '../../../types'
+import type { TimeRemaining } from '../../../types'
 
 interface OverviewTimerSectionProps {
   timeRemaining: TimeRemaining;

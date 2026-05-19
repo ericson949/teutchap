@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Trash2, Loader2, Users, Check, Lock, Eye, EyeOff } from 'lucide-react'
-import { EventData, Guest } from '../../../types'
+import type { EventData, Guest } from '../../../types'
 
 interface OverviewSecuritySectionProps {
   enablePasswordToggle: boolean;

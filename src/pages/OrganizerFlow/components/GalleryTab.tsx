@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 import { supabase } from '../../../lib/supabase'
 
-import { Photo, Challenge } from '../../../types'
+import type { Photo, Challenge } from '../../../types'
 
 interface GalleryTabProps {
   photos: Photo[];
@@ -16,6 +16,7 @@ interface GalleryTabProps {
   handleDeletePhoto: (photo: Photo, e?: React.MouseEvent) => void;
   selectedFilesForUpload?: File[];
   showUploadModal?: boolean;
+  setShowUploadModal: (val: boolean) => void;
   organizerCompress?: boolean;
   setOrganizerCompress: (val: boolean) => void;
   confirmAdminUpload: () => void;

@@ -8,7 +8,7 @@ import {
 import { OverviewQRSection } from './OverviewQRSection';
 import { OverviewSecuritySection } from './OverviewSecuritySection';
 import { OverviewCapacitySection } from './OverviewCapacitySection';
-import { Photo, Challenge, EventData, Guest, TimeRemaining } from '../../../types'
+import type { Photo, Challenge, EventData, Guest, TimeRemaining } from '../../../types'
 
 interface OverviewTabProps {
   timeRemaining: TimeRemaining;

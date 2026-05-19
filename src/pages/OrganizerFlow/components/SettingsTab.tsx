@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Shield, Copy, Share2, Trash2, Loader2, AlertTriangle } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { EventData } from '../../../types'
+import type { EventData } from '../../../types'
 
 interface SettingsTabProps {
   eventData: EventData;

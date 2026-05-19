@@ -190,8 +190,10 @@ export function useDashboardLogic(eventId: string | undefined) {
     setShowUploadModal(false)
   }
 
-  const handleDeletePhoto = async (photo: any, e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleDeletePhoto = async (photo: any, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation()
+    }
     if (!confirm("Supprimer cette photo ?")) return
     await supabase.from('photos').delete().eq('id', photo.id)
   }
