@@ -179,6 +179,15 @@ L'Afrique centrale organise des événements à très haute valeur émotionnelle
 - `event_id` (UUID, Foreign Key) : Référence de l'album partagé.
 - `title`, `description` (TEXT) : Enoncés textuels du défi.
 
+### Table `payments`
+- `id` (UUID, Primary Key) : Identifiant de la transaction.
+- `event_id` (UUID, Foreign Key) : Référence de l'événement surclassé.
+- `amount` (INT) : Montant payé en FCFA.
+- `status` (TEXT) : État de la transaction (`pending`, `completed`, `failed`).
+- `payment_method` (TEXT) : Moyen de paiement (`orange_money`, `mtn_momo`).
+- `transaction_id` (TEXT, Nullable) : Identifiant externe fourni par l'agrégateur.
+- `created_at` (TIMESTAMPTZ) : Date de l'opération.
+
 ---
 
 ## 10. Modèle économique
@@ -187,3 +196,11 @@ L'Afrique centrale organise des événements à très haute valeur émotionnelle
 - Gratuit : 0 FCFA / 100 photos
 - Premium Mariage : 5 000 FCFA / 1 000 photos
 - VIP Event : 15 000 FCFA / 3 000 photos
+
+### Intégration des Paiements (Mobile Money)
+Pour le marché d'Afrique Centrale (Cameroun, Gabon, etc.), les flux financiers reposent sur les API des opérateurs Orange Money et MTN MoMo.
+- **Agrégateur cible** : Intégration de la passerelle **Campay** (ou alternativement **Monetbil** / **CinetPay**), très populaires pour l'agrégation Orange/MTN en Afrique Centrale.
+- **État d'implémentation actuel** : 
+  - La structure de persistance transactionnelle (table `payments`) est entièrement implémentée au niveau de la base de données PostgreSQL (Supabase) pour garantir la traçabilité.
+  - Le flux de paiement utilisateur (choix du réseau, simulation de débit Orange Money, confirmation de transaction) est intégré au niveau de l'interface (`UpgradeEvent.tsx`).
+  - La comptabilisation et le calcul des revenus réels sont consolidés via la vue SQL dynamique `global_stats` pour la console d'administration.
