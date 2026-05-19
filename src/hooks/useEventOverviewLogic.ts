@@ -55,15 +55,21 @@ export function useEventOverviewLogic(eventId: string | undefined) {
 
   useEffect(() => {
     if (eventData && guests.length > 0) {
-      if (eventData.access_password) setEnablePasswordToggle(true)
-      if (eventData.co_admins?.length > 0) setEnableAdminsToggle(true)
+      if (eventData.access_password && !enablePasswordToggle) setEnablePasswordToggle(true)
+      if (eventData.co_admins?.length > 0 && !enableAdminsToggle) setEnableAdminsToggle(true)
       
       const initialCoAdminPseudos = guests
         .filter(g => eventData.co_admins?.includes(g.user_id))
         .map(g => g.pseudo)
-      setStagedAdmins(initialCoAdminPseudos)
+      
+      const isIdentical = stagedAdmins.length === initialCoAdminPseudos.length &&
+        stagedAdmins.every((val, index) => val === initialCoAdminPseudos[index])
+      
+      if (!isIdentical) {
+        setStagedAdmins(initialCoAdminPseudos)
+      }
     }
-  }, [eventData, guests])
+  }, [eventData, guests, enablePasswordToggle, enableAdminsToggle, stagedAdmins])
 
   const copyLink = (text: string) => {
     if (navigator.clipboard && window.isSecureContext) {

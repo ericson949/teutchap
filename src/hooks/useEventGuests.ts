@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 
 export interface EventGuest {
@@ -106,10 +106,12 @@ export function useEventGuests(eventId: string | undefined) {
 
   // 3. Fusionner la liste DB avec l'état Presence en temps réel
   // Seuls les invités formellement inscrits en base de données sont listés pour l'attribution de rôles
-  const mergedGuests: EventGuest[] = guests.map(g => ({
-    ...g,
-    isOnline: !!onlineUsers[g.user_id]
-  }))
+  const mergedGuests: EventGuest[] = useMemo(() => {
+    return guests.map(g => ({
+      ...g,
+      isOnline: !!onlineUsers[g.user_id]
+    }))
+  }, [guests, onlineUsers])
 
   // Mettre à jour le rôle (ex: promotion co-admin)
   const updateGuestRole = async (userId: string, newRole: string) => {

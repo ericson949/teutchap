@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Image as ImageIcon, ArrowLeft, X, User, Heart, Zap, Sparkles, Loader2 } from 'lucide-react'
 
@@ -13,13 +13,26 @@ interface GuestGalleryViewProps {
   reactions: any
   addReaction: (id: string, emoji: string) => void
   challenges?: any[]
+  onPhotoSelectChange?: (selected: boolean) => void
 }
 
-export const GuestGalleryView: React.FC<GuestGalleryViewProps> = ({ photos, userReactions, reactions, addReaction, challenges = [] }) => {
+export const GuestGalleryView: React.FC<GuestGalleryViewProps> = ({ 
+  photos, 
+  userReactions, 
+  reactions, 
+  addReaction, 
+  challenges = [],
+  onPhotoSelectChange
+}) => {
   const [selectedPhoto, setSelectedPhoto] = useState<any | null>(null)
   const [isBindingChallenge, setIsBindingChallenge] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
+  useEffect(() => {
+    if (onPhotoSelectChange) {
+      onPhotoSelectChange(!!selectedPhoto)
+    }
+  }, [selectedPhoto, onPhotoSelectChange])
 
   const handleBindPhotoToChallenge = async (photoId: string, challengeId: string | null) => {
     setIsBindingChallenge(true)

@@ -1,21 +1,29 @@
 import { useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Loader2, X, Upload, Zap } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { useUploadLogic } from '../../hooks/useUploadLogic'
 import { UploadActionButtons } from './components/UploadActionButtons'
 
-export default function UploadPhoto() {
-  const { token } = useParams()
+interface UploadPhotoProps {
+  isModal?: boolean
+  onClose?: () => void
+  token?: string
+}
+
+export default function UploadPhoto({ isModal = false, onClose, token: propToken }: UploadPhotoProps) {
+  const { token: routeToken } = useParams()
   const navigate = useNavigate()
+  const activeToken = propToken || routeToken
+
   const {
     pendingPhotos, setPendingPhotos, isCompressing, isUploading,
     challenges, selectedChallenge, setSelectedChallenge,
     guestPseudo, handleUpload, compressImage,
     shouldCompress, setShouldCompress
-  } = useUploadLogic(token)
+  } = useUploadLogic(activeToken)
 
   const [showConfirmModal, setShowConfirmModal] = useState(false)
-
 
   const cameraRef = useRef<HTMLInputElement>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
@@ -30,11 +38,28 @@ export default function UploadPhoto() {
     setPendingPhotos([...pendingPhotos, ...newPhotos])
   }
 
+  const handleClose = () => {
+    if (onClose) {
+      onClose()
+    } else {
+      navigate(-1)
+    }
+  }
 
-  return (
-    <div className="min-h-screen bg-[#08060d] text-white flex flex-col">
+  const handleComplete = () => {
+    if (onClose) {
+      onClose()
+    } else {
+      navigate(`/e/${activeToken}`)
+    }
+  }
+
+  const content = (
+    <div className={`min-h-screen bg-[#08060d] text-white flex flex-col ${isModal ? 'w-full h-full' : ''}`}>
       <header className="glass-dark border-b border-white/5 px-4 py-3 flex items-center justify-between sticky top-0 z-40 backdrop-blur-xl">
-        <button onClick={() => navigate(-1)} className="p-2 text-gray-400 hover:text-white"><ArrowLeft size={20} /></button>
+        <button onClick={handleClose} className="p-2 text-gray-400 hover:text-white">
+          <ArrowLeft size={20} />
+        </button>
         <div className="flex flex-col items-center">
           <h1 className="text-xs font-black uppercase tracking-widest text-gradient">Nouveau Souvenir</h1>
           <span className="text-[8px] text-gray-500 font-bold">Signé par {guestPseudo}</span>
@@ -60,7 +85,6 @@ export default function UploadPhoto() {
             onClick={() => setShouldCompress(!shouldCompress)} 
             className={`w-12 h-6 rounded-full transition-all relative shrink-0 ${shouldCompress ? 'bg-blue-600 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'bg-white/10'}`}
           >
-
             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${shouldCompress ? 'left-7' : 'left-1'}`} />
           </button>
         </div>
@@ -71,7 +95,6 @@ export default function UploadPhoto() {
             onGalleryClick={() => galleryRef.current?.click()} 
           />
         ) : (
-
           <div className="space-y-6 animate-in zoom-in-95 duration-300">
             <div className="grid grid-cols-2 gap-3">
               {pendingPhotos.map(p => (
@@ -162,7 +185,7 @@ export default function UploadPhoto() {
                 <button 
                   onClick={() => {
                     setShowConfirmModal(false);
-                    handleUpload(navigate);
+                    handleUpload(handleComplete);
                   }}
                   className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-500 hover:to-blue-300 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-[0_10px_20px_rgba(59,130,246,0.3)] flex items-center justify-center space-x-2 cursor-pointer"
                 >
@@ -179,6 +202,22 @@ export default function UploadPhoto() {
       </main>
     </div>
   )
+
+  if (isModal) {
+    return (
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+        className="fixed inset-0 z-50 overflow-y-auto bg-[#08060d] w-full h-full"
+      >
+        {content}
+      </motion.div>
+    )
+  }
+
+  return content
 }
 
 const LoadingState = () => (

@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Loader2, X, Bell, Lock, Sparkles } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
 import { useEventHomeLogic } from '../../hooks/useEventHomeLogic'
 import { GuestHero } from './components/GuestHero'
 import { GuestSwipeView } from './components/GuestSwipeView'
 import { GuestGalleryView } from './components/GuestGalleryView'
 import { GuestChallengesView } from './components/GuestChallengesView'
 import { GuestBottomNav } from './components/GuestBottomNav'
+import UploadPhoto from './UploadPhoto'
 
 export default function EventHome() {
   const { token } = useParams()
   const navigate = useNavigate()
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [isPhotoDetailOpen, setIsPhotoDetailOpen] = useState(false)
   
   const {
     eventData, eventLoading, challenges, activeTab, setActiveTab,
@@ -47,7 +51,9 @@ export default function EventHome() {
         <div className="absolute top-[40%] right-[5%] w-80 h-80 bg-blue-600/10 rounded-full blur-[120px] -z-20 pointer-events-none animate-pulse-slow" style={{ animationDelay: '2s' }} />
       </div>
 
-      <GuestHeader guestPseudo={guestPseudo} onEditPseudo={(p: string) => setGuestPseudo(p)} token={token} />
+      {!isPhotoDetailOpen && (
+        <GuestHeader guestPseudo={guestPseudo} onEditPseudo={(p: string) => setGuestPseudo(p)} token={token} />
+      )}
 
       <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar relative z-10 pb-32">
         {showNotificationPrompt && <NotificationPrompt onDisable={() => setShowNotificationPrompt(false)} />}
@@ -62,7 +68,16 @@ export default function EventHome() {
               <SwipeLockedScreen revealTime={eventData.reveal_time} />
             )
           )}
-          {activeTab === 'gallery' && <GuestGalleryView photos={photos} userReactions={userReactions} reactions={reactions} addReaction={addReaction} challenges={challenges} />}
+          {activeTab === 'gallery' && (
+            <GuestGalleryView 
+              photos={photos} 
+              userReactions={userReactions} 
+              reactions={reactions} 
+              addReaction={addReaction} 
+              challenges={challenges} 
+              onPhotoSelectChange={setIsPhotoDetailOpen}
+            />
+          )}
 
           {activeTab === 'challenges' && (
             <GuestChallengesView 
@@ -77,7 +92,15 @@ export default function EventHome() {
         </div>
       </div>
 
-      <GuestBottomNav tabs={guestTabs} activeTab={activeTab} setActiveTab={setActiveTab} onCaptureClick={() => navigate(`/e/${token}/upload`)} />
+      {!isPhotoDetailOpen && (
+        <GuestBottomNav tabs={guestTabs} activeTab={activeTab} setActiveTab={setActiveTab} onCaptureClick={() => setShowUploadModal(true)} />
+      )}
+
+      <AnimatePresence>
+        {showUploadModal && (
+          <UploadPhoto isModal={true} onClose={() => setShowUploadModal(false)} token={token} />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

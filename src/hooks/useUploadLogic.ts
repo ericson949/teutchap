@@ -44,7 +44,7 @@ export function useUploadLogic(token: string | undefined) {
   }
 
 
-  const handleUpload = async (navigate: any) => {
+  const handleUpload = async (onComplete: (target: string) => void) => {
     if (pendingPhotos.length === 0 || !eventData) return
     
     setIsUploading(true)
@@ -70,7 +70,7 @@ export function useUploadLogic(token: string | undefined) {
         localStorage.setItem(savedCountKey, (currentCount + 1).toString())
 
         setPendingPhotos([])
-        navigate(`/e/${token}`)
+        onComplete(`/e/${token}`)
         return
       }
 
@@ -95,7 +95,7 @@ export function useUploadLogic(token: string | undefined) {
       }
       
       setPendingPhotos([])
-      navigate(`/e/${token}`)
+      onComplete(`/e/${token}`)
     } catch (err) {
       console.error("Erreur lors de l'upload:", err)
       alert("Une erreur est survenue lors de l'envoi de vos photos.")

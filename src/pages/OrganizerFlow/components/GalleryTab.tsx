@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Cloud, Trash2, Download, FolderArchive, Loader2, Upload, X, User, Heart, Sparkles, ArrowLeft, Image as ImageIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -16,7 +17,8 @@ export const GalleryTab = ({
   organizerCompress = false,
   setOrganizerCompress,
   confirmAdminUpload,
-  cancelAdminUpload
+  cancelAdminUpload,
+  onPhotoSelectChange
 }: any) => {
 
   const [isZipping, setIsZipping] = useState(false)
@@ -27,6 +29,13 @@ export const GalleryTab = ({
   const [selectedPhoto, setSelectedPhoto] = useState<any | null>(null)
   const [isBindingChallenge, setIsBindingChallenge] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+
+  useEffect(() => {
+    if (onPhotoSelectChange) {
+      onPhotoSelectChange(!!selectedPhoto)
+    }
+  }, [selectedPhoto, onPhotoSelectChange])
 
   const handleBindPhotoToChallenge = async (photoId: string, challengeId: string | null) => {
     setIsBindingChallenge(true)
@@ -309,7 +318,7 @@ export const GalleryTab = ({
 
       {/* Cinematic Detail View */}
       <AnimatePresence>
-        {selectedPhoto && !isFullscreen && (
+        {selectedPhoto && !isFullscreen && createPortal(
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -423,13 +432,14 @@ export const GalleryTab = ({
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </motion.div>,
+          document.body
         )}
       </AnimatePresence>
 
       {/* Fullscreen Cinematic Image */}
       <AnimatePresence>
-        {selectedPhoto && isFullscreen && (
+        {selectedPhoto && isFullscreen && createPortal(
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -454,7 +464,8 @@ export const GalleryTab = ({
             <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 bg-black/40 backdrop-blur-md px-6 py-3 rounded-full text-white/50 text-[9px] font-bold uppercase tracking-[0.2em] border border-white/5">
               Cliquer pour fermer
             </div>
-          </motion.div>
+          </motion.div>,
+          document.body
         )}
       </AnimatePresence>
     </div>

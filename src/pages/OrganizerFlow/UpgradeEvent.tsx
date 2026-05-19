@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Check, ShieldCheck, Zap, ArrowLeft, Loader2, Star, Sparkles } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 
 const PLANS = [
@@ -24,8 +25,16 @@ const PLANS = [
   }
 ]
 
-export default function UpgradeEvent() {
-  const { eventId } = useParams()
+interface UpgradeEventProps {
+  isModal?: boolean
+  onClose?: () => void
+  eventId?: string
+  onSuccess?: () => void
+}
+
+export default function UpgradeEvent({ isModal = false, onClose, eventId: propEventId, onSuccess }: UpgradeEventProps) {
+  const { eventId: routeEventId } = useParams()
+  const activeEventId = propEventId || routeEventId
   const navigate = useNavigate()
   const [eventData, setEventData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -33,12 +42,13 @@ export default function UpgradeEvent() {
   const [selectedPlan, setSelectedPlan] = useState<any>(PLANS[1])
 
   useEffect(() => {
+    if (!activeEventId) return
     const fetchEvent = async () => {
-      const { data } = await supabase.from('events').select('*').eq('id', eventId).single()
+      const { data } = await supabase.from('events').select('*').eq('id', activeEventId).single()
       if (data) setEventData(data)
     }
     fetchEvent()
-  }, [eventId])
+  }, [activeEventId])
 
   const handlePayment = async () => {
     setLoading(true)
@@ -48,7 +58,7 @@ export default function UpgradeEvent() {
     const transactionId = `TX-${Math.random().toString(36).substring(7).toUpperCase()}`
     
     await supabase.from('payments').insert([{
-      event_id: eventId,
+      event_id: activeEventId,
       amount: selectedPlan.price,
       status: 'completed',
       payment_method: 'orange_money',
@@ -57,16 +67,25 @@ export default function UpgradeEvent() {
 
     await supabase.from('events').update({
       plan: selectedPlan.id
-    }).eq('id', eventId)
+    }).eq('id', activeEventId)
 
     setLoading(false)
+    if (onSuccess) onSuccess()
     setStep('success')
+  }
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose()
+    } else {
+      navigate(-1)
+    }
   }
 
   if (!eventData) return <div className="min-h-screen bg-[#08060d] text-white p-8 flex items-center justify-center font-black uppercase tracking-[0.3em]">Chargement...</div>
 
-  return (
-    <div className="min-h-screen bg-[#08060d] text-white flex flex-col relative overflow-hidden">
+  const content = (
+    <div className={`min-h-screen bg-[#08060d] text-white flex flex-col ${isModal ? 'w-full h-full' : ''}`}>
       {/* Background Glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/20 blur-[150px] rounded-full animate-pulse" />
@@ -74,7 +93,7 @@ export default function UpgradeEvent() {
       </div>
 
       <header className="glass-dark border-b border-white/5 px-6 py-4 flex items-center space-x-4 sticky top-0 z-40 backdrop-blur-2xl">
-        <button onClick={() => navigate(-1)} className="p-3 text-gray-400 hover:text-white glass rounded-2xl transition-all">
+        <button onClick={handleClose} className="p-3 text-gray-400 hover:text-white glass rounded-2xl transition-all">
           <ArrowLeft size={20} />
         </button>
         <div>
@@ -210,7 +229,13 @@ export default function UpgradeEvent() {
               </p>
             </div>
             <button 
-              onClick={() => navigate(`/dashboard/${eventId}`)}
+              onClick={() => {
+                if (onClose) {
+                  onClose()
+                } else {
+                  navigate(`/dashboard/${activeEventId}`)
+                }
+              }}
               className="w-full bg-white text-black hover:bg-gray-200 active:scale-95 font-black py-6 rounded-[2rem] shadow-[0_20px_50px_rgba(255,255,255,0.1)] transition-all flex items-center justify-center space-x-3 text-sm uppercase tracking-widest mt-8"
             >
               <Zap size={18} className="fill-current" />
@@ -221,6 +246,22 @@ export default function UpgradeEvent() {
       </main>
     </div>
   )
+
+  if (isModal) {
+    return (
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+        className="fixed inset-0 z-50 overflow-y-auto bg-[#08060d] w-full h-full"
+      >
+        {content}
+      </motion.div>
+    )
+  }
+
+  return content
 }
 
 function ChevronRight({ size = 24 }) {

@@ -1,14 +1,18 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
 import { ArrowLeft, ExternalLink, Sparkles } from 'lucide-react'
 import { useEventOverviewLogic } from '../../hooks/useEventOverviewLogic'
 import { OverviewQRSection } from './components/OverviewQRSection'
 import { OverviewSecuritySection } from './components/OverviewSecuritySection'
 import { OverviewTimerSection } from './components/OverviewTimerSection'
 import { OverviewCapacitySection } from './components/OverviewCapacitySection'
+import UpgradeEvent from './UpgradeEvent'
 
 export default function EventOverview() {
   const { eventId } = useParams()
   const navigate = useNavigate()
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   
   const {
     eventData, eventLoading, isOwner, photos, currentConfig, guests,
@@ -300,7 +304,7 @@ export default function EventOverview() {
               </div>
 
               <button 
-                onClick={() => navigate(`/dashboard/${eventId}/upgrade`)}
+                onClick={() => setShowUpgradeModal(true)}
                 className="w-full md:w-auto bg-white text-black hover:bg-gray-200 active:scale-95 px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-[0_20px_40px_rgba(255,255,255,0.1)] relative z-10 whitespace-nowrap"
               >
                 Passer au Premium
@@ -345,12 +349,18 @@ export default function EventOverview() {
                 maxPhotos={currentConfig.max_photos} 
                 currentGuests={guests?.length || 0}
                 maxGuests={currentConfig.max_guests}
-                onUpgrade={() => navigate(`/dashboard/${eventId}/upgrade`)} 
+                onUpgrade={() => setShowUpgradeModal(true)} 
               />
             </div>
           </div>
         </div>
       </main>
+
+      <AnimatePresence>
+        {showUpgradeModal && (
+          <UpgradeEvent isModal={true} onClose={() => setShowUpgradeModal(false)} eventId={eventId} />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
 import { LayoutDashboard, Image as ImageIcon, Hash, Settings as SettingsIcon, RefreshCw, Check } from 'lucide-react'
 import { useDashboardLogic } from '../../hooks/useDashboardLogic'
 import PremiumTabs from '../../components/PremiumTabs'
+import UpgradeEvent from './UpgradeEvent'
 import { OverviewTab } from './components/OverviewTab'
 import { GalleryTab } from './components/GalleryTab'
 import { ChallengesTab } from './components/ChallengesTab'
@@ -10,6 +13,8 @@ import { SettingsTab } from './components/SettingsTab'
 export default function Dashboard() {
   const { eventId } = useParams()
   const navigate = useNavigate()
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [isPhotoDetailOpen, setIsPhotoDetailOpen] = useState(false)
   
   const {
     eventData, eventLoading, isOwner, challenges, photos,
@@ -277,40 +282,42 @@ export default function Dashboard() {
     <div className="min-h-screen bg-[#08060d] text-white flex flex-col selection:bg-primary/30 overflow-x-hidden pb-24">
       
       {/* Minimalist Top Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 px-6 h-24 flex items-center justify-between bg-gradient-to-b from-[#08060d]/80 to-transparent backdrop-blur-[2px] pointer-events-none border-b border-white/[0.02]">
-        <div className="flex items-center space-x-4 pointer-events-auto">
-          <button 
-            onClick={() => navigate(`/overview/${eventId}`)}
-            className="glass border border-white/10 w-11 h-11 flex items-center justify-center rounded-2xl active:scale-95 transition-all hover:bg-white/5 shadow-xl group"
-          >
-            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-          </button>
-          
-          <div className="flex flex-col">
-            <span className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-bold leading-none mb-1">
-              Console Organisateur
-            </span>
-            <span className="text-base font-serif text-white font-semibold truncate max-w-[140px] leading-none">
-              {eventData?.name}
-            </span>
+      {!isPhotoDetailOpen && (
+        <header className="fixed top-0 left-0 right-0 z-50 px-6 h-24 flex items-center justify-between bg-gradient-to-b from-[#08060d]/80 to-transparent backdrop-blur-[2px] pointer-events-none border-b border-white/[0.02]">
+          <div className="flex items-center space-x-4 pointer-events-auto">
+            <button 
+              onClick={() => navigate(`/overview/${eventId}`)}
+              className="glass border border-white/10 w-11 h-11 flex items-center justify-center rounded-2xl active:scale-95 transition-all hover:bg-white/5 shadow-xl group"
+            >
+              <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+            </button>
+            
+            <div className="flex flex-col">
+              <span className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-bold leading-none mb-1">
+                Console Organisateur
+              </span>
+              <span className="text-base font-serif text-white font-semibold truncate max-w-[140px] leading-none">
+                {eventData?.name}
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* Sync Indicator (Aligned on the right, vertically centered) */}
-        <div className="pointer-events-auto">
-          {eventLoading ? (
-            <div className="flex items-center space-x-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full animate-pulse text-[9px] font-black uppercase tracking-wider text-white/60">
-              <RefreshCw size={8} className="animate-spin text-white" />
-              <span>Sync...</span>
-            </div>
-          ) : (
-            <div className="flex items-center space-x-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-black uppercase tracking-wider text-white/40">
-              <Check size={8} className="text-emerald-400" />
-              <span>À jour</span>
-            </div>
-          )}
-        </div>
-      </header>
+          {/* Sync Indicator (Aligned on the right, vertically centered) */}
+          <div className="pointer-events-auto">
+            {eventLoading ? (
+              <div className="flex items-center space-x-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full animate-pulse text-[9px] font-black uppercase tracking-wider text-white/60">
+                <RefreshCw size={8} className="animate-spin text-white" />
+                <span>Sync...</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-black uppercase tracking-wider text-white/40">
+                <Check size={8} className="text-emerald-400" />
+                <span>À jour</span>
+              </div>
+            )}
+          </div>
+        </header>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-6 pt-24 pb-12 relative z-10">
@@ -342,7 +349,7 @@ export default function Dashboard() {
               adminLoading={adminLoading}
               handleSaveAdmins={handleSaveAdmins}
               currentConfig={currentConfig}
-              onUpgrade={() => navigate(`/dashboard/${eventId}/upgrade`)}
+              onUpgrade={() => setShowUpgradeModal(true)}
             />
           )}
           {activeTab === 'gallery' && (
@@ -361,6 +368,7 @@ export default function Dashboard() {
               setOrganizerCompress={setOrganizerCompress}
               confirmAdminUpload={confirmAdminUpload}
               cancelAdminUpload={cancelAdminUpload}
+              onPhotoSelectChange={setIsPhotoDetailOpen}
             />
           )}
 
@@ -371,13 +379,21 @@ export default function Dashboard() {
       </main>
 
       {/* Bottom Floating Navigation (Premium Tabs) */}
-      <PremiumTabs 
-        tabs={organizerTabs} 
-        activeTab={activeTab} 
-        onChange={setActiveTab} 
-        variant="bottom"
-        className="px-6 pb-8"
-      />
+      {!isPhotoDetailOpen && (
+        <PremiumTabs 
+          tabs={organizerTabs} 
+          activeTab={activeTab} 
+          onChange={setActiveTab} 
+          variant="bottom"
+          className="px-6 pb-8"
+        />
+      )}
+
+      <AnimatePresence>
+        {showUpgradeModal && (
+          <UpgradeEvent isModal={true} onClose={() => setShowUpgradeModal(false)} eventId={eventId} />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
